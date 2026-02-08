@@ -32,11 +32,68 @@
     color: #999;
     font-size: 14px;
   }
+  .game-wrapper {
+    position: relative;
+  }
+  #nameEntryOverlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    font-family: 'Courier New', monospace;
+    z-index: 10;
+  }
+  #nameEntryOverlay.visible {
+    display: flex;
+  }
+  #nameEntryOverlay .prompt {
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    padding: 0 20px;
+  }
+  #nameEntryOverlay input {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    padding: 8px 12px;
+    max-width: 200px;
+    border: 2px solid #4a8f3f;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.95);
+  }
+  #nameEntryOverlay button {
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    padding: 8px 24px;
+    background: #4a8f3f;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #nameEntryOverlay button:hover {
+    background: #5a9f4f;
+  }
 </style>
 </head>
 <body>
 <h1>DACHSHUND DASH</h1>
-<canvas id="game" width="1600" height="500"></canvas>
+<div class="game-wrapper">
+  <canvas id="game" width="1600" height="500"></canvas>
+  <div id="nameEntryOverlay">
+    <span class="prompt">New high score! Enter your name:</span>
+    <input type="text" id="nameInput" maxlength="12" placeholder="Your name" />
+    <button type="button" id="nameSubmitBtn">Submit</button>
+  </div>
+</div>
 <p class="hint">SPACE / UP to jump (tap twice to double jump!) &mdash; DOWN / S to duck</p>
 <script>
 const canvas = document.getElementById('game');
@@ -58,13 +115,49 @@ const MIN_OBSTACLE_GAP = 300;
 const MAX_OBSTACLE_GAP = 500;
 
 // --- Game state ---
-let gameState = 'idle'; // idle, running, dead
+let gameState = 'idle'; // idle, running, dead, enteringName
 let score = 0;
 let highScore = 0;
 let speed = INITIAL_SPEED;
 let frameCount = 0;
 let lastMilestone = 0;
 let deathTime = 0;
+let pendingScore = null;
+
+// --- High scores (localStorage) ---
+const HIGH_SCORES_KEY = 'dachshundDashHighScores';
+const MAX_HIGH_SCORES = 5;
+let highScores = [];
+
+function loadHighScores() {
+  try {
+    const raw = localStorage.getItem(HIGH_SCORES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(e => e && typeof e.name === 'string' && typeof e.score === 'number').slice(0, MAX_HIGH_SCORES);
+  } catch {
+    return [];
+  }
+}
+
+function saveHighScores(scores) {
+  try {
+    localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(scores));
+  } catch (_) {}
+}
+
+function addToHighScores(name, scoreVal) {
+  const n = (name || '').trim() || 'Player';
+  const displayName = n.slice(0, 12).toUpperCase();
+  const next = [...highScores, { name: displayName, score: scoreVal }]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_HIGH_SCORES);
+  highScores = next;
+  saveHighScores(highScores);
+  highScore = highScores[0]?.score ?? 0;
+  return highScores;
+}
 
 // --- Dachshund ---
 const dog = {
@@ -1106,12 +1199,43 @@ function drawScore() {
   ctx.textAlign = 'right';
 
   const scoreStr = String(Math.floor(score)).padStart(5, '0');
-  if (highScore > 0) {
+  const hi = highScores[0]?.score ?? highScore;
+  if (hi > 0) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillText('HI ' + String(Math.floor(highScore)).padStart(5, '0') + '  ', W - 100, 30);
+    ctx.fillText('HI ' + String(Math.floor(hi)).padStart(5, '0') + '  ', W - 100, 30);
   }
   ctx.fillStyle = '#fff';
   ctx.fillText(scoreStr, W - 15, 30);
+}
+
+function drawHighScores(baseY) {
+  const panelW = 280;
+  const panelH = highScores.length === 0 ? 44 : 24 + highScores.length * 18;
+  const px = W / 2 - panelW / 2;
+  const py = baseY;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+  roundRect(px, py, panelW, panelH, 8);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 16px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('HIGH SCORES', W / 2, py + 20);
+
+  if (highScores.length === 0) {
+    ctx.font = '14px Courier New';
+    ctx.fillText('(no scores yet)', W / 2, py + 38);
+  } else {
+    ctx.font = '16px Courier New';
+    ctx.textAlign = 'left';
+    highScores.forEach((entry, i) => {
+      const lineY = py + 38 + i * 18;
+      ctx.fillText(`${i + 1}. ${entry.name.padEnd(10)}`, px + 16, lineY);
+      ctx.textAlign = 'right';
+      ctx.fillText(String(Math.floor(entry.score)).padStart(5, '0'), px + panelW - 16, lineY);
+      ctx.textAlign = 'left';
+    });
+  }
 }
 
 function drawMusicIcon() {
@@ -1156,6 +1280,7 @@ function drawMusicIcon() {
 // ============================================================
 
 function jump() {
+  if (gameState === 'enteringName') return;
   if (gameState === 'idle') {
     gameState = 'running';
     score = 0;
@@ -1348,10 +1473,17 @@ function update() {
 
   // Collision
   if (checkCollision()) {
-    gameState = 'dead';
     deathTime = Date.now();
-    if (score > highScore) highScore = score;
     playDeathSound();
+    const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+    if (qualifies) {
+      gameState = 'enteringName';
+      pendingScore = score;
+      showNameEntryOverlay();
+    } else {
+      gameState = 'dead';
+      if (score > highScore) highScore = score;
+    }
   }
 }
 
@@ -1387,9 +1519,10 @@ function draw() {
     ctx.font = 'bold 20px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('Press SPACE to start!', W / 2, 124);
+    drawHighScores(145);
   }
 
-  if (gameState === 'dead') {
+  if (gameState === 'dead' || gameState === 'enteringName') {
     // Text background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     roundRect(W / 2 - 150, 78, 300, 70, 8);
@@ -1409,6 +1542,7 @@ function draw() {
     ctx.font = 'bold 7px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('X', dog.x + 82, dog.y - 3);
+    drawHighScores(155);
   }
 
   ctx.restore();
@@ -1420,8 +1554,36 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
+function showNameEntryOverlay() {
+  const overlay = document.getElementById('nameEntryOverlay');
+  const input = document.getElementById('nameInput');
+  overlay.classList.add('visible');
+  input.value = '';
+  input.focus();
+}
+
+function hideNameEntryOverlay() {
+  document.getElementById('nameEntryOverlay').classList.remove('visible');
+}
+
+function submitNameEntry() {
+  if (gameState !== 'enteringName' || pendingScore == null) return;
+  const name = document.getElementById('nameInput').value;
+  addToHighScores(name, pendingScore);
+  pendingScore = null;
+  gameState = 'dead';
+  hideNameEntryOverlay();
+}
+
 // --- Input ---
 document.addEventListener('keydown', e => {
+  if (gameState === 'enteringName') {
+    if (e.code === 'Enter') {
+      e.preventDefault();
+      submitNameEntry();
+    }
+    return;
+  }
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
     jump();
@@ -1461,7 +1623,11 @@ canvas.addEventListener('click', e => {
   jump();
 });
 
+document.getElementById('nameSubmitBtn').addEventListener('click', submitNameEntry);
+
 // --- Start ---
+highScores = loadHighScores();
+highScore = highScores[0]?.score ?? 0;
 gameLoop();
 </script>
 </body>
