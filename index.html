@@ -294,6 +294,57 @@ function toggleMusic() {
 }
 
 // ============================================================
+//  TIME-OF-DAY CYCLE (repeats every 620 pts)
+//  Day 0-250, sunset 250-310 (~7.5 sec), night 310-560 (250 pts),
+//  dawn 560-620 (~7.5 sec), then repeat
+// ============================================================
+
+function lerpColor(hex1, hex2, t) {
+  const parse = (hex) => {
+    const h = hex.replace('#', '');
+    return [
+      parseInt(h.slice(0, 2), 16) / 255,
+      parseInt(h.slice(2, 4), 16) / 255,
+      parseInt(h.slice(4, 6), 16) / 255,
+    ];
+  };
+  const [r1, g1, b1] = parse(hex1);
+  const [r2, g2, b2] = parse(hex2);
+  const r = Math.round((r1 + (r2 - r1) * t) * 255);
+  const g = Math.round((g1 + (g2 - g1) * t) * 255);
+  const b = Math.round((b1 + (b2 - b1) * t) * 255);
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+function getTimeOfDay() {
+  const CYCLE = 620;
+  const s = score % CYCLE;
+  const DAY_END = 250;
+  const SUNSET_END = 310;   // 60 pts: day→night (50% longer)
+  const NIGHT_END = 560;    // 250 pts after night begins
+  const DAWN_END = 620;     // 60 pts: night→day
+  let phase, stage, t;
+  if (s < DAY_END) {
+    stage = 'day';
+    phase = 0;
+    t = s / DAY_END;
+  } else if (s < SUNSET_END) {
+    stage = 'sunset';
+    phase = (s - DAY_END) / (SUNSET_END - DAY_END) * 0.5;  // 0→0.5 = full night at 290
+    t = (s - DAY_END) / (SUNSET_END - DAY_END);
+  } else if (s < NIGHT_END) {
+    stage = 'night';
+    phase = 0.5;
+    t = (s - SUNSET_END) / (NIGHT_END - SUNSET_END);
+  } else {
+    stage = 'dawn';
+    phase = 0.5 + (s - NIGHT_END) / (DAWN_END - NIGHT_END) * 0.5;  // 0.5→1 = day at 580
+    t = (s - NIGHT_END) / (DAWN_END - NIGHT_END);
+  }
+  return { phase, stage, t };
+}
+
+// ============================================================
 //  DRAWING FUNCTIONS (pixel-art style)
 // ============================================================
 
@@ -828,84 +879,156 @@ function roundRect(x, y, w, h, r) {
 }
 
 function drawSky() {
-  // Gradient sky
+  // Sky gradient colors per stage: [day, sunset, night, dawn] -> top, mid, bottom
+  const skyTop = ['#4AB8E8', '#FF8C42', '#0D1B2A', '#6B4E71'];
+  const skyMid = ['#87CEEB', '#FF6B6B', '#1B263B', '#9B8AA6'];
+  const skyBottom = ['#B0E0F0', '#FFB88C', '#415A77', '#4AB8E8'];
+  const { phase } = getTimeOfDay();
+  const p = phase * 4;
+  const i = Math.floor(p) % 4;
+  const t = p % 1;
+  const top = lerpColor(skyTop[i], skyTop[(i + 1) % 4], t);
+  const mid = lerpColor(skyMid[i], skyMid[(i + 1) % 4], t);
+  const bottom = lerpColor(skyBottom[i], skyBottom[(i + 1) % 4], t);
   const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 20);
-  grad.addColorStop(0, '#4AB8E8');
-  grad.addColorStop(0.7, '#87CEEB');
-  grad.addColorStop(1, '#B0E0F0');
+  grad.addColorStop(0, top);
+  grad.addColorStop(0.7, mid);
+  grad.addColorStop(1, bottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, GROUND_Y + 20);
 }
 
 function drawSun() {
   const sunX = 700;
-  const sunY = 45;
+  const { phase, stage, t } = getTimeOfDay();
 
-  // Glow
-  const glow = ctx.createRadialGradient(sunX, sunY, 15, sunX, sunY, 50);
-  glow.addColorStop(0, 'rgba(255, 244, 130, 0.4)');
-  glow.addColorStop(1, 'rgba(255, 244, 130, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(sunX - 50, sunY - 50, 100, 100);
+  // Sun visible: day + sunset; hidden: night; fading in: dawn
+  const sunOpacity = phase < 0.5 ? 1 : phase < 0.75 ? 0 : t;
+  const moonOpacity = phase < 0.5 ? 0 : phase < 0.75 ? 1 : 1 - t;
 
-  // Sun rays (rotating)
-  ctx.save();
-  ctx.translate(sunX, sunY);
-  ctx.rotate(frameCount * 0.005);
-  ctx.fillStyle = '#FFE066';
-  for (let i = 0; i < 8; i++) {
-    ctx.rotate(Math.PI / 4);
-    ctx.fillRect(-2, 20, 4, 10);
+  // Sun Y: day=45, sunset=sinks to 65
+  const sunY = phase < 0.25 ? 45 : phase < 0.5 ? 45 + (phase - 0.25) / 0.25 * 20 : 65;
+
+  // Sun color: yellow (day) -> orange (sunset)
+  const sunColor = phase < 0.25 ? '#FFD700' : phase < 0.5 ? lerpColor('#FFD700', '#FF8C00', (phase - 0.25) / 0.25) : '#FF8C00';
+
+  // Stars (night/dawn only) — deterministic positions
+  if (moonOpacity > 0.01) {
+    const starPositions = [[120, 35], [280, 22], [420, 48], [550, 28], [650, 40], [180, 55], [340, 62], [480, 38]];
+    starPositions.forEach(([sx, sy]) => {
+      ctx.globalAlpha = moonOpacity * (0.6 + Math.sin(sx * 0.1 + frameCount * 0.02) * 0.4);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
   }
-  ctx.restore();
 
-  // Sun body
-  ctx.fillStyle = '#FFD700';
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, 18, 0, Math.PI * 2);
-  ctx.fill();
+  // Moon (night/dawn)
+  if (moonOpacity > 0.01) {
+    const moonX = 700;
+    const moonY = 50;
+    const moonR = 12;
+    ctx.globalAlpha = moonOpacity;
+    ctx.fillStyle = '#E8E8E8';
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#D0D0D0';
+    ctx.beginPath();
+    ctx.arc(moonX - 3, moonY - 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(moonX + 4, moonY + 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 
-  // Sun highlight
-  ctx.fillStyle = '#FFF176';
-  ctx.beginPath();
-  ctx.arc(sunX - 4, sunY - 4, 8, 0, Math.PI * 2);
-  ctx.fill();
+  // Sun (day/sunset/dawn)
+  if (sunOpacity > 0.01) {
+    const drawY = phase >= 0.75 ? 45 : sunY;
+    const glow = ctx.createRadialGradient(sunX, drawY, 15, sunX, drawY, 50);
+    glow.addColorStop(0, `rgba(255, 244, 130, ${0.4 * sunOpacity})`);
+    glow.addColorStop(1, 'rgba(255, 244, 130, 0)');
+    ctx.globalAlpha = sunOpacity;
+    ctx.fillStyle = glow;
+    ctx.fillRect(sunX - 50, drawY - 50, 100, 100);
+
+    if (stage !== 'night') {
+      ctx.save();
+      ctx.translate(sunX, drawY);
+      ctx.rotate(frameCount * 0.005);
+      ctx.fillStyle = stage === 'sunset' ? '#FFB366' : '#FFE066';
+      for (let i = 0; i < 8; i++) {
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-2, 20, 4, 10);
+      }
+      ctx.restore();
+    }
+
+    ctx.fillStyle = sunColor;
+    ctx.beginPath();
+    ctx.arc(sunX, drawY, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = stage === 'sunset' ? '#FFCC80' : '#FFF176';
+    ctx.beginPath();
+    ctx.arc(sunX - 4, drawY - 4, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }
 
 function drawGround() {
-  // Sandy path where the dachshund runs (top strip)
+  const { phase } = getTimeOfDay();
+  const p = phase * 4;
+  const i = Math.floor(p) % 4;
+  const t = p % 1;
+
+  // Path colors: [day=sandy, sunset=warm amber, night=dark brown, dawn=sandy]
+  const pathTop = ['#E8D5A3', '#E8B870', '#5C4033', '#E8D5A3'];
+  const pathBottom = ['#D4C08E', '#D4A055', '#3D2B1F', '#D4C08E'];
+  const pathTex = ['#C9B57A', '#C9A055', '#4A3728', '#C9B57A'];
+  const pathTopC = lerpColor(pathTop[i], pathTop[(i + 1) % 4], t);
+  const pathBottomC = lerpColor(pathBottom[i], pathBottom[(i + 1) % 4], t);
+  const pathTexC = lerpColor(pathTex[i], pathTex[(i + 1) % 4], t);
+
   const pathGrad = ctx.createLinearGradient(0, GROUND_Y + 16, 0, GROUND_Y + 34);
-  pathGrad.addColorStop(0, '#E8D5A3');
-  pathGrad.addColorStop(1, '#D4C08E');
+  pathGrad.addColorStop(0, pathTopC);
+  pathGrad.addColorStop(1, pathBottomC);
   ctx.fillStyle = pathGrad;
   ctx.fillRect(0, GROUND_Y + 16, W, 20);
 
-  // Path texture (small pebbles / dirt)
-  ctx.fillStyle = '#C9B57A';
+  ctx.fillStyle = pathTexC;
   for (let i = 0; i < W; i += 18) {
     const gx = (i - groundOffset % 18 + W) % W;
     ctx.fillRect(gx, GROUND_Y + 22, 4, 2);
     ctx.fillRect((gx + 9) % W, GROUND_Y + 28, 3, 2);
   }
 
-  // Grass below the path
+  // Grass: [day=green, sunset=warm-tinted, night=very dark, dawn=returning]
+  const grassTop = ['#5DBE3E', '#6B8E3E', '#1A2E1A', '#5DBE3E'];
+  const grassMid = ['#4CAF30', '#5A7E30', '#152515', '#4CAF30'];
+  const grassBottom = ['#3D8B28', '#4A6B28', '#0F1F0F', '#3D8B28'];
+  const grassBlade = ['#6ECF4A', '#7A9F4A', '#2A3A2A', '#6ECF4A'];
+  const grassTopC = lerpColor(grassTop[i], grassTop[(i + 1) % 4], t);
+  const grassMidC = lerpColor(grassMid[i], grassMid[(i + 1) % 4], t);
+  const grassBottomC = lerpColor(grassBottom[i], grassBottom[(i + 1) % 4], t);
+  const grassBladeC = lerpColor(grassBlade[i], grassBlade[(i + 1) % 4], t);
+
   const grassGrad = ctx.createLinearGradient(0, GROUND_Y + 36, 0, H);
-  grassGrad.addColorStop(0, '#5DBE3E');
-  grassGrad.addColorStop(0.4, '#4CAF30');
-  grassGrad.addColorStop(1, '#3D8B28');
+  grassGrad.addColorStop(0, grassTopC);
+  grassGrad.addColorStop(0.4, grassMidC);
+  grassGrad.addColorStop(1, grassBottomC);
   ctx.fillStyle = grassGrad;
   ctx.fillRect(0, GROUND_Y + 36, W, H - GROUND_Y - 36);
 
-  // Grass blades along path edge
-  ctx.fillStyle = '#6ECF4A';
+  ctx.fillStyle = grassBladeC;
   for (let i = 0; i < W; i += 6) {
     const gx = (i - groundOffset % 6 + W) % W;
     const h = 3 + Math.sin(gx * 0.5) * 2;
     ctx.fillRect(gx, GROUND_Y + 34 - h, 3, h + 3);
   }
-
-  // Grass blades along top of path
-  ctx.fillStyle = '#6ECF4A';
   for (let i = 0; i < W; i += 8) {
     const gx = (i - groundOffset % 8 + W) % W;
     const h = 2 + Math.sin(gx * 0.7) * 2;
@@ -914,39 +1037,55 @@ function drawGround() {
 }
 
 function drawFlowers() {
+  const { phase } = getTimeOfDay();
+  const p = phase * 4;
+  const i = Math.floor(p) % 4;
+  const t = p % 1;
+  const flowerVis = [1, 0.9, 0.35, 0.7];
+  const flowerOp = flowerVis[i] + (flowerVis[(i + 1) % 4] - flowerVis[i]) * t;
+
   flowers.forEach(f => {
     const fx = (f.x - groundOffset * 0.8 % W + W) % W;
+    const s = f.size;
 
-    // Stem
-    ctx.fillStyle = '#2E8B2E';
+    ctx.globalAlpha = flowerOp;
+    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? '#2A3A2A' : '#2E8B2E';
     ctx.fillRect(fx, f.baseY - f.size * 2, 2, f.size * 2 + 2);
 
-    // Petals
-    ctx.fillStyle = f.color;
-    const s = f.size;
-    ctx.fillRect(fx - s + 1, f.baseY - s * 3, s, s);     // top
-    ctx.fillRect(fx + 2, f.baseY - s * 3, s, s);          // top right
-    ctx.fillRect(fx - s + 1, f.baseY - s * 1.5, s, s);    // bottom left
-    ctx.fillRect(fx + 2, f.baseY - s * 1.5, s, s);        // bottom right
+    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? lerpColor(f.color, '#2A2A3A', 0.6) : f.color;
+    ctx.fillRect(fx - s + 1, f.baseY - s * 3, s, s);
+    ctx.fillRect(fx + 2, f.baseY - s * 3, s, s);
+    ctx.fillRect(fx - s + 1, f.baseY - s * 1.5, s, s);
+    ctx.fillRect(fx + 2, f.baseY - s * 1.5, s, s);
 
-    // Center
-    ctx.fillStyle = '#FFD700';
+    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? '#4A4A40' : '#FFD700';
     ctx.fillRect(fx, f.baseY - s * 2.5 + 1, s - 1, s - 1);
+    ctx.globalAlpha = 1;
   });
 }
 
 function drawClouds() {
+  const { phase } = getTimeOfDay();
+  const p = phase * 4;
+  const i = Math.floor(p) % 4;
+  const t = p % 1;
+  // Cloud colors: [day=white, sunset=pinkish, night=dark gray, dawn=lightening]
+  const cloudFill = ['#FFFFFF', '#FFD4D4', '#3A3A4A', '#E8E8F0'];
+  const cloudShadow = ['#B4DCF0', '#E8B4C0', '#2A2A35', '#B0B8D0'];
+  const fillC = lerpColor(cloudFill[i], cloudFill[(i + 1) % 4], t);
+  const shadowC = lerpColor(cloudShadow[i], cloudShadow[(i + 1) % 4], t);
+  const highlightAlphas = [0.8, 0.6, 0.2, 0.5];
+  const highlightAlpha = highlightAlphas[i] + (highlightAlphas[(i + 1) % 4] - highlightAlphas[i]) * t;
+
   clouds.forEach(c => {
     const s = c.size;
-    // Shadow
-    ctx.fillStyle = 'rgba(180, 220, 240, 0.5)';
+    ctx.fillStyle = shadowC + '80';
     ctx.beginPath();
     ctx.arc(c.x + 18 * s, c.y + 6 * s, 14 * s, 0, Math.PI * 2);
     ctx.arc(c.x + 34 * s, c.y + 4 * s, 10 * s, 0, Math.PI * 2);
     ctx.fill();
 
-    // Main cloud body
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = fillC;
     ctx.beginPath();
     ctx.arc(c.x + 10 * s, c.y, 10 * s, 0, Math.PI * 2);
     ctx.arc(c.x + 24 * s, c.y - 6 * s, 14 * s, 0, Math.PI * 2);
@@ -955,8 +1094,7 @@ function drawClouds() {
     ctx.arc(c.x + 34 * s, c.y + 2 * s, 8 * s, 0, Math.PI * 2);
     ctx.fill();
 
-    // Highlight
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.fillStyle = `rgba(255,255,255,${highlightAlpha})`;
     ctx.beginPath();
     ctx.arc(c.x + 22 * s, c.y - 8 * s, 8 * s, 0, Math.PI * 2);
     ctx.fill();
