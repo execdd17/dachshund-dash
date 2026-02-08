@@ -49,10 +49,10 @@ const H = 250;
 // --- Constants ---
 const GROUND_Y = 200;
 const GRAVITY = 0.6;
-const JUMP_FORCE = -10;
+const JUMP_FORCE = -11;
 const DOUBLE_JUMP_FORCE = -7;
 const INITIAL_SPEED = 3;
-const MAX_SPEED = 14;
+const MAX_SPEED = 20;
 const SPEED_INCREMENT = 0.001;
 const MIN_OBSTACLE_GAP = 300;
 const MAX_OBSTACLE_GAP = 500;
@@ -83,6 +83,31 @@ const dog = {
 let obstacles = [];
 let nextObstacleIn = 100;
 let lastObstacleType = 'hotdog';
+
+// --- Music ---
+let musicOn = false;
+let musicGainNode = null;
+let musicLoopTimeout = null;
+const MUSIC_BPM = 160;
+const MUSIC_BEAT = 60 / MUSIC_BPM;
+
+const MELODY_NOTES = [
+  [523,1],[523,1],[392,1],[392,1],
+  [440,1],[494,1],[523,1],[0,1],
+  [392,1],[392,1],[330,1],[330,1],
+  [349,1],[330,1],[294,1],[0,1],
+  [523,1],[523,1],[392,1],[392,1],
+  [440,1],[494,1],[523,1],[0,1],
+  [587,1],[523,1],[494,1],[440,1],
+  [392,2],[0,2],
+];
+
+const BASS_NOTES = [
+  [131,2],[196,2],[175,2],[196,2],
+  [131,2],[196,2],[175,2],[196,2],
+  [131,2],[196,2],[175,2],[196,2],
+  [196,2],[147,2],[131,2],[0,2],
+];
 
 // --- Ground decoration ---
 let groundOffset = 0;
@@ -193,6 +218,79 @@ function playDuckSound() {
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 0.1);
+}
+
+function getMusicGain() {
+  const a = getAudioCtx();
+  if (!musicGainNode) {
+    musicGainNode = a.createGain();
+    musicGainNode.connect(a.destination);
+  }
+  musicGainNode.gain.value = 1;
+  return musicGainNode;
+}
+
+function scheduleMusicLoop() {
+  if (!musicOn) return;
+  const a = getAudioCtx();
+  const dest = getMusicGain();
+  const now = a.currentTime + 0.05;
+
+  let t = now;
+  for (const [freq, beats] of MELODY_NOTES) {
+    const dur = beats * MUSIC_BEAT;
+    if (freq > 0) {
+      const osc = a.createOscillator();
+      const gain = a.createGain();
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.027, t);
+      gain.gain.setValueAtTime(0.027, t + dur * 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+      osc.start(t);
+      osc.stop(t + dur);
+    }
+    t += dur;
+  }
+  const loopDur = t - now;
+
+  t = now;
+  for (const [freq, beats] of BASS_NOTES) {
+    const dur = beats * MUSIC_BEAT;
+    if (freq > 0) {
+      const osc = a.createOscillator();
+      const gain = a.createGain();
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.035, t);
+      gain.gain.setValueAtTime(0.035, t + dur * 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
+      osc.start(t);
+      osc.stop(t + dur);
+    }
+    t += dur;
+  }
+
+  musicLoopTimeout = setTimeout(scheduleMusicLoop, (loopDur - 0.1) * 1000);
+}
+
+function toggleMusic() {
+  if (musicOn) {
+    musicOn = false;
+    if (musicLoopTimeout) clearTimeout(musicLoopTimeout);
+    musicLoopTimeout = null;
+    if (musicGainNode) {
+      musicGainNode.disconnect();
+      musicGainNode = null;
+    }
+  } else {
+    musicOn = true;
+    scheduleMusicLoop();
+  }
 }
 
 // ============================================================
@@ -878,6 +976,43 @@ function drawScore() {
   ctx.fillText(scoreStr, W - 15, 30);
 }
 
+function drawMusicIcon() {
+  const ix = 14, iy = 16;
+  // Speaker body
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath();
+  ctx.moveTo(ix, iy);
+  ctx.lineTo(ix + 6, iy);
+  ctx.lineTo(ix + 12, iy - 5);
+  ctx.lineTo(ix + 12, iy + 11);
+  ctx.lineTo(ix + 6, iy + 6);
+  ctx.lineTo(ix, iy + 6);
+  ctx.closePath();
+  ctx.fill();
+
+  if (musicOn) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(ix + 14, iy + 3, 4, -Math.PI / 3, Math.PI / 3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(ix + 14, iy + 3, 8, -Math.PI / 3, Math.PI / 3);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = 'rgba(255,100,100,0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ix + 15, iy - 2);
+    ctx.lineTo(ix + 23, iy + 8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ix + 23, iy - 2);
+    ctx.lineTo(ix + 15, iy + 8);
+    ctx.stroke();
+  }
+}
+
 // ============================================================
 //  GAME LOGIC
 // ============================================================
@@ -978,14 +1113,14 @@ function checkCollision() {
   // Dog hitbox changes when ducking (lower profile avoids frisbees)
   let dx, dy, dw, dh;
   if (dog.ducking) {
-    dx = dog.x + 18;
+    dx = dog.x + 23;
     dy = dog.y + 10;
-    dw = 60;
+    dw = 50;
     dh = 8;
   } else {
-    dx = dog.x + 18;
+    dx = dog.x + 23;
     dy = dog.y - 8;
-    dw = 60;
+    dw = 50;
     dh = 22;
   }
 
@@ -1002,9 +1137,9 @@ function checkCollision() {
       ow = obs.width - 16;
       oh = obs.height - 6;
     } else {
-      ox = obs.x + 10;
+      ox = obs.x + 12;
       oy = obs.y + 8;
-      ow = obs.width - 20;
+      ow = obs.width - 24;
       oh = obs.height - 10;
     }
 
@@ -1104,6 +1239,7 @@ function draw() {
   drawDachshund(dog.x, dog.y, dog.legFrame);
 
   drawScore();
+  drawMusicIcon();
 
   if (gameState === 'idle') {
     // Text background
@@ -1164,12 +1300,28 @@ document.addEventListener('keyup', e => {
   }
 });
 
+function getLogicalCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  const cx = ('touches' in e ? e.touches[0].clientX : e.clientX);
+  const cy = ('touches' in e ? e.touches[0].clientY : e.clientY);
+  return {
+    x: (cx - rect.left) / rect.width * W,
+    y: (cy - rect.top) / rect.height * H,
+  };
+}
+
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
+  const p = getLogicalCoords(e);
+  if (p.x < 38 && p.y < 32) { toggleMusic(); return; }
   jump();
 });
 
-canvas.addEventListener('click', () => jump());
+canvas.addEventListener('click', e => {
+  const p = getLogicalCoords(e);
+  if (p.x < 38 && p.y < 32) { toggleMusic(); return; }
+  jump();
+});
 
 // --- Start ---
 gameLoop();
