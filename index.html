@@ -120,6 +120,18 @@ const CHASE_COOLDOWN = 300;
 const CHASE_DURATION_FRAMES = 16 * 60;  // 16 seconds at 60fps
 const SQUIRREL_OFFSET = 580;
 
+// --- Boss chase ---
+const BOSS_MILESTONE = 1000;
+const DOG_BASE_X = 60;                      // dog's normal resting x position
+const BOSS_MAX_DOG_SHIFT = 150;             // max rightward shift during boss (px)
+const BOSS_DOG_SHIFT_SPEED = 0.75;          // px/frame ramp-up when chasing (~3.3s to max)
+const BOSS_DOG_RETURN_SPEED = 1.5;          // px/frame ramp-down when losing (~1.7s to return)
+const BOSS_SQUIRREL_START_X = -20;
+const BOSS_SQUIRREL_LOSE_SPEED = 3.0;       // px/frame when losing (retreating left)
+const BOSS_CHASE_DURATION = 1600;           // frames total (~26.7s): fixed duration regardless of speed
+const BOSS_SPEED_MULTIPLIER = 1.25;         // max speed multiplier during boss
+const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger gaps)
+
 // --- Game state ---
 let gameState = 'idle'; // idle, running, dead, enteringName
 let score = 0;
@@ -311,6 +323,15 @@ let squirrelEnterX = 0;
 let squirrelEnterSpeed = 1.5;
 let squirrelEscapeX = 0;
 let squirrelEscapeSpeed = 1.5;
+
+// --- Boss chase state ---
+let bossPending = false;
+let bossChasing = false;
+let bossLosing = false;
+let lastBossMilestone = 0;
+let bossSquirrelX = BOSS_SQUIRREL_START_X;
+let bossChaseFrames = 0;
+let bossDogShift = 0;
 
 // --- Music ---
 let musicOn = false;
@@ -1638,6 +1659,12 @@ function jump() {
     chaseEntering = false;
     chaseEscaping = false;
     lastChaseEndScore = 0;
+    bossPending = false;
+    bossChasing = false;
+    bossLosing = false;
+    lastBossMilestone = 0;
+    bossDogShift = 0;
+    dog.x = DOG_BASE_X;
   }
   if (gameState === 'dead') {
     if (Date.now() - deathTime < 1000) return;
@@ -1648,6 +1675,7 @@ function jump() {
     obstacles = [];
     nextObstacleIn = 60;
     lastObstacleType = 'hotdog';
+    dog.x = DOG_BASE_X;
     dog.y = GROUND_Y;
     dog.vy = 0;
     dog.jumping = false;
@@ -1658,6 +1686,11 @@ function jump() {
     chaseEntering = false;
     chaseEscaping = false;
     lastChaseEndScore = 0;
+    bossPending = false;
+    bossChasing = false;
+    bossLosing = false;
+    lastBossMilestone = 0;
+    bossDogShift = 0;
   }
   if (gameState !== 'running') return;
   if (dog.ducking) return;
@@ -1785,6 +1818,12 @@ function update(dt) {
   frameCount++;
   speed = Math.min(MAX_SPEED, INITIAL_SPEED + score * SPEED_INCREMENT);
 
+  // Boss speed scaling: ramp over approach phase, drop back to normal during losing
+  const bossSpeedMult = bossChasing
+    ? 1 + (BOSS_SPEED_MULTIPLIER - 1) * Math.min(1, bossChaseFrames / (BOSS_CHASE_DURATION * 0.15))
+    : 1;
+  const effectiveSpeed = speed * bossSpeedMult;
+
   // Dog physics (scale by dt for frame-rate independence)
   dog.vy += GRAVITY * scale;
   dog.y += dog.vy * scale;
@@ -1796,14 +1835,14 @@ function update(dt) {
   }
 
   // Leg animation
-  dog.legFrame += speed * 0.06 * scale;
+  dog.legFrame += effectiveSpeed * 0.06 * scale;
 
   // Ground scroll
-  groundOffset += speed * scale;
+  groundOffset += effectiveSpeed * scale;
 
   // Clouds scroll (slower)
   clouds.forEach(c => {
-    c.x -= speed * 0.15 * scale;
+    c.x -= effectiveSpeed * 0.15 * scale;
     if (c.x < -60 * c.size) {
       c.x = W + Math.random() * 100;
       c.y = 20 + Math.random() * 50;
@@ -1812,19 +1851,22 @@ function update(dt) {
   });
 
   // Obstacles
-  nextObstacleIn -= speed * scale;
-  if (nextObstacleIn <= 0 && !chasePending && !chaseEntering) {
+  nextObstacleIn -= effectiveSpeed * scale;
+  if (nextObstacleIn <= 0 && !chasePending && !chaseEntering && !bossPending && !bossLosing) {
     spawnObstacle();
     if (nextObstacleIn <= 0) {
-      nextObstacleIn = MIN_OBSTACLE_GAP + Math.random() * MAX_OBSTACLE_GAP;
+      const gap = bossChasing
+        ? MIN_OBSTACLE_GAP * BOSS_OBSTACLE_GAP_MULTIPLIER
+        : MIN_OBSTACLE_GAP;
+      nextObstacleIn = gap + Math.random() * MAX_OBSTACLE_GAP;
     }
   }
 
-  obstacles.forEach(o => o.x -= speed * scale);
+  obstacles.forEach(o => o.x -= effectiveSpeed * scale);
   obstacles = obstacles.filter(o => o.x > -40);
 
   // Score
-  score += speed * 0.02 * scale;
+  score += effectiveSpeed * 0.02 * scale;
 
   // Chase mode
   if (chaseActive) {
@@ -1859,10 +1901,97 @@ function update(dt) {
       squirrelEnterSpeed = 1.5;
     }
   } else {
-    const canStart = (lastChaseEndScore === 0 && score >= CHASE_FIRST_AT) ||
-      (lastChaseEndScore > 0 && score >= lastChaseEndScore + CHASE_COOLDOWN);
+    const canStart = !bossPending && !bossChasing && !bossLosing &&
+      ((lastChaseEndScore === 0 && score >= CHASE_FIRST_AT) ||
+      (lastChaseEndScore > 0 && score >= lastChaseEndScore + CHASE_COOLDOWN));
     if (canStart) {
       chasePending = true;
+    }
+  }
+
+  // Boss chase state machine
+  if (bossChasing) {
+    // Frame-based timer: encounter duration is constant regardless of game speed
+    bossChaseFrames += scale;
+    const escapeProgress = Math.min(1, bossChaseFrames / BOSS_CHASE_DURATION);
+    // Asymmetric curve: approach (15%), long hold at peak (75%), quick retreat (10%)
+    let approachCurve;
+    if (escapeProgress < 0.15) {
+      const t = escapeProgress / 0.15;
+      approachCurve = t * t;  // ease-in approach
+    } else if (escapeProgress < 0.90) {
+      approachCurve = 1;      // hold at peak — squirrel right on the dog's tail
+    } else {
+      const t = (escapeProgress - 0.90) / 0.10;
+      approachCurve = 1 - t * t;  // ease-out retreat
+    }
+
+    // Dog shifts right (less reaction time to obstacles)
+    bossDogShift = Math.min(BOSS_MAX_DOG_SHIFT, bossDogShift + BOSS_DOG_SHIFT_SPEED * scale);
+    dog.x = DOG_BASE_X + bossDogShift;
+
+    // Squirrel follows behind the shifted dog
+    const peakX = dog.x - 70;
+    bossSquirrelX = BOSS_SQUIRREL_START_X + (peakX - BOSS_SQUIRREL_START_X) * approachCurve;
+
+    // Transition: dog escapes
+    if (bossChaseFrames >= BOSS_CHASE_DURATION) {
+      bossLosing = true;
+      bossChasing = false;
+    }
+    // Collision: squirrel catches dog
+    const sqRight = bossSquirrelX + 30;
+    const sqLeft = bossSquirrelX;
+    const sqTop = GROUND_Y + 4;
+    const sqBottom = sqTop + 20;
+    let dx, dy, dw, dh;
+    if (dog.ducking) {
+      dx = dog.x + 23; dy = dog.y + 10; dw = 50; dh = 8;
+    } else {
+      dx = dog.x + 23; dy = dog.y - 8; dw = 50; dh = 22;
+    }
+    if (sqRight > dx && sqLeft < dx + dw && sqBottom > dy && sqTop < dy + dh) {
+      // Squirrel caught the dog — game over
+      deathTime = Date.now();
+      playDeathSound();
+      bossChasing = false; bossLosing = false; bossPending = false;
+      chaseActive = false; chasePending = false; chaseEntering = false; chaseEscaping = false;
+      const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+      if (qualifies) {
+        gameState = 'enteringName';
+        pendingScore = score;
+        showNameEntryOverlay();
+      } else {
+        gameState = 'dead';
+        if (score > highScore) highScore = score;
+      }
+    }
+  } else if (bossLosing) {
+    // Dog returns to base position smoothly
+    bossDogShift = Math.max(0, bossDogShift - BOSS_DOG_RETURN_SPEED * scale);
+    dog.x = DOG_BASE_X + bossDogShift;
+    // Squirrel retreats left
+    bossSquirrelX -= BOSS_SQUIRREL_LOSE_SPEED * scale;
+    // Boss ends only when dog is fully back AND squirrel has exited
+    if (bossSquirrelX < BOSS_SQUIRREL_START_X - 60 && bossDogShift <= 0) {
+      bossLosing = false;
+    }
+  } else if (bossPending) {
+    if (obstacles.length === 0) {
+      bossPending = false;
+      bossChasing = true;
+      bossSquirrelX = BOSS_SQUIRREL_START_X;
+      bossChaseFrames = 0;
+    }
+  } else {
+    // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with chase)
+    const currentMilestone = Math.floor(score / BOSS_MILESTONE);
+    const bossCanStart = !chasePending && !chaseActive && !chaseEntering && !chaseEscaping &&
+      currentMilestone > lastBossMilestone;
+    if (bossCanStart) {
+      bossPending = true;
+      lastBossMilestone = currentMilestone;
+      chasePending = false;  // cancel any pending chase
     }
   }
 
@@ -1881,6 +2010,9 @@ function update(dt) {
     chasePending = false;
     chaseEntering = false;
     chaseEscaping = false;
+    bossPending = false;
+    bossChasing = false;
+    bossLosing = false;
     const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
     if (qualifies) {
       gameState = 'enteringName';
@@ -1918,14 +2050,33 @@ function draw() {
     }
   });
 
+  // Draw boss squirrel (behind the dog, drawn first so it appears on left)
+  // Comically oversized — scale around feet so it stays grounded
+  if (bossChasing || bossLosing) {
+    advanceSquirrelSpriteFrame();
+    const bossScale = 2.5;
+    const pivotX = bossSquirrelX + 10;
+    const pivotY = GROUND_Y + 24;
+    ctx.save();
+    ctx.translate(pivotX, pivotY);
+    ctx.scale(bossScale, bossScale);
+    ctx.translate(-pivotX, -pivotY);
+    if (bossChasing) {
+      drawSquirrel(bossSquirrelX, GROUND_Y + 4, false, false);
+    } else {
+      drawSquirrel(bossSquirrelX, GROUND_Y + 4, true, true);
+    }
+    ctx.restore();
+  }
+
   // Draw squirrel (during chase, entering, or escaping, before dog so it appears ahead)
-  if (chaseActive) {
+  if (chaseActive && !bossChasing && !bossLosing) {
     advanceSquirrelSpriteFrame();
     drawSquirrel(dog.x + SQUIRREL_OFFSET, GROUND_Y + 4, false);
-  } else if (chaseEntering) {
+  } else if (chaseEntering && !bossChasing && !bossLosing) {
     advanceSquirrelSpriteFrame();
     drawSquirrel(squirrelEnterX, GROUND_Y + 4, true, true);  // running left (flip)
-  } else if (chaseEscaping) {
+  } else if (chaseEscaping && !bossChasing && !bossLosing) {
     advanceSquirrelSpriteFrame();
     drawSquirrel(squirrelEscapeX, GROUND_Y + 4, true);
   }
@@ -2031,6 +2182,12 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     chasePending = true;
     obstacles = [];  // clear obstacles so chase starts immediately
+  }
+  // Debug: B = trigger boss chase (when running)
+  if (e.code === 'KeyB' && gameState === 'running' && !bossChasing && !bossLosing) {
+    e.preventDefault();
+    bossPending = true;
+    obstacles = [];  // clear obstacles so boss starts immediately
   }
 });
 
