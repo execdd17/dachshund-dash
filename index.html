@@ -1698,8 +1698,10 @@ function update(dt) {
       }
     }
   } else if (bossLosing) {
-    // Dog returns to base position smoothly
-    bossDogShift = Math.max(0, bossDogShift - BOSS_DOG_RETURN_SPEED * scale);
+    // Dog returns to base position smoothly — but only while grounded
+    if (!dog.jumping) {
+      bossDogShift = Math.max(0, bossDogShift - BOSS_DOG_RETURN_SPEED * scale);
+    }
     dog.x = DOG_BASE_X + bossDogShift;
     // Squirrel retreats left
     bossSquirrelX -= BOSS_SQUIRREL_LOSE_SPEED * scale;
