@@ -1791,24 +1791,24 @@ function draw() {
   if (gameState === 'idle') {
     // Text background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    roundRect(W / 2 - 160, 98, 320, 40, 8);
+    roundRect(W / 2 - 160, 58, 320, 40, 8);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillText('Press SPACE to start!', W / 2, 124);
-    drawHighScores(145);
+    ctx.fillText('Press SPACE to start!', W / 2, 84);
+    drawHighScores(108);
   }
 
   if (gameState === 'dead' || gameState === 'enteringName') {
     // Text background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    roundRect(W / 2 - 150, 78, 300, 70, 8);
+    roundRect(W / 2 - 150, 38, 300, 70, 8);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 24px Courier New';
     ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', W / 2, 105);
+    ctx.fillText('GAME OVER', W / 2, 65);
     ctx.font = '16px Courier New';
-    ctx.fillText('Press SPACE to restart', W / 2, 133);
+    ctx.fillText('Press SPACE to restart', W / 2, 93);
 
     // Draw a little dizzy effect (X eyes on new head position)
     ctx.fillStyle = '#fff';
@@ -1819,7 +1819,7 @@ function draw() {
     ctx.font = 'bold 7px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('X', dog.x + 82, dog.y - 3);
-    drawHighScores(155);
+    drawHighScores(118);
   }
 
   ctx.restore();
