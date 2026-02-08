@@ -303,9 +303,12 @@ let lastObstacleType = 'hotdog';
 // --- Chase mode state ---
 let chaseActive = false;
 let chasePending = false;  // waiting for obstacles to clear before chase starts
+let chaseEntering = false; // squirrel running in from right when chase starts
 let chaseEscaping = false;  // squirrel running off-screen after chase ends
 let chaseStartedFrame = 0;
 let lastChaseEndScore = 0;
+let squirrelEnterX = 0;
+let squirrelEnterSpeed = 1.5;
 let squirrelEscapeX = 0;
 let squirrelEscapeSpeed = 1.5;
 
@@ -1103,7 +1106,7 @@ function drawFrisbee(x, y) {
   ctx.fill();
 }
 
-function drawSquirrelSprite(x, y) {
+function drawSquirrelSprite(x, y, flipHorizontal) {
   const frames = squirrelSprites.run;
   const frameIdx = squirrelSpriteFrame % (frames?.length || 1);
   const img = frames && frames[frameIdx];
@@ -1115,15 +1118,31 @@ function drawSquirrelSprite(x, y) {
   const anchorX = 10;  // center of procedural squirrel (spans x-12 to x+32)
   const dx = x + anchorX - dw / 2;
   const dy = y - dh + SQUIRREL_SPRITE_GROUND_OFFSET;
-  ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+  if (flipHorizontal) {
+    ctx.save();
+    ctx.translate(dx + dw / 2, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-(dx + dw / 2), 0);
+    ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+  }
   return true;
 }
 
-function drawSquirrel(x, y, escaping) {
-  if (squirrelSpritesReady && drawSquirrelSprite(x, y)) return;
+function drawSquirrel(x, y, escaping, flipHorizontal) {
+  if (squirrelSpritesReady && drawSquirrelSprite(x, y, flipHorizontal || false)) return;
 
   // Pixel-art squirrel inspired by Elthen/OpenGameArt: bushy tail, compact body, pointy ears.
   // escaping=true: horizontal running pose, tail streaming back.
+  const flip = flipHorizontal || false;
+  if (flip) {
+    ctx.save();
+    ctx.translate(x + 10, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-(x + 10), 0);
+  }
   const runCycle = escaping ? frameCount * 0.4 : frameCount * 0.25;
   const bounce = escaping ? 0 : Math.sin(runCycle) * 2;
   const sy = y - bounce;
@@ -1230,6 +1249,7 @@ function drawSquirrel(x, y, escaping) {
   ctx.beginPath();
   ctx.arc(x + (escaping ? 26 : 28), sy + (escaping ? 9 : 7), 2.5, 0, Math.PI * 2);
   ctx.fill();
+  if (flip) ctx.restore();
 }
 
 function drawAcorn(x, y, rotation) {
@@ -1615,6 +1635,7 @@ function jump() {
     lastObstacleType = 'hotdog';
     chaseActive = false;
     chasePending = false;
+    chaseEntering = false;
     chaseEscaping = false;
     lastChaseEndScore = 0;
   }
@@ -1634,6 +1655,7 @@ function jump() {
     dog.ducking = false;
     chaseActive = false;
     chasePending = false;
+    chaseEntering = false;
     chaseEscaping = false;
     lastChaseEndScore = 0;
   }
@@ -1791,7 +1813,7 @@ function update(dt) {
 
   // Obstacles
   nextObstacleIn -= speed * scale;
-  if (nextObstacleIn <= 0 && !chasePending) {
+  if (nextObstacleIn <= 0 && !chasePending && !chaseEntering) {
     spawnObstacle();
     if (nextObstacleIn <= 0) {
       nextObstacleIn = MIN_OBSTACLE_GAP + Math.random() * MAX_OBSTACLE_GAP;
@@ -1819,12 +1841,22 @@ function update(dt) {
     if (squirrelEscapeX > W + 80) {
       chaseEscaping = false;
     }
+  } else if (chaseEntering) {
+    squirrelEnterX -= squirrelEnterSpeed * scale;
+    squirrelEnterSpeed = Math.min(3.5, squirrelEnterSpeed + 0.004 * scale);
+    if (squirrelEnterX <= dog.x + SQUIRREL_OFFSET) {
+      squirrelEnterX = dog.x + SQUIRREL_OFFSET;
+      chaseEntering = false;
+      chaseActive = true;
+      chaseStartedFrame = frameCount;
+      nextObstacleIn = 80;  // first chase obstacle spawns soon after squirrel arrives
+    }
   } else if (chasePending) {
     if (obstacles.length === 0) {
       chasePending = false;
-      chaseActive = true;
-      chaseStartedFrame = frameCount;
-      nextObstacleIn = 80;  // first chase obstacle spawns soon after squirrel appears
+      chaseEntering = true;
+      squirrelEnterX = W + 80;  // start off-screen right
+      squirrelEnterSpeed = 1.5;
     }
   } else {
     const canStart = (lastChaseEndScore === 0 && score >= CHASE_FIRST_AT) ||
@@ -1847,6 +1879,7 @@ function update(dt) {
     playDeathSound();
     chaseActive = false;
     chasePending = false;
+    chaseEntering = false;
     chaseEscaping = false;
     const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
     if (qualifies) {
@@ -1885,10 +1918,13 @@ function draw() {
     }
   });
 
-  // Draw squirrel (during chase or escaping, before dog so it appears ahead)
+  // Draw squirrel (during chase, entering, or escaping, before dog so it appears ahead)
   if (chaseActive) {
     advanceSquirrelSpriteFrame();
     drawSquirrel(dog.x + SQUIRREL_OFFSET, GROUND_Y + 4, false);
+  } else if (chaseEntering) {
+    advanceSquirrelSpriteFrame();
+    drawSquirrel(squirrelEnterX, GROUND_Y + 4, true, true);  // running left (flip)
   } else if (chaseEscaping) {
     advanceSquirrelSpriteFrame();
     drawSquirrel(squirrelEscapeX, GROUND_Y + 4, true);
@@ -1991,7 +2027,7 @@ document.addEventListener('keydown', e => {
     slowMode = !slowMode;
   }
   // Debug: C = trigger squirrel chase (when running)
-  if (e.code === 'KeyC' && gameState === 'running' && !chaseActive && !chaseEscaping) {
+  if (e.code === 'KeyC' && gameState === 'running' && !chaseActive && !chaseEntering && !chaseEscaping) {
     e.preventDefault();
     chasePending = true;
     obstacles = [];  // clear obstacles so chase starts immediately
