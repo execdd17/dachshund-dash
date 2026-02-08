@@ -114,6 +114,12 @@ const SPEED_INCREMENT = 0.001;
 const MIN_OBSTACLE_GAP = 300;
 const MAX_OBSTACLE_GAP = 500;
 
+// --- Chase mode ---
+const CHASE_FIRST_AT = 200;
+const CHASE_COOLDOWN = 300;
+const CHASE_DURATION_FRAMES = 16 * 60;  // 16 seconds at 60fps
+const SQUIRREL_OFFSET = 580;
+
 // --- Game state ---
 let gameState = 'idle'; // idle, running, dead, enteringName
 let score = 0;
@@ -176,6 +182,15 @@ const dog = {
 let obstacles = [];
 let nextObstacleIn = 100;
 let lastObstacleType = 'hotdog';
+
+// --- Chase mode state ---
+let chaseActive = false;
+let chasePending = false;  // waiting for obstacles to clear before chase starts
+let chaseEscaping = false;  // squirrel running off-screen after chase ends
+let chaseStartedFrame = 0;
+let lastChaseEndScore = 0;
+let squirrelEscapeX = 0;
+let squirrelEscapeSpeed = 1.5;
 
 // --- Music ---
 let musicOn = false;
@@ -957,6 +972,166 @@ function drawFrisbee(x, y) {
   ctx.fill();
 }
 
+function drawSquirrel(x, y, escaping) {
+  // Pixel-art squirrel inspired by Elthen/OpenGameArt: bushy tail, compact body, pointy ears.
+  // escaping=true: horizontal running pose, tail streaming back.
+  const runCycle = escaping ? frameCount * 0.4 : frameCount * 0.25;
+  const bounce = escaping ? 0 : Math.sin(runCycle) * 2;
+  const sy = y - bounce;
+
+  if (escaping) {
+    // Fleeing pose: body stretched, tail whipped back, legs in run stride
+    ctx.fillStyle = '#5C4435';
+    ctx.beginPath();
+    ctx.ellipse(x - 12, sy + 10, 12, 8, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6B5344';
+    ctx.beginPath();
+    ctx.ellipse(x - 14, sy + 12, 10, 6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8B7355';
+    ctx.beginPath();
+    ctx.ellipse(x + 4, sy + 10, 10, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7A6345';
+    ctx.beginPath();
+    ctx.ellipse(x + 2, sy + 11, 7, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8B7355';
+    ctx.beginPath();
+    ctx.arc(x + 20, sy + 7, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#7A6345';
+    ctx.beginPath();
+    ctx.moveTo(x + 24, sy + 2);
+    ctx.lineTo(x + 28, sy - 4);
+    ctx.lineTo(x + 26, sy + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 26, sy + 4);
+    ctx.lineTo(x + 30, sy - 2);
+    ctx.lineTo(x + 28, sy + 5);
+    ctx.closePath();
+    ctx.fill();
+
+    const legOffset = Math.sin(runCycle) * 3;
+    ctx.fillStyle = '#6B5344';
+    ctx.fillRect(x + 6, sy + 14, 4, 6 + legOffset);
+    ctx.fillRect(x + 14, sy + 14, 4, 6 - legOffset);
+
+    ctx.fillStyle = '#222';
+  } else {
+    // Idle/teasing pose: upright, bushy tail
+    ctx.fillStyle = '#6B5344';
+    ctx.beginPath();
+    ctx.ellipse(x - 8, sy + 8, 14, 10, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5C4435';
+    ctx.beginPath();
+    ctx.ellipse(x - 10, sy + 10, 10, 6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8B7355';
+    ctx.beginPath();
+    ctx.ellipse(x + 8, sy + 10, 12, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7A6345';
+    ctx.beginPath();
+    ctx.ellipse(x + 6, sy + 12, 8, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#8B7355';
+    ctx.beginPath();
+    ctx.arc(x + 22, sy + 6, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#6B5344';
+    ctx.beginPath();
+    ctx.ellipse(x + 18, sy + 4, 4, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#7A6345';
+    ctx.beginPath();
+    ctx.moveTo(x + 26, sy);
+    ctx.lineTo(x + 30, sy - 6);
+    ctx.lineTo(x + 28, sy + 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 28, sy - 2);
+    ctx.lineTo(x + 32, sy - 5);
+    ctx.lineTo(x + 30, sy + 1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#222';
+  }
+
+  ctx.beginPath();
+  ctx.arc(x + (escaping ? 22 : 24), sy + (escaping ? 8 : 5), 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + (escaping ? 22.5 : 24.5), sy + (escaping ? 7.5 : 4.5), 0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#5C3A1E';
+  ctx.beginPath();
+  ctx.arc(x + (escaping ? 26 : 28), sy + (escaping ? 9 : 7), 2.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawAcorn(x, y, rotation) {
+  // Teardrop acorn: brown nut, tan cap. Fits ~36x22 like hot dog.
+  // rotation: optional radians for spinning (e.g. duck-under acorn)
+  const hw = 36;
+  const hh = 22;
+
+  if (rotation !== undefined) {
+    const cx = x + hw / 2;
+    const cy = y + hh / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+    ctx.translate(-cx, -cy);
+  }
+
+  // Nut body (brown oval)
+  ctx.fillStyle = '#6B4423';
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2, y + hh / 2 + 2, 12, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#8B5A2B';
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2 - 2, y + hh / 2, 10, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cap (tan)
+  ctx.fillStyle = '#A67C52';
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2, y + 6, 14, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#D4A574';
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2 - 2, y + 5, 10, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stem
+  ctx.fillStyle = '#5D4037';
+  ctx.fillRect(x + hw / 2 - 1, y + 1, 2, 4);
+
+  if (rotation !== undefined) ctx.restore();
+}
+
+function drawAcornPile(x, y, h) {
+  // 2-3 acorns stacked, same footprint as hot dog stack
+  drawAcorn(x + 4, y + 22);
+  drawAcorn(x, y + 10);
+  drawAcorn(x + 8, y + 4);
+}
+
 function roundRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -1289,6 +1464,10 @@ function jump() {
     obstacles = [];
     nextObstacleIn = 60;
     lastObstacleType = 'hotdog';
+    chaseActive = false;
+    chasePending = false;
+    chaseEscaping = false;
+    lastChaseEndScore = 0;
   }
   if (gameState === 'dead') {
     if (Date.now() - deathTime < 1000) return;
@@ -1304,6 +1483,10 @@ function jump() {
     dog.jumping = false;
     dog.doubleJumped = false;
     dog.ducking = false;
+    chaseActive = false;
+    chasePending = false;
+    chaseEscaping = false;
+    lastChaseEndScore = 0;
   }
   if (gameState !== 'running') return;
   if (dog.ducking) return;
@@ -1339,29 +1522,35 @@ function spawnObstacle() {
     type = 'frisbee';
   }
 
+  const spawnX = chaseActive ? (dog.x + SQUIRREL_OFFSET) : (W + 10);
+  const skin = chaseActive ? 'chase' : undefined;
+
   if (type === 'frisbee') {
     obstacles.push({
-      x: W + 10,
+      x: spawnX,
       y: GROUND_Y - 18,
       width: 44,
       height: 14,
       type: 'frisbee',
+      skin,
     });
   } else if (type === 'stack') {
     obstacles.push({
-      x: W + 10,
+      x: spawnX,
       y: GROUND_Y + 4 - 20,
       width: 36,
       height: 42,
       type: 'stack',
+      skin,
     });
   } else {
     obstacles.push({
-      x: W + 10,
+      x: spawnX,
       y: GROUND_Y + 4,
       width: 36,
       height: 22,
       type: 'hotdog',
+      skin,
     });
   }
 
@@ -1451,7 +1640,7 @@ function update() {
 
   // Obstacles
   nextObstacleIn -= speed;
-  if (nextObstacleIn <= 0) {
+  if (nextObstacleIn <= 0 && !chasePending) {
     spawnObstacle();
     if (nextObstacleIn <= 0) {
       nextObstacleIn = MIN_OBSTACLE_GAP + Math.random() * MAX_OBSTACLE_GAP;
@@ -1464,6 +1653,36 @@ function update() {
   // Score
   score += speed * 0.02;
 
+  // Chase mode
+  if (chaseActive) {
+    if (frameCount - chaseStartedFrame >= CHASE_DURATION_FRAMES) {
+      chaseActive = false;
+      chaseEscaping = true;
+      squirrelEscapeX = dog.x + SQUIRREL_OFFSET;
+      squirrelEscapeSpeed = 1.5;
+      lastChaseEndScore = score;
+    }
+  } else if (chaseEscaping) {
+    squirrelEscapeX += squirrelEscapeSpeed;
+    squirrelEscapeSpeed = Math.min(3.5, squirrelEscapeSpeed + 0.004);
+    if (squirrelEscapeX > W + 80) {
+      chaseEscaping = false;
+    }
+  } else if (chasePending) {
+    if (obstacles.length === 0) {
+      chasePending = false;
+      chaseActive = true;
+      chaseStartedFrame = frameCount;
+      nextObstacleIn = 80;  // first chase obstacle spawns soon after squirrel appears
+    }
+  } else {
+    const canStart = (lastChaseEndScore === 0 && score >= CHASE_FIRST_AT) ||
+      (lastChaseEndScore > 0 && score >= lastChaseEndScore + CHASE_COOLDOWN);
+    if (canStart) {
+      chasePending = true;
+    }
+  }
+
   // Chime at 100-point milestones
   const milestone = Math.floor(score / 100);
   if (milestone > lastMilestone) {
@@ -1475,6 +1694,9 @@ function update() {
   if (checkCollision()) {
     deathTime = Date.now();
     playDeathSound();
+    chaseActive = false;
+    chasePending = false;
+    chaseEscaping = false;
     const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
     if (qualifies) {
       gameState = 'enteringName';
@@ -1500,10 +1722,24 @@ function draw() {
 
   // Draw obstacles
   obstacles.forEach(o => {
-    if (o.type === 'frisbee') drawFrisbee(o.x, o.y);
-    else if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
-    else drawHotDog(o.x, o.y);
+    const useChaseSkin = (o.skin ?? (chaseActive ? 'chase' : 'normal')) === 'chase';
+    if (useChaseSkin) {
+      if (o.type === 'frisbee') drawAcorn(o.x, o.y, frameCount * 0.15);
+      else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
+      else drawAcorn(o.x, o.y);
+    } else {
+      if (o.type === 'frisbee') drawFrisbee(o.x, o.y);
+      else if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
+      else drawHotDog(o.x, o.y);
+    }
   });
+
+  // Draw squirrel (during chase or escaping, before dog so it appears ahead)
+  if (chaseActive) {
+    drawSquirrel(dog.x + SQUIRREL_OFFSET, GROUND_Y + 4, false);
+  } else if (chaseEscaping) {
+    drawSquirrel(squirrelEscapeX, GROUND_Y + 4, true);
+  }
 
   // Draw dachshund
   drawDachshund(dog.x, dog.y, dog.legFrame);
