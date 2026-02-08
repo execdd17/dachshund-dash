@@ -1877,7 +1877,7 @@ function draw() {
 let lastFrameTime = 0;
 function gameLoop(now) {
   now = now ?? performance.now();
-  const dt = lastFrameTime ? Math.min(now - lastFrameTime, 50) : 16.67;
+  const dt = lastFrameTime ? Math.min(now - lastFrameTime, 100) : 16.67;
   lastFrameTime = now;
   update(dt);
   draw();
