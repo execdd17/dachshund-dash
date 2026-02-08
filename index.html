@@ -143,6 +143,9 @@ let deathTime = 0;
 let pendingScore = null;
 let slowMode = false;
 
+// --- Landing dust particles ---
+let landingParticles = [];
+
 // --- High scores (localStorage) ---
 const HIGH_SCORES_KEY = 'dachshundDashHighScores';
 const MAX_HIGH_SCORES = 5;
@@ -1352,6 +1355,7 @@ function jump() {
     lastMilestone = 0;
     speed = INITIAL_SPEED;
     obstacles = [];
+    landingParticles = [];
     nextObstacleIn = 60;
     lastObstacleType = 'hotdog';
     chaseActive = false;
@@ -1373,6 +1377,7 @@ function jump() {
     lastMilestone = 0;
     speed = INITIAL_SPEED;
     obstacles = [];
+    landingParticles = [];
     nextObstacleIn = 60;
     lastObstacleType = 'hotdog';
     dog.x = DOG_BASE_X;
@@ -1525,6 +1530,7 @@ function update(dt) {
   const effectiveSpeed = speed * bossSpeedMult;
 
   // Dog physics (scale by dt for frame-rate independence)
+  const wasInAir = dog.y < GROUND_Y;
   dog.vy += GRAVITY * scale;
   dog.y += dog.vy * scale;
   if (dog.y >= GROUND_Y) {
@@ -1532,6 +1538,20 @@ function update(dt) {
     dog.vy = 0;
     dog.jumping = false;
     dog.doubleJumped = false;
+    // Dust puffs on landing (only when actually coming down from a jump)
+    if (wasInAir && gameState === 'running') {
+      const n = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) {
+        landingParticles.push({
+          x: dog.x + 30 + (Math.random() - 0.5) * 40,
+          y: GROUND_Y,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: -1.5 - Math.random() * 2,
+          life: 1,
+          hue: Math.random() * 360,
+        });
+      }
+    }
   }
 
   // Leg animation
@@ -1564,6 +1584,15 @@ function update(dt) {
 
   obstacles.forEach(o => o.x -= effectiveSpeed * scale);
   obstacles = obstacles.filter(o => o.x > -40);
+
+  // Landing dust particles
+  landingParticles = landingParticles.filter(p => {
+    p.x += p.vx * scale;
+    p.y += p.vy * scale;
+    p.vy += 0.08 * scale;  // light upward drift, then settle
+    p.life -= 0.04 * scale;
+    return p.life > 0;
+  });
 
   // Score
   score += effectiveSpeed * 0.02 * scale;
@@ -1730,6 +1759,16 @@ function draw() {
   ctx.save();
   ctx.scale(2, 2);
 
+  // Screen shake on death (decaying over ~250ms)
+  if ((gameState === 'dead' || gameState === 'enteringName') && deathTime > 0) {
+    const elapsed = Date.now() - deathTime;
+    if (elapsed < 250) {
+      const decay = 1 - elapsed / 250;
+      const intensity = 6 * decay;
+      ctx.translate((Math.random() - 0.5) * 2 * intensity, (Math.random() - 0.5) * 2 * intensity);
+    }
+  }
+
   drawSky();
   drawSun();
   drawClouds();
@@ -1784,6 +1823,16 @@ function draw() {
   // Draw dachshund (PNG sprites when loaded, else procedural)
   advanceDogSpriteFrame();
   drawDachshund(dog.x, dog.y, dog.legFrame);
+
+  // Landing dust particles (tiny rainbow burst)
+  landingParticles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, 0.9)`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.5 + (1 - p.life) * 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
 
   drawScore();
   drawMusicIcon();
