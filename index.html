@@ -11,10 +11,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 100vh;
     font-family: 'Courier New', monospace;
-    overflow: hidden;
+    padding: 20px 0;
   }
   h1 {
     font-size: 28px;
@@ -84,7 +82,122 @@
   #nameEntryOverlay button:hover {
     background: #5a9f4f;
   }
+
+  /* --- Global Leaderboard --- */
+  #globalLeaderboard {
+    width: 100%;
+    max-width: 800px;
+    margin-top: 24px;
+    padding: 16px 24px;
+    color: #535353;
+  }
+  #globalLeaderboard h2 {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: #535353;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  #globalLeaderboard .lb-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  #globalLeaderboard .lb-search {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 4px 8px;
+    background: #fff;
+    color: #535353;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    width: 180px;
+  }
+  #globalLeaderboard .lb-search::placeholder {
+    color: #aaa;
+  }
+  #globalLeaderboard .lb-search:focus {
+    outline: none;
+    border-color: #999;
+  }
+  #globalLeaderboard .lb-page-info {
+    font-size: 12px;
+    color: #999;
+  }
+  #globalLeaderboard table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #globalLeaderboard thead th {
+    font-size: 12px;
+    color: #999;
+    text-align: left;
+    padding: 4px 8px;
+    border-bottom: 1px solid #ddd;
+    font-weight: normal;
+    text-transform: uppercase;
+  }
+  #globalLeaderboard thead th:first-child {
+    width: 50px;
+    text-align: center;
+  }
+  #globalLeaderboard thead th:last-child {
+    text-align: right;
+  }
+  #globalLeaderboard tbody td {
+    font-size: 14px;
+    padding: 5px 8px;
+    border-bottom: 1px solid #eee;
+  }
+  #globalLeaderboard tbody td:first-child {
+    text-align: center;
+    color: #999;
+  }
+  #globalLeaderboard tbody td:last-child {
+    text-align: right;
+  }
+  #globalLeaderboard tbody .lb-empty {
+    text-align: center;
+    color: #aaa;
+    padding: 20px;
+  }
+  #globalLeaderboard .lb-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  #globalLeaderboard .lb-pagination button {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 3px 12px;
+    background: #fff;
+    color: #535353;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #globalLeaderboard .lb-pagination button:hover:not(:disabled) {
+    background: #eee;
+  }
+  #globalLeaderboard .lb-pagination button:disabled {
+    color: #ccc;
+    border-color: #ddd;
+    cursor: default;
+  }
+  #globalLeaderboard .lb-status {
+    text-align: center;
+    color: #aaa;
+    font-size: 13px;
+    padding: 16px;
+  }
 </style>
+<!-- Firebase SDK (compat builds for no-build-step usage) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <h1>DACHSHUND DASH</h1>
@@ -97,7 +210,46 @@
   </div>
 </div>
 <p class="hint">SPACE / UP to jump (tap twice to double jump!) &mdash; DOWN / S to duck</p>
+<div id="globalLeaderboard">
+  <h2>GLOBAL LEADERBOARD</h2>
+  <div class="lb-controls">
+    <input type="text" class="lb-search" id="lbSearch" placeholder="Search by name..." maxlength="12" />
+    <span class="lb-page-info" id="lbPageInfo"></span>
+  </div>
+  <table>
+    <thead>
+      <tr><th>#</th><th>NAME</th><th>SCORE</th></tr>
+    </thead>
+    <tbody id="lbBody"></tbody>
+  </table>
+  <div class="lb-pagination">
+    <button id="lbPrev" disabled>&lt; PREV</button>
+    <button id="lbNext" disabled>NEXT &gt;</button>
+  </div>
+</div>
 <script>
+// --- Firebase setup ---
+const firebaseConfig = {
+  apiKey: "AIzaSyA_fHbRyoebo-g54Mn9T_BVIStNxNS8hJ4",
+  authDomain: "dachshund-dash-b835a.firebaseapp.com",
+  projectId: "dachshund-dash-b835a",
+  storageBucket: "dachshund-dash-b835a.firebasestorage.app",
+  messagingSenderId: "41936067257",
+  appId: "1:41936067257:web:bebc6d4a5a8df272555968"
+};
+
+let db = null;
+let firebaseReady = false;
+try {
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+  }
+} catch (e) {
+  console.warn('Firebase init failed, global leaderboard disabled:', e);
+}
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -153,6 +305,18 @@ const HIGH_SCORES_KEY = 'dachshundDashHighScores';
 const MAX_HIGH_SCORES = 5;
 let highScores = [];
 
+// --- Global high scores (Firebase) ---
+const GLOBAL_MAX_SCORES = 100;
+const GLOBAL_PAGE_SIZE = 10;
+let globalHighScores = [];
+let globalScoresLoaded = false;
+let globalScoresError = false;
+let globalScoresCached = [];
+let lastGlobalFetchTime = 0;
+const GLOBAL_FETCH_INTERVAL = 30000;
+let lbPage = 0;
+let lbSearchTerm = '';
+
 function loadHighScores() {
   try {
     const raw = localStorage.getItem(HIGH_SCORES_KEY);
@@ -180,7 +344,125 @@ function addToHighScores(name, scoreVal) {
   highScores = next;
   saveHighScores(highScores);
   highScore = highScores[0]?.score ?? 0;
+  submitGlobalScore(displayName, scoreVal);
   return highScores;
+}
+
+// --- Global score functions (Firebase) ---
+function computeScoreChecksum(name, scoreVal, timestamp) {
+  const salt = 'dachshund-dash-2024-pepper';
+  const raw = salt + '|' + name + '|' + scoreVal + '|' + timestamp;
+  let hash = 5381;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) + hash + raw.charCodeAt(i)) & 0xFFFFFFFF;
+  }
+  return hash.toString(36);
+}
+
+async function fetchGlobalScores() {
+  if (!firebaseReady || !db) {
+    globalScoresError = true;
+    renderHtmlLeaderboard();
+    return;
+  }
+  try {
+    const snapshot = await db.collection('scores')
+      .orderBy('score', 'desc')
+      .orderBy('timestamp', 'asc')
+      .limit(GLOBAL_MAX_SCORES)
+      .get();
+    globalHighScores = snapshot.docs.map(doc => {
+      const d = doc.data();
+      return { name: d.name, score: d.score };
+    });
+    globalScoresCached = [...globalHighScores];
+    globalScoresLoaded = true;
+    globalScoresError = false;
+  } catch (e) {
+    console.warn('Failed to fetch global scores:', e);
+    globalScoresError = true;
+    if (globalScoresCached.length > 0) {
+      globalHighScores = [...globalScoresCached];
+      globalScoresLoaded = true;
+    }
+  }
+  renderHtmlLeaderboard();
+}
+
+function getFilteredScores() {
+  if (!lbSearchTerm) return globalHighScores;
+  const term = lbSearchTerm.toUpperCase();
+  return globalHighScores.filter(e => e.name.includes(term));
+}
+
+function renderHtmlLeaderboard() {
+  const body = document.getElementById('lbBody');
+  const pageInfo = document.getElementById('lbPageInfo');
+  const prevBtn = document.getElementById('lbPrev');
+  const nextBtn = document.getElementById('lbNext');
+  if (!body) return;
+
+  if (!globalScoresLoaded && !globalScoresError) {
+    body.innerHTML = '<tr><td colspan="3" class="lb-status">Loading...</td></tr>';
+    pageInfo.textContent = '';
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return;
+  }
+
+  if (globalScoresError && globalHighScores.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" class="lb-status">Leaderboard unavailable (offline)</td></tr>';
+    pageInfo.textContent = '';
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return;
+  }
+
+  const filtered = getFilteredScores();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / GLOBAL_PAGE_SIZE));
+  if (lbPage >= totalPages) lbPage = totalPages - 1;
+  if (lbPage < 0) lbPage = 0;
+
+  const start = lbPage * GLOBAL_PAGE_SIZE;
+  const pageScores = filtered.slice(start, start + GLOBAL_PAGE_SIZE);
+
+  if (filtered.length === 0) {
+    body.innerHTML = lbSearchTerm
+      ? '<tr><td colspan="3" class="lb-empty">No matching scores</td></tr>'
+      : '<tr><td colspan="3" class="lb-empty">No scores yet — be the first!</td></tr>';
+    pageInfo.textContent = '';
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return;
+  }
+
+  body.innerHTML = pageScores.map((entry, i) => {
+    const rank = start + i + 1;
+    const name = entry.name.replace(/</g, '&lt;');
+    const score = String(Math.floor(entry.score)).padStart(5, '0');
+    return `<tr><td>${rank}</td><td>${name}</td><td>${score}</td></tr>`;
+  }).join('');
+
+  pageInfo.textContent = `Page ${lbPage + 1} of ${totalPages}`;
+  prevBtn.disabled = lbPage === 0;
+  nextBtn.disabled = lbPage >= totalPages - 1;
+}
+
+async function submitGlobalScore(name, scoreVal) {
+  if (!firebaseReady || !db) return;
+  const timestamp = Date.now();
+  const checksum = computeScoreChecksum(name, scoreVal, timestamp);
+  try {
+    await db.collection('scores').add({
+      name: name,
+      score: scoreVal,
+      timestamp: timestamp,
+      checksum: checksum
+    });
+    await fetchGlobalScores();
+  } catch (e) {
+    console.warn('Failed to submit global score:', e);
+  }
 }
 
 // --- Dachshund ---
@@ -1278,32 +1560,32 @@ function drawScore() {
   ctx.fillText(scoreStr, W - 15, 30);
 }
 
-function drawHighScores(baseY) {
+function drawLocalLeaderboard(baseY) {
   const panelW = 280;
-  const panelH = highScores.length === 0 ? 44 : 24 + highScores.length * 18;
+  const panelH = highScores.length === 0 ? 44 : 28 + highScores.length * 18;
   const px = W / 2 - panelW / 2;
-  const py = baseY;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  roundRect(px, py, panelW, panelH, 8);
+  roundRect(px, baseY, panelW, panelH, 8);
 
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 16px Courier New';
   ctx.textAlign = 'center';
-  ctx.fillText('HIGH SCORES', W / 2, py + 20);
+  ctx.fillText('HIGH SCORES', W / 2, baseY + 20);
 
   if (highScores.length === 0) {
     ctx.font = '14px Courier New';
-    ctx.fillText('(no scores yet)', W / 2, py + 38);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText('(no scores yet)', W / 2, baseY + 38);
   } else {
     ctx.font = '16px Courier New';
-    ctx.textAlign = 'left';
     highScores.forEach((entry, i) => {
-      const lineY = py + 38 + i * 18;
+      const lineY = baseY + 38 + i * 18;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#fff';
       ctx.fillText(`${i + 1}. ${entry.name.padEnd(10)}`, px + 16, lineY);
       ctx.textAlign = 'right';
       ctx.fillText(String(Math.floor(entry.score)).padStart(5, '0'), px + panelW - 16, lineY);
-      ctx.textAlign = 'left';
     });
   }
 }
@@ -1687,7 +1969,9 @@ function update(dt) {
       playDeathSound();
       bossChasing = false; bossLosing = false; bossPending = false;
       chaseActive = false; chasePending = false; chaseEntering = false; chaseEscaping = false;
-      const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+      const localQualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+      const globalQualifies = globalScoresLoaded && (globalHighScores.length < GLOBAL_MAX_SCORES || score > (globalHighScores[GLOBAL_MAX_SCORES - 1]?.score ?? 0));
+      const qualifies = localQualifies || globalQualifies;
       if (qualifies) {
         gameState = 'enteringName';
         pendingScore = score;
@@ -1746,7 +2030,9 @@ function update(dt) {
     bossPending = false;
     bossChasing = false;
     bossLosing = false;
-    const qualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+    const localQualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
+    const globalQualifies = globalScoresLoaded && (globalHighScores.length < GLOBAL_MAX_SCORES || score > (globalHighScores[GLOBAL_MAX_SCORES - 1]?.score ?? 0));
+    const qualifies = localQualifies || globalQualifies;
     if (qualifies) {
       gameState = 'enteringName';
       pendingScore = score;
@@ -1842,6 +2128,11 @@ function draw() {
   drawMusicIcon();
 
   if (gameState === 'idle') {
+    // Periodic global score refresh
+    if (Date.now() - lastGlobalFetchTime > GLOBAL_FETCH_INTERVAL) {
+      lastGlobalFetchTime = Date.now();
+      fetchGlobalScores();
+    }
     // Text background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
     roundRect(W / 2 - 160, 58, 320, 40, 8);
@@ -1849,7 +2140,7 @@ function draw() {
     ctx.font = 'bold 20px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('Press SPACE to start!', W / 2, 84);
-    drawHighScores(108);
+    drawLocalLeaderboard(108);
   }
 
   if (gameState === 'dead' || gameState === 'enteringName') {
@@ -1872,7 +2163,7 @@ function draw() {
     ctx.font = 'bold 7px Courier New';
     ctx.textAlign = 'center';
     ctx.fillText('X', dog.x + 82, dog.y - 3);
-    drawHighScores(118);
+    drawLocalLeaderboard(118);
   }
 
   ctx.restore();
@@ -1918,6 +2209,8 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
+  // Don't capture keys when typing in the search box
+  if (document.activeElement && document.activeElement.id === 'lbSearch') return;
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
     jump();
@@ -1945,6 +2238,7 @@ document.addEventListener('keydown', e => {
 });
 
 document.addEventListener('keyup', e => {
+  if (document.activeElement && document.activeElement.id === 'lbSearch') return;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') {
     duck(false);
   }
@@ -1975,9 +2269,26 @@ canvas.addEventListener('click', e => {
 
 document.getElementById('nameSubmitBtn').addEventListener('click', submitNameEntry);
 
+// --- Global leaderboard controls ---
+document.getElementById('lbSearch').addEventListener('input', e => {
+  lbSearchTerm = e.target.value.trim();
+  lbPage = 0;
+  renderHtmlLeaderboard();
+});
+document.getElementById('lbPrev').addEventListener('click', () => {
+  if (lbPage > 0) { lbPage--; renderHtmlLeaderboard(); }
+});
+document.getElementById('lbNext').addEventListener('click', () => {
+  const filtered = getFilteredScores();
+  const totalPages = Math.ceil(filtered.length / GLOBAL_PAGE_SIZE);
+  if (lbPage < totalPages - 1) { lbPage++; renderHtmlLeaderboard(); }
+});
+
 // --- Start ---
 highScores = loadHighScores();
 highScore = highScores[0]?.score ?? 0;
+renderHtmlLeaderboard();
+fetchGlobalScores();
 gameLoop();
 </script>
 </body>
