@@ -1784,9 +1784,19 @@ function spawnObstacle() {
   const skin = chaseActive ? 'chase' : undefined;
 
   if (type === 'frisbee') {
+    // Lower frisbee (duck-under)
     obstacles.push({
       x: spawnX,
       y: GROUND_Y - 12,
+      width: 44,
+      height: 14,
+      type: 'frisbee',
+      skin,
+    });
+    // Upper frisbee stacked above — discourages jumping over
+    obstacles.push({
+      x: spawnX,
+      y: GROUND_Y - 12 - 14 - 6,
       width: 44,
       height: 14,
       type: 'frisbee',
