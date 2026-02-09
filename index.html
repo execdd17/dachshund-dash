@@ -287,9 +287,9 @@ const BOSS_SPEED_MULTIPLIER = 1.25;         // max speed multiplier during boss
 const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger gaps)
 
 // --- Giant mode ---
-const GIANT_FIRST_AT = 300;                  // golden hot dog can't appear before this score
-const GIANT_COOLDOWN = 400;                  // minimum score between golden hot dog spawns
-const GIANT_SPAWN_CHANCE = 0.08;             // 8% chance per obstacle spawn cycle when eligible
+const GIANT_FIRST_AT = 500;                  // golden hot dog can't appear before this score
+const GIANT_COOLDOWN = 600;                  // minimum score between golden hot dog spawns
+const GIANT_SPAWN_CHANCE = 0.03;             // 3% chance per obstacle spawn cycle when eligible
 const GIANT_DURATION = 15000;                // ms (15 seconds — matches giant music track)
 const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
 const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog
@@ -658,10 +658,10 @@ let musicOn = true;
 let musicStarted = false;
 const musicNormal = new Audio('sound/who_let_the_dogs_out_soul_version.wav');
 musicNormal.loop = true;
-musicNormal.volume = 0.35;
+musicNormal.volume = 0.30;
 const musicGiant = new Audio('sound/who_let_the_dogs_out_edm_short.mp3');
 musicGiant.loop = true;
-musicGiant.volume = 0.28;
+musicGiant.volume = 0.25;
 
 // Browsers block autoplay — start music on first user interaction
 function startMusicOnInteraction() {
