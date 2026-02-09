@@ -1095,29 +1095,35 @@ function drawFrisbee(x, y) {
   const cx = x + fw / 2;
   const cy = y + fh / 2;
 
-  // Shadow on ground
+  // Shadow on ground (drawn before wobble)
   ctx.fillStyle = 'rgba(0,0,0,0.15)';
   ctx.beginPath();
   ctx.ellipse(cx, GROUND_Y + 26, fw / 2 + 2, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Very subtle x-axis wobble
+  const wobble = 0.04 * Math.sin(spin * 1.3);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(wobble);
+
   // Outer rim
   ctx.fillStyle = '#FF1493';
   ctx.beginPath();
-  ctx.ellipse(cx, cy, fw / 2, fh / 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, fw / 2, fh / 2, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Inner disc
   ctx.fillStyle = '#FF69B4';
   ctx.beginPath();
-  ctx.ellipse(cx, cy, fw / 2 - 6, fh / 2 - 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, fw / 2 - 6, fh / 2 - 3, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // White ring
   ctx.strokeStyle = '#FFFFFF';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, fw / 2 - 4, fh / 2 - 2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 0, fw / 2 - 4, fh / 2 - 2, 0, 0, Math.PI * 2);
   ctx.stroke();
 
   // Spin lines
@@ -1128,16 +1134,18 @@ function drawFrisbee(x, y) {
     const rx = fw / 2 - 4;
     const ry = fh / 2 - 1;
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * rx * 0.3, cy + Math.sin(angle) * ry * 0.3);
-    ctx.lineTo(cx + Math.cos(angle) * rx * 0.7, cy + Math.sin(angle) * ry * 0.7);
+    ctx.moveTo(Math.cos(angle) * rx * 0.3, Math.sin(angle) * ry * 0.3);
+    ctx.lineTo(Math.cos(angle) * rx * 0.7, Math.sin(angle) * ry * 0.7);
     ctx.stroke();
   }
 
   // Highlight
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.beginPath();
-  ctx.ellipse(cx - 6, cy - 3, 8, 3, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(-6, -3, 8, 3, -0.3, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.restore();
 }
 
 function drawSquirrelSprite(x, y, flipHorizontal) {
