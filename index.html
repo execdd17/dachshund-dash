@@ -1502,7 +1502,26 @@ function drawAcorn(x, y, rotation) {
     ctx.translate(-cx, -cy);
   }
 
-  // Nut body (brown oval)
+  // --- Dark outline (drawn first, slightly larger) ---
+  ctx.strokeStyle = '#2A1A0A';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // Outline: nut body
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2, y + hh / 2 + 2, 12, 10, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Outline: cap
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2, y + 6, 14, 8, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Outline: stem
+  ctx.strokeRect(x + hw / 2 - 1.5, y + 0.5, 3, 4.5);
+
+  // --- Nut body (brown oval) ---
   ctx.fillStyle = '#6B4423';
   ctx.beginPath();
   ctx.ellipse(x + hw / 2, y + hh / 2 + 2, 12, 10, 0, 0, Math.PI * 2);
@@ -1512,7 +1531,7 @@ function drawAcorn(x, y, rotation) {
   ctx.ellipse(x + hw / 2 - 2, y + hh / 2, 10, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Cap (tan)
+  // --- Cap (tan) ---
   ctx.fillStyle = '#A67C52';
   ctx.beginPath();
   ctx.ellipse(x + hw / 2, y + 6, 14, 8, 0, 0, Math.PI * 2);
@@ -1522,7 +1541,7 @@ function drawAcorn(x, y, rotation) {
   ctx.ellipse(x + hw / 2 - 2, y + 5, 10, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Stem
+  // --- Stem ---
   ctx.fillStyle = '#5D4037';
   ctx.fillRect(x + hw / 2 - 1, y + 1, 2, 4);
 
