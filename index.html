@@ -290,7 +290,7 @@ const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger gaps)
 const GIANT_FIRST_AT = 300;                  // golden hot dog can't appear before this score
 const GIANT_COOLDOWN = 400;                  // minimum score between golden hot dog spawns
 const GIANT_SPAWN_CHANCE = 0.08;             // 8% chance per obstacle spawn cycle when eligible
-const GIANT_DURATION = 9000;                 // ms (~9 seconds)
+const GIANT_DURATION = 15000;                // ms (15 seconds — matches giant music track)
 const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
 const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog
 const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animation
@@ -653,30 +653,30 @@ let bossSquirrelX = BOSS_SQUIRREL_START_X;
 let bossChaseFrames = 0;
 let bossDogShift = 0;
 
-// --- Music ---
-let musicOn = false;
-let musicGainNode = null;
-let musicLoopTimeout = null;
-const MUSIC_BPM = 160;
-const MUSIC_BEAT = 60 / MUSIC_BPM;
+// --- Music (WAV-based) ---
+let musicOn = true;
+let musicStarted = false;
+const musicNormal = new Audio('sound/who_let_the_dogs_out_soul_version.wav');
+musicNormal.loop = true;
+musicNormal.volume = 0.35;
+const musicGiant = new Audio('sound/who_let_the_dogs_out_edm_short.mp3');
+musicGiant.loop = true;
+musicGiant.volume = 0.28;
 
-const MELODY_NOTES = [
-  [523,1],[523,1],[392,1],[392,1],
-  [440,1],[494,1],[523,1],[0,1],
-  [392,1],[392,1],[330,1],[330,1],
-  [349,1],[330,1],[294,1],[0,1],
-  [523,1],[523,1],[392,1],[392,1],
-  [440,1],[494,1],[523,1],[0,1],
-  [587,1],[523,1],[494,1],[440,1],
-  [392,2],[0,2],
-];
-
-const BASS_NOTES = [
-  [131,2],[196,2],[175,2],[196,2],
-  [131,2],[196,2],[175,2],[196,2],
-  [131,2],[196,2],[175,2],[196,2],
-  [196,2],[147,2],[131,2],[0,2],
-];
+// Browsers block autoplay — start music on first user interaction
+function startMusicOnInteraction() {
+  if (musicStarted) return;
+  musicStarted = true;
+  if (musicOn) {
+    getActiveMusic().play().catch(() => {});
+  }
+  document.removeEventListener('click', startMusicOnInteraction);
+  document.removeEventListener('keydown', startMusicOnInteraction);
+  document.removeEventListener('touchstart', startMusicOnInteraction);
+}
+document.addEventListener('click', startMusicOnInteraction);
+document.addEventListener('keydown', startMusicOnInteraction);
+document.addEventListener('touchstart', startMusicOnInteraction);
 
 // --- Ground decoration ---
 let groundOffset = 0;
@@ -900,78 +900,18 @@ function playGiantDeactivateSound() {
   });
 }
 
-function getMusicGain() {
-  const a = getAudioCtx();
-  if (!musicGainNode) {
-    musicGainNode = a.createGain();
-    musicGainNode.connect(a.destination);
-  }
-  musicGainNode.gain.value = 1;
-  return musicGainNode;
-}
-
-function scheduleMusicLoop() {
-  if (!musicOn) return;
-  const a = getAudioCtx();
-  const dest = getMusicGain();
-  const now = a.currentTime + 0.05;
-
-  let t = now;
-  for (const [freq, beats] of MELODY_NOTES) {
-    const dur = beats * MUSIC_BEAT;
-    if (freq > 0) {
-      const osc = a.createOscillator();
-      const gain = a.createGain();
-      osc.connect(gain);
-      gain.connect(dest);
-      osc.type = giantMusicActive ? 'sawtooth' : 'square';
-      osc.frequency.setValueAtTime(giantMusicActive ? freq * 0.5 : freq, t);
-      const melGain = giantMusicActive ? 0.035 : 0.027;
-      gain.gain.setValueAtTime(melGain, t);
-      gain.gain.setValueAtTime(melGain, t + dur * 0.8);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
-      osc.start(t);
-      osc.stop(t + dur);
-    }
-    t += dur;
-  }
-  const loopDur = t - now;
-
-  t = now;
-  for (const [freq, beats] of BASS_NOTES) {
-    const dur = beats * MUSIC_BEAT;
-    if (freq > 0) {
-      const osc = a.createOscillator();
-      const gain = a.createGain();
-      osc.connect(gain);
-      gain.connect(dest);
-      osc.type = giantMusicActive ? 'sawtooth' : 'triangle';
-      osc.frequency.setValueAtTime(giantMusicActive ? freq * 0.5 : freq, t);
-      const bassGain = giantMusicActive ? 0.050 : 0.035;
-      gain.gain.setValueAtTime(bassGain, t);
-      gain.gain.setValueAtTime(bassGain, t + dur * 0.8);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
-      osc.start(t);
-      osc.stop(t + dur);
-    }
-    t += dur;
-  }
-
-  musicLoopTimeout = setTimeout(scheduleMusicLoop, (loopDur - 0.1) * 1000);
+function getActiveMusic() {
+  return giantMusicActive ? musicGiant : musicNormal;
 }
 
 function toggleMusic() {
   if (musicOn) {
     musicOn = false;
-    if (musicLoopTimeout) clearTimeout(musicLoopTimeout);
-    musicLoopTimeout = null;
-    if (musicGainNode) {
-      musicGainNode.disconnect();
-      musicGainNode = null;
-    }
+    musicNormal.pause();
+    musicGiant.pause();
   } else {
     musicOn = true;
-    scheduleMusicLoop();
+    getActiveMusic().play().catch(() => {});
   }
 }
 
@@ -2251,17 +2191,19 @@ let giantMusicActive = false;
 
 function switchToGiantMusic() {
   giantMusicActive = true;
-  if (musicOn && musicLoopTimeout) {
-    clearTimeout(musicLoopTimeout);
-    scheduleMusicLoop();
+  if (musicOn) {
+    musicNormal.pause();
+    musicGiant.currentTime = musicNormal.currentTime % (musicGiant.duration || 1);
+    musicGiant.play().catch(() => {});
   }
 }
 
 function switchToNormalMusic() {
   giantMusicActive = false;
-  if (musicOn && musicLoopTimeout) {
-    clearTimeout(musicLoopTimeout);
-    scheduleMusicLoop();
+  if (musicOn) {
+    musicGiant.pause();
+    musicNormal.currentTime = musicGiant.currentTime % (musicNormal.duration || 1);
+    musicNormal.play().catch(() => {});
   }
 }
 
