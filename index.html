@@ -668,6 +668,32 @@ for (let i = 0; i < 12; i++) {
   });
 }
 
+// --- Rolling hills / mountain parallax layers ---
+// Smooth rolling hills (mid/near layers)
+function hillY(x, offset, amp, freq) {
+  const v = x + offset;
+  return amp * (
+    Math.sin(v * freq) * 0.50 +
+    Math.sin(v * freq * 2.1 + 1.3) * 0.30 +
+    Math.sin(v * freq * 0.6 + 0.8) * 0.20
+  );
+}
+// Mountain range (far layer) — layered abs(sin) with pow sharpening
+function mountainY(x, offset, amp, freq) {
+  const v = x + offset;
+  // Broad mountain masses
+  const base = Math.abs(Math.sin(v * freq * 0.45 + 0.8)) * 0.25;
+  // Main peaks — pow < 1 sharpens the tips
+  const peaks = Math.pow(Math.abs(Math.sin(v * freq * 1.1)), 0.7) * 0.30;
+  // Secondary ridges
+  const ridges = Math.abs(Math.sin(v * freq * 2.3 + 1.5)) * 0.20;
+  // Fine jagged detail
+  const jag = Math.abs(Math.sin(v * freq * 4.7 + 3.2)) * 0.15;
+  // Subtle craggy texture
+  const crag = Math.abs(Math.sin(v * freq * 8.3 + 5.1)) * 0.10;
+  return amp * (base + peaks + ridges + jag + crag);
+}
+
 // --- Sound effects (Web Audio API, no files needed) ---
 let audioCtx = null;
 function getAudioCtx() {
@@ -1546,6 +1572,45 @@ function drawClouds() {
   });
 }
 
+// Draw a single hill/mountain layer as a filled path
+function drawHillLayer(scrollRate, baseY, amp, freq, fillColors, shapeFn, step) {
+  const { phase } = getTimeOfDay();
+  const p = phase * 4;
+  const idx = Math.floor(p) % 4;
+  const t = p % 1;
+
+  const fill = lerpColor(fillColors[idx], fillColors[(idx + 1) % 4], t);
+  const offset = groundOffset * scrollRate;
+  const yFn = shapeFn || hillY;
+  const dx = step || 4;
+
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y + 20);
+  for (let x = 0; x <= W; x += dx) {
+    const y = baseY - yFn(x, offset, amp, freq);
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, GROUND_Y + 20);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFarHills() {
+  // Mountain range: jagged peaks, taller, slower, finer step for crisper ridgeline
+  drawHillLayer(0.06, GROUND_Y - 20, 50, 0.0028,
+    ['#8090A8', '#B88878', '#161C28', '#686080'], mountainY, 2);
+}
+
+function drawNearHills() {
+  // Mid hills: medium undulations
+  drawHillLayer(0.20, GROUND_Y - 2, 20, 0.006,
+    ['#7BA888', '#B08860', '#162420', '#688070']);
+  // Near hills: smaller, fastest, most saturated
+  drawHillLayer(0.38, GROUND_Y + 4, 14, 0.010,
+    ['#5D9E58', '#988050', '#1A2E1A', '#5A7858']);
+}
+
 function drawScore() {
   ctx.font = 'bold 18px Courier New';
   ctx.textAlign = 'right';
@@ -2062,6 +2127,8 @@ function draw() {
   drawSky();
   drawSun();
   drawClouds();
+  drawFarHills();
+  drawNearHills();
   drawGround();
   drawFlowers();
 
