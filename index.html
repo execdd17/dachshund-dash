@@ -390,9 +390,10 @@ async function fetchGlobalScores() {
 }
 
 function getFilteredScores() {
-  if (!lbSearchTerm) return globalHighScores;
+  const withRank = globalHighScores.map((e, i) => ({ ...e, rank: i + 1 }));
+  if (!lbSearchTerm) return withRank;
   const term = lbSearchTerm.toUpperCase();
-  return globalHighScores.filter(e => e.name.includes(term));
+  return withRank.filter(e => e.name.includes(term));
 }
 
 function renderHtmlLeaderboard() {
@@ -436,11 +437,10 @@ function renderHtmlLeaderboard() {
     return;
   }
 
-  body.innerHTML = pageScores.map((entry, i) => {
-    const rank = start + i + 1;
+  body.innerHTML = pageScores.map(entry => {
     const name = entry.name.replace(/</g, '&lt;');
     const score = String(Math.floor(entry.score)).padStart(5, '0');
-    return `<tr><td>${rank}</td><td>${name}</td><td>${score}</td></tr>`;
+    return `<tr><td>${entry.rank}</td><td>${name}</td><td>${score}</td></tr>`;
   }).join('');
 
   pageInfo.textContent = `Page ${lbPage + 1} of ${totalPages}`;
