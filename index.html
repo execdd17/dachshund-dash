@@ -1786,7 +1786,7 @@ function spawnObstacle() {
   if (type === 'frisbee') {
     obstacles.push({
       x: spawnX,
-      y: GROUND_Y - 18,
+      y: GROUND_Y - 12,
       width: 44,
       height: 14,
       type: 'frisbee',
@@ -2136,7 +2136,7 @@ function draw() {
   obstacles.forEach(o => {
     const useChaseSkin = (o.skin ?? (chaseActive ? 'chase' : 'normal')) === 'chase';
     if (useChaseSkin) {
-      if (o.type === 'frisbee') drawAcorn(o.x, o.y, frameCount * 0.15);
+      if (o.type === 'frisbee') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
       else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
       else drawAcorn(o.x, o.y);
     } else {
