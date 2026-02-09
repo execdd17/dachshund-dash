@@ -286,6 +286,18 @@ const BOSS_CHASE_DURATION = 1600;           // frames total (~26.7s): fixed dura
 const BOSS_SPEED_MULTIPLIER = 1.25;         // max speed multiplier during boss
 const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger gaps)
 
+// --- Giant mode ---
+const GIANT_FIRST_AT = 300;                  // golden hot dog can't appear before this score
+const GIANT_COOLDOWN = 400;                  // minimum score between golden hot dog spawns
+const GIANT_SPAWN_CHANCE = 0.08;             // 8% chance per obstacle spawn cycle when eligible
+const GIANT_DURATION = 9000;                 // ms (~9 seconds)
+const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
+const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog
+const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animation
+const GIANT_SCORE_MULTIPLIER = 2;            // score multiplier while giant
+const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten
+const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
+
 // --- Game state ---
 let gameState = 'idle'; // idle, running, dead, enteringName
 let score = 0;
@@ -299,6 +311,17 @@ let slowMode = false;
 
 // --- Landing dust particles ---
 let landingParticles = [];
+
+// --- Giant mode state ---
+let giantActive = false;
+let giantStartTime = 0;
+let giantGrowing = false;
+let giantShrinking = false;
+let giantTransitionStart = 0;
+let giantScoreMultiplier = 1;
+let lastGoldenSpawnScore = 0;
+let giantChompEffects = [];   // [{x, y, startTime}]
+let giantBonkEffects = [];    // [{x, y, vx, vy, rotation, rotSpeed, startTime}]
 
 // --- High scores (localStorage) ---
 const HIGH_SCORES_KEY = 'dachshundDashHighScores';
@@ -483,7 +506,7 @@ const DOG_SPRITE_FPS = 12;   // 10-14 range: lower = choppier, higher = smoother
 const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
-const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [] };
+const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
 let dogSpritesReady = false;
 
 function loadDogSprites() {
@@ -491,7 +514,7 @@ function loadDogSprites() {
   const pancakePaths = ['png/dachshund/dachshund_pancake_00.png', 'png/dachshund/dachshund_pancake_01.png', 'png/dachshund/dachshund_pancake_02.png'];
   const jumpPaths = ['png/dachshund/dachshund_jump_00.png', 'png/dachshund/dachshund_jump_01.png', 'png/dachshund/dachshund_jump_02.png'];
   const doublejumpPaths = ['png/dachshund/dachshund_flip_00.png', 'png/dachshund/dachshund_flip_01.png', 'png/dachshund/dachshund_flip_02.png'];
-  let pending = runPaths.length + pancakePaths.length + jumpPaths.length + doublejumpPaths.length;
+  let pending = runPaths.length + pancakePaths.length + jumpPaths.length + doublejumpPaths.length + 1; // +1 for bite sheet
   const onLoad = () => { pending--; if (pending === 0) dogSpritesReady = true; };
   runPaths.forEach((path, i) => {
     const img = new Image();
@@ -519,6 +542,11 @@ function loadDogSprites() {
   });
   dogSprites.idle = dogSprites.run.slice(0, 1);
   dogSprites.dead = dogSprites.run.slice(0, 1);
+  // Bite sprite sheet (3 horizontal frames in one image)
+  const biteSheet = new Image();
+  biteSheet.onload = biteSheet.onerror = onLoad;
+  biteSheet.src = 'png/dachshund/bite_3_image_sequence.png';
+  dogSprites.bite = [biteSheet];
 }
 loadDogSprites();
 
@@ -564,6 +592,7 @@ let dogSpriteLastAdvance = performance.now();
 
 function getDogSpriteAnim() {
   if (gameState === 'dead' || gameState === 'enteringName') return 'dead';
+  if (giantActive && giantChompEffects.length > 0 && performance.now() - giantChompEffects[giantChompEffects.length - 1].startTime < 250) return 'bite';
   if (dog.ducking) return 'slide';
   if (dog.jumping) return dog.doubleJumped ? 'doublejump' : 'jump';
   if (gameState === 'idle') return 'idle';
@@ -586,9 +615,13 @@ function advanceDogSpriteFrame() {
       dogSpriteAnim = anim;
       dogSpriteFrame = 0;
     } else {
-      const frames = dogSprites[dogSpriteAnim];
-      if (frames && frames.length > 0) {
-        dogSpriteFrame = (dogSpriteFrame + 1) % frames.length;  // loop
+      if (dogSpriteAnim === 'bite') {
+        dogSpriteFrame = Math.min(dogSpriteFrame + 1, 2); // cap at 3 frames, hold last
+      } else {
+        const frames = dogSprites[dogSpriteAnim];
+        if (frames && frames.length > 0) {
+          dogSpriteFrame = (dogSpriteFrame + 1) % frames.length;  // loop
+        }
       }
     }
   }
@@ -701,6 +734,17 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// Preload chomp.wav as an AudioBuffer
+let chompBuffer = null;
+fetch('sound/chomp.mp3')
+  .then(r => r.arrayBuffer())
+  .then(buf => {
+    const a = getAudioCtx();
+    return a.decodeAudioData(buf);
+  })
+  .then(decoded => { chompBuffer = decoded; })
+  .catch(() => {});
+
 function playJumpSound() {
   const ctx = getAudioCtx();
   const osc = ctx.createOscillator();
@@ -782,6 +826,80 @@ function playDuckSound() {
   osc.stop(ctx.currentTime + 0.1);
 }
 
+function playCrunchSound() {
+  if (!chompBuffer) return;
+  const a = getAudioCtx();
+  const source = a.createBufferSource();
+  source.buffer = chompBuffer;
+  const gain = a.createGain();
+  gain.gain.value = 0.4;
+  source.connect(gain);
+  gain.connect(a.destination);
+  source.start(a.currentTime);
+}
+
+function playBonkSound() {
+  const a = getAudioCtx();
+  // Hollow metallic "bonk"
+  const osc = a.createOscillator();
+  const gain = a.createGain();
+  osc.connect(gain);
+  gain.connect(a.destination);
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(800, a.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, a.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.18, a.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.2);
+  osc.start(a.currentTime);
+  osc.stop(a.currentTime + 0.2);
+  // Secondary harmonic
+  const osc2 = a.createOscillator();
+  const gain2 = a.createGain();
+  osc2.connect(gain2);
+  gain2.connect(a.destination);
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1200, a.currentTime);
+  osc2.frequency.exponentialRampToValueAtTime(400, a.currentTime + 0.1);
+  gain2.gain.setValueAtTime(0.08, a.currentTime);
+  gain2.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
+  osc2.start(a.currentTime);
+  osc2.stop(a.currentTime + 0.12);
+}
+
+function playGiantActivateSound() {
+  const a = getAudioCtx();
+  // Ascending power-up fanfare
+  [330, 440, 660].forEach((freq, i) => {
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.connect(gain);
+    gain.connect(a.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, a.currentTime + i * 0.08);
+    gain.gain.setValueAtTime(0.1, a.currentTime + i * 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + i * 0.08 + 0.15);
+    osc.start(a.currentTime + i * 0.08);
+    osc.stop(a.currentTime + i * 0.08 + 0.15);
+  });
+}
+
+function playGiantDeactivateSound() {
+  const a = getAudioCtx();
+  // Descending three tones
+  [660, 440, 330].forEach((freq, i) => {
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.connect(gain);
+    gain.connect(a.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, a.currentTime + i * 0.08);
+    gain.gain.setValueAtTime(0.08, a.currentTime + i * 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + i * 0.08 + 0.12);
+    osc.start(a.currentTime + i * 0.08);
+    osc.stop(a.currentTime + i * 0.08 + 0.12);
+  });
+}
+
 function getMusicGain() {
   const a = getAudioCtx();
   if (!musicGainNode) {
@@ -806,10 +924,11 @@ function scheduleMusicLoop() {
       const gain = a.createGain();
       osc.connect(gain);
       gain.connect(dest);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.027, t);
-      gain.gain.setValueAtTime(0.027, t + dur * 0.8);
+      osc.type = giantMusicActive ? 'sawtooth' : 'square';
+      osc.frequency.setValueAtTime(giantMusicActive ? freq * 0.5 : freq, t);
+      const melGain = giantMusicActive ? 0.035 : 0.027;
+      gain.gain.setValueAtTime(melGain, t);
+      gain.gain.setValueAtTime(melGain, t + dur * 0.8);
       gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
       osc.start(t);
       osc.stop(t + dur);
@@ -826,10 +945,11 @@ function scheduleMusicLoop() {
       const gain = a.createGain();
       osc.connect(gain);
       gain.connect(dest);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.035, t);
-      gain.gain.setValueAtTime(0.035, t + dur * 0.8);
+      osc.type = giantMusicActive ? 'sawtooth' : 'triangle';
+      osc.frequency.setValueAtTime(giantMusicActive ? freq * 0.5 : freq, t);
+      const bassGain = giantMusicActive ? 0.050 : 0.035;
+      gain.gain.setValueAtTime(bassGain, t);
+      gain.gain.setValueAtTime(bassGain, t + dur * 0.8);
       gain.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.95);
       osc.start(t);
       osc.stop(t + dur);
@@ -912,6 +1032,24 @@ function getTimeOfDay() {
 
 function drawDachshundSprite(x, y) {
   const anim = getDogSpriteAnim();
+
+  // Bite animation: 3-frame horizontal sprite sheet, source-rect slicing
+  if (anim === 'bite' && dogSprites.bite && dogSprites.bite[0]) {
+    const sheet = dogSprites.bite[0];
+    if (!sheet.complete || !sheet.naturalWidth) return false;
+    const frameW = 512;
+    const frameH = 1024;
+    const frameIdx = dogSpriteFrame % 3;
+    const sx = frameIdx * frameW;
+    const dw = frameW * DOG_SPRITE_SCALE;
+    const dh = frameH * DOG_SPRITE_SCALE;
+    const anchorX = dog.width * DOG_SPRITE_ANCHOR;
+    const dx = x + anchorX - dw / 2;
+    const dy = y - dh + DOG_SPRITE_GROUND_OFFSET;
+    ctx.drawImage(sheet, sx, 0, frameW, frameH, dx, dy, dw, dh);
+    return true;
+  }
+
   const frames = dogSprites[anim];
   const frameIdx = (anim === 'jump' || anim === 'doublejump') ? getDogJumpFrameIndex() : (dogSpriteFrame % (frames?.length || 1));
   const img = (anim === 'doublejump' && frameIdx === 2)
@@ -1067,6 +1205,121 @@ function drawHotDog(x, y) {
     ctx.lineTo(x + 10 + i * 4, y + (i % 2 === 0 ? mid + 4 : mid - 1));
   }
   ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+}
+
+function drawSparkle(cx, cy, size) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - size);
+  ctx.lineTo(cx + size * 0.3, cy - size * 0.3);
+  ctx.lineTo(cx + size, cy);
+  ctx.lineTo(cx + size * 0.3, cy + size * 0.3);
+  ctx.lineTo(cx, cy + size);
+  ctx.lineTo(cx - size * 0.3, cy + size * 0.3);
+  ctx.lineTo(cx - size, cy);
+  ctx.lineTo(cx - size * 0.3, cy - size * 0.3);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGoldenHotDog(x, y) {
+  const hw = 36;
+  const hh = 22;
+  const mid = hh / 2;
+  const shimmer = 0.5 + 0.5 * Math.sin(frameCount * 0.1);
+
+  // Outer glow
+  ctx.save();
+  ctx.globalAlpha = 0.3 + shimmer * 0.3;
+  ctx.shadowColor = '#FFD700';
+  ctx.shadowBlur = 8 + shimmer * 6;
+
+  // --- Dark outline ---
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y + 1);
+  ctx.quadraticCurveTo(x + hw / 2, y - 1, x + hw - 10, y + 1);
+  ctx.quadraticCurveTo(x + hw - 4, y + 1, x + hw - 2, y + 5);
+  ctx.quadraticCurveTo(x + hw + 1, y + mid, x + hw + 1, y + mid + 4);
+  ctx.quadraticCurveTo(x + hw + 1, y + hh + 1, x + hw - 7, y + hh + 1);
+  ctx.lineTo(x + 7, y + hh + 1);
+  ctx.quadraticCurveTo(x - 1, y + hh + 1, x - 1, y + mid + 4);
+  ctx.quadraticCurveTo(x - 1, y + mid, x + 2, y + 5);
+  ctx.quadraticCurveTo(x + 4, y + 1, x + 10, y + 1);
+  ctx.stroke();
+
+  // --- Bun bottom (golden) ---
+  ctx.fillStyle = '#FFC107';
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y + mid + 1);
+  ctx.lineTo(x + hw - 5, y + mid + 1);
+  ctx.quadraticCurveTo(x + hw, y + mid + 1, x + hw, y + mid + 4);
+  ctx.quadraticCurveTo(x + hw, y + hh, x + hw - 7, y + hh);
+  ctx.lineTo(x + 7, y + hh);
+  ctx.quadraticCurveTo(x, y + hh, x, y + mid + 4);
+  ctx.quadraticCurveTo(x, y + mid + 1, x + 5, y + mid + 1);
+  ctx.fill();
+
+  // --- Sausage (golden amber) ---
+  ctx.fillStyle = '#FFB300';
+  roundRect(x - 4, y + 6, hw + 8, 12, 6);
+  ctx.fillStyle = '#FFD54F';
+  ctx.beginPath();
+  ctx.ellipse(x + hw / 2, y + 9, hw / 2 - 2, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FF8F00';
+  ctx.beginPath();
+  ctx.arc(x - 2, y + 12, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + hw + 2, y + 12, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Bun top (golden) ---
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath();
+  ctx.moveTo(x + 5, y + mid + 1);
+  ctx.lineTo(x + hw - 5, y + mid + 1);
+  ctx.quadraticCurveTo(x + hw - 2, y + mid, x + hw - 3, y + 5);
+  ctx.quadraticCurveTo(x + hw - 5, y + 1, x + hw - 9, y + 1);
+  ctx.lineTo(x + 9, y + 1);
+  ctx.quadraticCurveTo(x + 5, y + 1, x + 3, y + 5);
+  ctx.quadraticCurveTo(x + 2, y + mid, x + 5, y + mid + 1);
+  ctx.fill();
+
+  // Bun highlight
+  ctx.fillStyle = '#FFEA70';
+  ctx.beginPath();
+  ctx.moveTo(x + 11, y + 3);
+  ctx.quadraticCurveTo(x + hw / 2, y, x + hw - 11, y + 3);
+  ctx.lineTo(x + hw - 11, y + 6);
+  ctx.quadraticCurveTo(x + hw / 2, y + 3, x + 11, y + 6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Seam
+  ctx.strokeStyle = '#B8860B';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + mid);
+  ctx.quadraticCurveTo(x + hw / 2, y + mid - 1, x + hw - 3, y + mid);
+  ctx.stroke();
+
+  ctx.restore(); // restore glow state
+
+  // --- Sparkle particles orbiting ---
+  for (let i = 0; i < 3; i++) {
+    const angle = frameCount * 0.05 + i * (Math.PI * 2 / 3);
+    const sparkX = x + hw / 2 + Math.cos(angle) * (hw / 2 + 8);
+    const sparkY = y + mid + Math.sin(angle) * (hh / 2 + 6);
+    ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + shimmer * 0.5})`;
+    drawSparkle(sparkX, sparkY, 3 + shimmer * 2);
+  }
+
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'miter';
 }
@@ -1631,6 +1884,28 @@ function drawScore() {
   }
   ctx.fillStyle = '#fff';
   ctx.fillText(scoreStr, W - 15, 30);
+
+  // Giant mode multiplier + timer bar
+  if (giantActive) {
+    const remaining = GIANT_DURATION - (performance.now() - giantStartTime);
+    const flash = remaining < GIANT_WARN_AT ? (Math.sin(performance.now() * 0.015) > 0) : true;
+    if (flash) {
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 14px Courier New';
+      ctx.textAlign = 'left';
+      ctx.fillText('x' + GIANT_SCORE_MULTIPLIER, 14, 48);
+    }
+    // Timer bar
+    const barW = 60;
+    const barH = 4;
+    const barX = 14;
+    const barY = 52;
+    const fill = Math.max(0, remaining / GIANT_DURATION);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = remaining < GIANT_WARN_AT ? '#FF6347' : '#FFD700';
+    ctx.fillRect(barX, barY, barW * fill, barH);
+  }
 }
 
 function drawLocalLeaderboard(baseY) {
@@ -1726,6 +2001,15 @@ function jump() {
     lastBossMilestone = 0;
     bossDogShift = 0;
     dog.x = DOG_BASE_X;
+    giantActive = false;
+    giantGrowing = false;
+    giantShrinking = false;
+    giantScoreMultiplier = 1;
+    giantChompEffects = [];
+    giantBonkEffects = [];
+    lastGoldenSpawnScore = 0;
+    if (giantMusicActive && musicOn) switchToNormalMusic();
+    giantMusicActive = false;
   }
   if (gameState === 'dead') {
     if (Date.now() - deathTime < 1000) return;
@@ -1753,6 +2037,15 @@ function jump() {
     bossLosing = false;
     lastBossMilestone = 0;
     bossDogShift = 0;
+    giantActive = false;
+    giantGrowing = false;
+    giantShrinking = false;
+    giantScoreMultiplier = 1;
+    giantChompEffects = [];
+    giantBonkEffects = [];
+    lastGoldenSpawnScore = 0;
+    if (giantMusicActive && musicOn) switchToNormalMusic();
+    giantMusicActive = false;
   }
   if (gameState !== 'running') return;
   if (dog.ducking) return;
@@ -1780,6 +2073,27 @@ function duck(active) {
 }
 
 function spawnObstacle() {
+  // --- Golden hot dog spawn check ---
+  const goldenEligible = !giantActive && !giantGrowing && !giantShrinking
+    && !chaseActive && !chasePending && !chaseEntering
+    && !bossPending && !bossChasing && !bossLosing
+    && score >= GIANT_FIRST_AT
+    && score >= lastGoldenSpawnScore + GIANT_COOLDOWN
+    && Math.random() < GIANT_SPAWN_CHANCE;
+  if (goldenEligible) {
+    obstacles.push({
+      x: W + 10,
+      y: GROUND_Y + 4,
+      width: 36,
+      height: 22,
+      type: 'golden',
+    });
+    lastGoldenSpawnScore = score;
+    nextObstacleIn = MIN_OBSTACLE_GAP + Math.random() * MAX_OBSTACLE_GAP;
+    lastObstacleType = 'golden';
+    return;
+  }
+
   let type = 'hotdog';
   const r = Math.random();
   if (score > 150 && r < 0.15) {
@@ -1852,7 +2166,17 @@ function checkCollision() {
     dh = 22;
   }
 
-  for (const obs of obstacles) {
+  // When giant, expand hitbox proportionally
+  if (giantActive) {
+    const expansion = (GIANT_SCALE - 1) * 0.5;
+    dx -= dw * expansion * 0.5;
+    dy -= dh * expansion;
+    dw *= (1 + expansion);
+    dh *= (1 + expansion);
+  }
+
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const obs = obstacles[i];
     let ox, oy, ow, oh;
     if (obs.type === 'frisbee') {
       ox = obs.x + 6;
@@ -1872,10 +2196,112 @@ function checkCollision() {
     }
 
     if (dx < ox + ow && dx + dw > ox && dy < oy + oh && dy + dh > oy) {
+      // Golden hot dog: activate giant mode
+      if (obs.type === 'golden') {
+        activateGiantMode();
+        obstacles.splice(i, 1);
+        continue;
+      }
+
+      // Giant mode: eat or bonk
+      if (giantActive) {
+        if (obs.type === 'frisbee') {
+          triggerBonkEffect(obs);
+          playBonkSound();
+          score += GIANT_BONK_BONUS;
+        } else {
+          triggerChompEffect(obs);
+          playCrunchSound();
+          score += GIANT_EAT_BONUS;
+        }
+        obstacles.splice(i, 1);
+        continue;
+      }
+
+      // Normal collision: death
       return true;
     }
   }
   return false;
+}
+
+// --- Giant mode lifecycle ---
+function activateGiantMode() {
+  giantActive = true;
+  giantStartTime = performance.now();
+  giantGrowing = true;
+  giantShrinking = false;
+  giantTransitionStart = performance.now();
+  giantScoreMultiplier = GIANT_SCORE_MULTIPLIER;
+  playGiantActivateSound();
+  if (musicOn) switchToGiantMusic();
+}
+
+function deactivateGiantMode() {
+  giantActive = false;
+  giantShrinking = true;
+  giantGrowing = false;
+  giantTransitionStart = performance.now();
+  giantScoreMultiplier = 1;
+  playGiantDeactivateSound();
+  if (giantMusicActive) switchToNormalMusic();
+}
+
+let giantMusicActive = false;
+
+function switchToGiantMusic() {
+  giantMusicActive = true;
+  if (musicOn && musicLoopTimeout) {
+    clearTimeout(musicLoopTimeout);
+    scheduleMusicLoop();
+  }
+}
+
+function switchToNormalMusic() {
+  giantMusicActive = false;
+  if (musicOn && musicLoopTimeout) {
+    clearTimeout(musicLoopTimeout);
+    scheduleMusicLoop();
+  }
+}
+
+function getGiantVisualScale() {
+  const now = performance.now();
+  if (giantGrowing) {
+    const t = Math.min(1, (now - giantTransitionStart) / GIANT_SCALE_TRANSITION);
+    const eased = t * (2 - t); // ease-out
+    if (t >= 1) giantGrowing = false;
+    return 1 + (GIANT_SCALE - 1) * eased;
+  }
+  if (giantShrinking) {
+    const t = Math.min(1, (now - giantTransitionStart) / GIANT_SCALE_TRANSITION);
+    const eased = t * (2 - t);
+    if (t >= 1) giantShrinking = false;
+    return GIANT_SCALE - (GIANT_SCALE - 1) * eased;
+  }
+  if (giantActive) return GIANT_SCALE;
+  return 1;
+}
+
+function triggerChompEffect(obs) {
+  giantChompEffects.push({
+    x: obs.x,
+    y: obs.y,
+    startTime: performance.now(),
+  });
+}
+
+function triggerBonkEffect(obs) {
+  giantBonkEffects.push({
+    x: obs.x,
+    y: obs.y,
+    vx: 3 + Math.random() * 2,
+    vy: -6 - Math.random() * 3,
+    rotation: 0,
+    rotSpeed: 0.3 + Math.random() * 0.3,
+    startTime: performance.now(),
+    type: obs.type,
+  });
 }
 
 // ============================================================
@@ -1961,8 +2387,26 @@ function update(dt) {
     return p.life > 0;
   });
 
-  // Score
-  score += effectiveSpeed * 0.02 * scale;
+  // Score (with giant multiplier)
+  score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier;
+
+  // Giant mode timer
+  if (giantActive) {
+    const elapsed = performance.now() - giantStartTime;
+    if (elapsed >= GIANT_DURATION) {
+      deactivateGiantMode();
+    }
+  }
+  // Update chomp/bonk visual effects
+  const now = performance.now();
+  giantChompEffects = giantChompEffects.filter(e => now - e.startTime < 500);
+  giantBonkEffects = giantBonkEffects.filter(e => {
+    e.x += e.vx * scale;
+    e.y += e.vy * scale;
+    e.vy += 0.3 * scale;
+    e.rotation += e.rotSpeed * scale;
+    return now - e.startTime < 1500;
+  });
 
   // Chase mode
   if (chaseActive) {
@@ -1997,7 +2441,7 @@ function update(dt) {
       squirrelEnterSpeed = 1.5;
     }
   } else {
-    const canStart = !bossPending && !bossChasing && !bossLosing &&
+    const canStart = !giantActive && !bossPending && !bossChasing && !bossLosing &&
       ((lastChaseEndScore === 0 && score >= CHASE_FIRST_AT) ||
       (lastChaseEndScore > 0 && score >= lastChaseEndScore + CHASE_COOLDOWN));
     if (canStart) {
@@ -2086,7 +2530,7 @@ function update(dt) {
   } else {
     // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with chase)
     const currentMilestone = Math.floor(score / BOSS_MILESTONE);
-    const bossCanStart = !chasePending && !chaseActive && !chaseEntering && !chaseEscaping &&
+    const bossCanStart = !giantActive && !chasePending && !chaseActive && !chaseEntering && !chaseEscaping &&
       currentMilestone > lastBossMilestone;
     if (bossCanStart) {
       bossPending = true;
@@ -2113,6 +2557,12 @@ function update(dt) {
     bossPending = false;
     bossChasing = false;
     bossLosing = false;
+    giantActive = false;
+    giantGrowing = false;
+    giantShrinking = false;
+    giantScoreMultiplier = 1;
+    if (giantMusicActive && musicOn) switchToNormalMusic();
+    giantMusicActive = false;
     const localQualifies = highScores.length < MAX_HIGH_SCORES || score > (highScores[MAX_HIGH_SCORES - 1]?.score ?? 0);
     const globalQualifies = globalScoresLoaded && (globalHighScores.length < GLOBAL_MAX_SCORES || score > (globalHighScores[GLOBAL_MAX_SCORES - 1]?.score ?? 0));
     const qualifies = localQualifies || globalQualifies;
@@ -2152,15 +2602,19 @@ function draw() {
 
   // Draw obstacles
   obstacles.forEach(o => {
-    const useChaseSkin = (o.skin ?? (chaseActive ? 'chase' : 'normal')) === 'chase';
-    if (useChaseSkin) {
-      if (o.type === 'frisbee') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
-      else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
-      else drawAcorn(o.x, o.y);
+    if (o.type === 'golden') {
+      drawGoldenHotDog(o.x, o.y);
     } else {
-      if (o.type === 'frisbee') drawFrisbee(o.x, o.y);
-      else if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
-      else drawHotDog(o.x, o.y);
+      const useChaseSkin = (o.skin ?? (chaseActive ? 'chase' : 'normal')) === 'chase';
+      if (useChaseSkin) {
+        if (o.type === 'frisbee') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
+        else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
+        else drawAcorn(o.x, o.y);
+      } else {
+        if (o.type === 'frisbee') drawFrisbee(o.x, o.y);
+        else if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
+        else drawHotDog(o.x, o.y);
+      }
     }
   });
 
@@ -2197,7 +2651,84 @@ function draw() {
 
   // Draw dachshund (PNG sprites when loaded, else procedural)
   advanceDogSpriteFrame();
-  drawDachshund(dog.x, dog.y, dog.legFrame);
+  const giantScale = getGiantVisualScale();
+  if (giantScale !== 1) {
+    const pivotX = dog.x + dog.width * DOG_SPRITE_ANCHOR;
+    const pivotY = GROUND_Y + 24;
+
+    // Golden glow: draw the dog sprite slightly larger with shadowBlur behind the real sprite
+    if (giantActive || giantShrinking) {
+      const glowAlpha = giantShrinking ? Math.max(0, 1 - (performance.now() - giantTransitionStart) / GIANT_SCALE_TRANSITION) : 1;
+      const remaining = GIANT_DURATION - (performance.now() - giantStartTime);
+      const flash = (giantActive && remaining < GIANT_WARN_AT) ? (Math.sin(performance.now() * 0.015) > 0 ? 1 : 0.3) : 1;
+      const glowPulse = 0.85 + 0.15 * Math.sin(performance.now() * 0.004);
+      const glowScale = giantScale * (1 + 0.06 * glowPulse);
+      ctx.save();
+      ctx.translate(pivotX, pivotY);
+      ctx.scale(glowScale, glowScale);
+      ctx.translate(-pivotX, -pivotY);
+      ctx.globalAlpha = 0.45 * glowAlpha * flash * glowPulse;
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+      drawDachshund(dog.x, dog.y, dog.legFrame);
+      ctx.restore();
+    }
+
+    // Draw the actual giant dog on top
+    ctx.save();
+    ctx.translate(pivotX, pivotY);
+    ctx.scale(giantScale, giantScale);
+    ctx.translate(-pivotX, -pivotY);
+    drawDachshund(dog.x, dog.y, dog.legFrame);
+    ctx.restore();
+  } else {
+    drawDachshund(dog.x, dog.y, dog.legFrame);
+  }
+
+  // Draw chomp effects (CHOMP! text + crumb particles)
+  giantChompEffects.forEach(e => {
+    const age = (performance.now() - e.startTime) / 500;
+    if (age > 1) return;
+    ctx.save();
+    ctx.globalAlpha = 1 - age;
+    ctx.fillStyle = '#FFD700';
+    ctx.font = `bold ${14 + age * 8}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText('CHOMP!', e.x + 18, e.y - 10 - age * 20);
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 + age * 2;
+      const dist = age * 20;
+      ctx.fillStyle = ['#D4951A', '#D94438', '#F5D000'][i % 3];
+      ctx.beginPath();
+      ctx.arc(e.x + 18 + Math.cos(angle) * dist, e.y + 11 + Math.sin(angle) * dist, 2 - age, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  // Draw bonked frisbees flying away
+  giantBonkEffects.forEach(e => {
+    const age = (performance.now() - e.startTime) / 1500;
+    if (age > 1) return;
+    ctx.save();
+    ctx.globalAlpha = 1 - age * 0.7;
+    ctx.translate(e.x + 22, e.y + 7);
+    ctx.rotate(e.rotation);
+    ctx.translate(-(e.x + 22), -(e.y + 7));
+    drawFrisbee(e.x, e.y);
+    ctx.restore();
+    if (age < 0.4) {
+      ctx.save();
+      ctx.globalAlpha = 1 - age / 0.4;
+      ctx.fillStyle = '#FF69B4';
+      ctx.font = `bold ${12 + age * 15}px Courier New`;
+      ctx.textAlign = 'center';
+      ctx.fillText('BONK!', e.x + 22, e.y - 15 - age * 30);
+      ctx.restore();
+    }
+  });
 
   // Landing dust particles (tiny rainbow burst)
   landingParticles.forEach(p => {
@@ -2319,6 +2850,16 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     bossPending = true;
     obstacles = [];  // clear obstacles so boss starts immediately
+  }
+  if (e.code === 'KeyG' && gameState === 'running' && !giantActive) {
+    e.preventDefault();
+    obstacles.push({
+      x: dog.x + 120,
+      y: GROUND_Y + 4,
+      width: 36,
+      height: 22,
+      type: 'golden',
+    });
   }
 });
 
