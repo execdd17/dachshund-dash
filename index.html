@@ -2311,7 +2311,7 @@ function spawnObstacle() {
   const spawnX = chaseActive ? (dog.x + SQUIRREL_OFFSET) : (W + 10);
   const skin = chaseActive ? 'chase' : undefined;
 
-  if (type === 'frisbee' && Math.random() < 0.5) {
+  if (type === 'frisbee' && !chaseActive && Math.random() < 0.5) {
     // Single bird (duck-under, scaled 1.5x so it can't be jumped over)
     obstacles.push({
       x: spawnX,
