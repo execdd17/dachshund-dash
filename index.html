@@ -1281,6 +1281,104 @@ function drawHotDogStack(x, y, h) {
   ctx.fillText('!', x + 18, y - 8 + wobble);
 }
 
+// ============ Chocolate Variant A: Classic Segmented Bar ============
+function drawChocolateBarA(x, y) {
+  const hw = 36, hh = 22;
+
+  // --- Dark outline (drawn first, slightly larger) ---
+  ctx.strokeStyle = '#2A1206';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 1);
+  ctx.lineTo(x + hw - 3, y + 1);
+  ctx.quadraticCurveTo(x + hw + 1, y + 1, x + hw + 1, y + 4);
+  ctx.lineTo(x + hw + 1, y + hh - 3);
+  ctx.quadraticCurveTo(x + hw + 1, y + hh + 1, x + hw - 3, y + hh + 1);
+  ctx.lineTo(x + 3, y + hh + 1);
+  ctx.quadraticCurveTo(x - 1, y + hh + 1, x - 1, y + hh - 3);
+  ctx.lineTo(x - 1, y + 4);
+  ctx.quadraticCurveTo(x - 1, y + 1, x + 3, y + 1);
+  ctx.stroke();
+
+  // --- Main chocolate body ---
+  ctx.fillStyle = '#6B3A20';
+  roundRect(x + 1, y + 2, hw - 2, hh - 3, 2);
+
+  // --- Bottom shadow ---
+  ctx.fillStyle = '#4A2510';
+  roundRect(x + 2, y + hh - 6, hw - 4, 4, 1);
+
+  // --- Top highlight band ---
+  ctx.fillStyle = '#8B5A3A';
+  roundRect(x + 2, y + 3, hw - 4, 5, 1);
+
+  // --- Score lines (3 columns x 2 rows) ---
+  ctx.strokeStyle = '#4A2510';
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + 1 + i * 11.3, y + 3);
+    ctx.lineTo(x + 1 + i * 11.3, y + hh - 3);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + hh / 2 + 1);
+  ctx.lineTo(x + hw - 2, y + hh / 2 + 1);
+  ctx.stroke();
+
+  // --- Bite mark (top-right corner) ---
+  ctx.fillStyle = '#3B1E0E';
+  ctx.beginPath();
+  ctx.moveTo(x + hw - 2, y + 2);
+  ctx.lineTo(x + hw - 2, y + 7);
+  ctx.quadraticCurveTo(x + hw - 5, y + 6, x + hw - 8, y + 8);
+  ctx.quadraticCurveTo(x + hw - 6, y + 4, x + hw - 8, y + 2);
+  ctx.closePath();
+  ctx.fill();
+  // Bite edge
+  ctx.strokeStyle = '#2A1206';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + hw - 8, y + 2);
+  ctx.quadraticCurveTo(x + hw - 6, y + 4, x + hw - 8, y + 8);
+  ctx.stroke();
+  // Crumbs
+  ctx.fillStyle = '#6B3A20';
+  ctx.beginPath();
+  ctx.arc(x + hw + 2, y + 5, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + hw - 1, y + 9, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Glossy shine (upper-left) ---
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.ellipse(x + 10, y + 6, 7, 2.5, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- "HERSHEY" label ---
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 8px Arial Black, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('HERSHEY', x + hw / 2, y + hh / 2 + 3, hw - 6);
+
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+}
+
+function drawChocolateStackA(x, y, h) {
+  const offsets = [{ dx: 2, dy: 20 }, { dx: -2, dy: 0 }];
+  offsets.forEach(o => drawChocolateBarA(x + o.dx, y + o.dy));
+  const wobble = Math.sin(frameCount * 0.15) * 2;
+  ctx.fillStyle = '#FF1493';
+  ctx.font = 'bold 14px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('!', x + 18, y - 8 + wobble);
+}
+
 function drawFrisbee(x, y) {
   const fw = 44;
   const fh = 14;
@@ -2571,10 +2669,14 @@ function draw() {
         if (o.type === 'frisbee') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
         else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
         else drawAcorn(o.x, o.y);
-      } else {
-        if (o.type === 'frisbee') drawFrisbee(o.x, o.y);
-        else if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
+      } else if (o.type === 'frisbee') {
+        drawFrisbee(o.x, o.y);
+      } else if (giantActive || giantGrowing) {
+        if (o.type === 'stack') drawHotDogStack(o.x, o.y, o.height);
         else drawHotDog(o.x, o.y);
+      } else {
+        if (o.type === 'stack') drawChocolateStackA(o.x, o.y, o.height);
+        else drawChocolateBarA(o.x, o.y);
       }
     }
   });
