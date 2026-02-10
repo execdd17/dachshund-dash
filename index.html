@@ -297,6 +297,7 @@ const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animation
 const GIANT_SCORE_MULTIPLIER = 2;            // score multiplier while giant
 const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten
 const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
+const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
 // --- Game state ---
 let gameState = 'idle'; // idle, running, dead, enteringName
@@ -322,6 +323,7 @@ let giantScoreMultiplier = 1;
 let lastGoldenSpawnScore = 0;
 let giantChompEffects = [];   // [{x, y, startTime}]
 let giantBonkEffects = [];    // [{x, y, vx, vy, rotation, rotSpeed, startTime}]
+let birdJumpEffects = [];     // [{x, y, startTime}]
 
 // --- High scores (localStorage) ---
 const HIGH_SCORES_KEY = 'dachshundDashHighScores';
@@ -2213,6 +2215,7 @@ function jump() {
     giantScoreMultiplier = 1;
     giantChompEffects = [];
     giantBonkEffects = [];
+    birdJumpEffects = [];
     lastGoldenSpawnScore = 0;
     if (giantMusicActive && musicOn) switchToNormalMusic();
     giantMusicActive = false;
@@ -2249,6 +2252,7 @@ function jump() {
     giantScoreMultiplier = 1;
     giantChompEffects = [];
     giantBonkEffects = [];
+    birdJumpEffects = [];
     lastGoldenSpawnScore = 0;
     if (giantMusicActive && musicOn) switchToNormalMusic();
     giantMusicActive = false;
@@ -2594,6 +2598,16 @@ function update(dt) {
   }
 
   obstacles.forEach(o => o.x -= effectiveSpeed * scale);
+
+  // Detect jumping over a bird (dog is airborne and bird has passed under)
+  obstacles.forEach(o => {
+    if (o.type === 'bird' && !o.jumped && dog.jumping && o.x + o.width < dog.x + 23) {
+      o.jumped = true;
+      score += BIRD_JUMP_BONUS;
+      birdJumpEffects.push({ x: o.x + o.width / 2, y: o.y, startTime: performance.now() });
+    }
+  });
+
   obstacles = obstacles.filter(o => o.x > -40);
 
   // Landing dust particles
@@ -2625,6 +2639,7 @@ function update(dt) {
     e.rotation += e.rotSpeed * scale;
     return now - e.startTime < 1500;
   });
+  birdJumpEffects = birdJumpEffects.filter(e => now - e.startTime < 800);
 
   // Chase mode
   if (chaseActive) {
@@ -2952,6 +2967,19 @@ function draw() {
       ctx.fillText('BONK!', e.x + 22, e.y - 15 - age * 30);
       ctx.restore();
     }
+  });
+
+  // Bird jump bonus popups
+  birdJumpEffects.forEach(e => {
+    const age = (performance.now() - e.startTime) / 800;
+    if (age > 1) return;
+    ctx.save();
+    ctx.globalAlpha = 1 - age;
+    ctx.fillStyle = '#3B7DD8';
+    ctx.font = `bold ${12 + age * 6}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText('NICE! +' + BIRD_JUMP_BONUS, e.x, e.y - 5 - age * 30);
+    ctx.restore();
   });
 
   // Landing dust particles (tiny rainbow burst)
