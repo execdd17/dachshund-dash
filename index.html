@@ -1439,6 +1439,155 @@ function drawFrisbee(x, y) {
   ctx.restore();
 }
 
+function drawBird(ox, oy) {
+  const bw = 44, bh = 34;
+  const sc = 1.5;
+
+  // --- Ground shadow (world coordinates, before transform) ---
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(ox + bw * sc / 2, GROUND_Y + 26, 16 * sc, 4 * sc, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Scale up from bottom edge so the base height stays the same
+  ctx.save();
+  ctx.translate(ox, oy + bh * sc);
+  ctx.scale(sc, sc);
+  ctx.translate(0, -bh);
+
+  // All drawing now in original 44x34 local space
+  const x = 0, y = 0;
+  const cx = x + 24;
+  const cy = y + 16;
+  const wingFlap = Math.sin(frameCount * 0.2) * 7;
+
+  // --- Tail feathers (behind body) ---
+  ctx.fillStyle = '#1A4A8A';
+  ctx.beginPath();
+  ctx.moveTo(cx + 10, cy - 1);
+  ctx.lineTo(x + bw + 2, cy - 7);
+  ctx.lineTo(x + bw + 1, cy - 3);
+  ctx.lineTo(x + bw - 1, cy + 1);
+  ctx.lineTo(cx + 8, cy + 2);
+  ctx.closePath();
+  ctx.fill();
+  // Tail outline
+  ctx.strokeStyle = '#0E2E5C';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx + 10, cy - 1);
+  ctx.lineTo(x + bw + 2, cy - 7);
+  ctx.lineTo(x + bw - 1, cy + 1);
+  ctx.stroke();
+
+  // --- Body (round oval) ---
+  ctx.fillStyle = '#3B7DD8';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 14, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Body outline
+  ctx.strokeStyle = '#1A3A6A';
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 14, 10, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // --- Belly (cream underside) ---
+  ctx.fillStyle = '#EBE3D3';
+  ctx.beginPath();
+  ctx.ellipse(cx - 2, cy + 3, 9, 5, -0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Wing (animated flap) ---
+  ctx.fillStyle = '#2A5FA0';
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, cy - 5);
+  ctx.quadraticCurveTo(cx + 6, cy - 16 + wingFlap, cx + 16, cy - 10 + wingFlap);
+  ctx.quadraticCurveTo(cx + 12, cy - 4, cx + 4, cy - 1);
+  ctx.closePath();
+  ctx.fill();
+  // Wing outline
+  ctx.strokeStyle = '#1A3A6A';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, cy - 5);
+  ctx.quadraticCurveTo(cx + 6, cy - 16 + wingFlap, cx + 16, cy - 10 + wingFlap);
+  ctx.stroke();
+  // Wing feather lines
+  ctx.strokeStyle = '#1A4A8A';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(cx + 2, cy - 4);
+  ctx.quadraticCurveTo(cx + 8, cy - 12 + wingFlap, cx + 13, cy - 9 + wingFlap);
+  ctx.stroke();
+
+  // --- Head ---
+  ctx.fillStyle = '#3B7DD8';
+  ctx.beginPath();
+  ctx.arc(x + 10, cy - 4, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#1A3A6A';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x + 10, cy - 4, 8, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // --- Eye ---
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(x + 8, cy - 5, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Pupil
+  ctx.fillStyle = '#111111';
+  ctx.beginPath();
+  ctx.arc(x + 7, cy - 5, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+  // Glint
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(x + 7.5, cy - 6, 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Beak ---
+  ctx.fillStyle = '#E8A830';
+  ctx.beginPath();
+  ctx.moveTo(x + 3, cy - 5);
+  ctx.lineTo(x - 2, cy - 3);
+  ctx.lineTo(x + 3, cy - 1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#B87A10';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // --- Feet (dangling below body) ---
+  ctx.strokeStyle = '#E8A830';
+  ctx.lineWidth = 1.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - 5, cy + 9);
+  ctx.lineTo(cx - 6, cy + 16);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy + 16);
+  ctx.lineTo(cx - 4, cy + 16);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy + 9);
+  ctx.lineTo(cx, cy + 16);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, cy + 16);
+  ctx.lineTo(cx + 2, cy + 16);
+  ctx.stroke();
+
+  ctx.lineCap = 'butt';
+  ctx.lineJoin = 'miter';
+  ctx.restore();
+}
+
 function drawSquirrelSprite(x, y, flipHorizontal) {
   const frames = squirrelSprites.run;
   const frameIdx = squirrelSpriteFrame % (frames?.length || 1);
@@ -2162,7 +2311,17 @@ function spawnObstacle() {
   const spawnX = chaseActive ? (dog.x + SQUIRREL_OFFSET) : (W + 10);
   const skin = chaseActive ? 'chase' : undefined;
 
-  if (type === 'frisbee') {
+  if (type === 'frisbee' && Math.random() < 0.5) {
+    // Single bird (duck-under, scaled 1.5x so it can't be jumped over)
+    obstacles.push({
+      x: spawnX,
+      y: GROUND_Y - 49,
+      width: 66,
+      height: 51,
+      type: 'bird',
+      skin,
+    });
+  } else if (type === 'frisbee') {
     // Lower frisbee (duck-under)
     obstacles.push({
       x: spawnX,
@@ -2235,7 +2394,7 @@ function checkCollision() {
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const obs = obstacles[i];
     let ox, oy, ow, oh;
-    if (obs.type === 'frisbee') {
+    if (obs.type === 'frisbee' || obs.type === 'bird') {
       ox = obs.x + 6;
       oy = obs.y + 2;
       ow = obs.width - 12;
@@ -2262,7 +2421,7 @@ function checkCollision() {
 
       // Giant mode: eat or bonk
       if (giantActive) {
-        if (obs.type === 'frisbee') {
+        if (obs.type === 'frisbee' || obs.type === 'bird') {
           triggerBonkEffect(obs);
           playBonkSound();
           score += GIANT_BONK_BONUS;
@@ -2666,9 +2825,11 @@ function draw() {
     } else {
       const useChaseSkin = (o.skin ?? (chaseActive ? 'chase' : 'normal')) === 'chase';
       if (useChaseSkin) {
-        if (o.type === 'frisbee') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
+        if (o.type === 'frisbee' || o.type === 'bird') drawAcorn(o.x, o.y - 8, frameCount * 0.15);
         else if (o.type === 'stack') drawAcornPile(o.x, o.y, o.height);
         else drawAcorn(o.x, o.y);
+      } else if (o.type === 'bird') {
+        drawBird(o.x, o.y);
       } else if (o.type === 'frisbee') {
         drawFrisbee(o.x, o.y);
       } else if (giantActive || giantGrowing) {
