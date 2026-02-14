@@ -20,21 +20,25 @@
     margin-bottom: 12px;
     letter-spacing: 2px;
   }
-  .title-row {
-    display: flex;
-    align-items: center;
+  .hint-desktop, .hint-mobile { display: none; }
+  .hint-desktop { display: block; }
+  .touch-device .hint-desktop { display: none; }
+  .touch-device .hint-mobile { display: flex; }
+  .hint-mobile {
     justify-content: center;
-    gap: 16px;
-  }
-  .touch-hint {
-    display: none;
-    font-size: 13px;
+    gap: 40px;
+    margin-top: 10px;
     color: #999;
-    letter-spacing: 1px;
-    white-space: nowrap;
+    font-size: 14px;
   }
-  .touch-device .touch-hint {
-    display: inline;
+  .hint-mobile .hint-zone {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .hint-mobile .hint-arrow {
+    font-size: 18px;
+    line-height: 1;
   }
   canvas {
     border: 2px solid #4a8f3f;
@@ -216,11 +220,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<div class="title-row">
-  <span class="touch-hint touch-hint-left">&larr; hold to duck</span>
-  <h1>DACHSHUND DASH</h1>
-  <span class="touch-hint touch-hint-right">tap to jump &rarr;</span>
-</div>
+<h1>DACHSHUND DASH</h1>
 <div class="game-wrapper">
   <canvas id="game" width="1600" height="500"></canvas>
   <div id="nameEntryOverlay">
@@ -229,7 +229,11 @@
     <button type="button" id="nameSubmitBtn">Submit</button>
   </div>
 </div>
-<p class="hint">SPACE / UP to jump (tap twice to double jump!) &mdash; DOWN / S to duck</p>
+<p class="hint hint-desktop">SPACE / UP to jump (tap twice to double jump!) &mdash; DOWN / S to duck</p>
+<div class="hint hint-mobile">
+  <div class="hint-zone"><span class="hint-arrow">&#x2196;</span> hold left side to duck</div>
+  <div class="hint-zone">tap right side to jump (tap twice to double jump!) <span class="hint-arrow">&#x2197;</span></div>
+</div>
 <div id="globalLeaderboard">
   <h2>GLOBAL LEADERBOARD</h2>
   <div class="lb-controls">
