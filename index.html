@@ -2558,7 +2558,7 @@ function switchToGiantMusic() {
   giantMusicActive = true;
   if (musicOn) {
     musicNormal.pause();
-    musicGiant.currentTime = musicNormal.currentTime % (musicGiant.duration || 1);
+    musicGiant.currentTime = 0;
     musicGiant.play().catch(() => {});
   }
 }
