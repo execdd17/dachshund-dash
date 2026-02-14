@@ -325,6 +325,40 @@ let giantChompEffects = [];   // [{x, y, startTime}]
 let giantBonkEffects = [];    // [{x, y, vx, vy, rotation, rotSpeed, startTime}]
 let birdJumpEffects = [];     // [{x, y, startTime}]
 
+// --- Weather effects ---
+let weatherRain = false;
+let lastTimeStage = 'day';  // track stage transitions for weather rolls
+let rainDrops = [];
+
+function initRain() {
+  rainDrops = [];
+  for (let i = 0; i < 120; i++) {
+    rainDrops.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      speed: 4 + Math.random() * 3,
+      length: 4 + Math.random() * 4,
+      opacity: 0.2 + Math.random() * 0.3,
+    });
+  }
+}
+
+function drawRain() {
+  if (!weatherRain || rainDrops.length === 0) return;
+  const { stage } = getTimeOfDay();
+  const nightDim = (stage === 'night') ? 0.6 : 1;
+  ctx.save();
+  ctx.lineWidth = 1;
+  rainDrops.forEach(d => {
+    ctx.strokeStyle = `rgba(180, 210, 240, ${d.opacity * nightDim})`;
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(d.x - 1, d.y + d.length);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 // --- High scores (localStorage) ---
 const HIGH_SCORES_KEY = 'dachshundDashHighScores';
 const MAX_HIGH_SCORES = 5;
@@ -941,12 +975,12 @@ function lerpColor(hex1, hex2, t) {
 }
 
 function getTimeOfDay() {
-  const CYCLE = 620;
+  const CYCLE = 700;
   const s = score % CYCLE;
   const DAY_END = 250;
-  const SUNSET_END = 310;   // 60 pts: day→night (50% longer)
-  const NIGHT_END = 560;    // 250 pts after night begins
-  const DAWN_END = 620;     // 60 pts: night→day
+  const SUNSET_END = 350;   // 100 pts: day→night
+  const NIGHT_END = 600;    // 250 pts of night
+  const DAWN_END = 700;     // 100 pts: night→day
   let phase, stage, t;
   if (s < DAY_END) {
     stage = 'day';
@@ -1836,6 +1870,18 @@ function drawSky() {
   grad.addColorStop(1, bottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, GROUND_Y + 20);
+
+  // Overcast overlay when raining
+  if (weatherRain) {
+    const { stage } = getTimeOfDay();
+    const overcastAlpha = stage === 'night' ? 0.15 : stage === 'sunset' ? 0.3 : 0.4;
+    const overGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 20);
+    overGrad.addColorStop(0, `rgba(120, 125, 135, ${overcastAlpha})`);
+    overGrad.addColorStop(0.6, `rgba(140, 145, 155, ${overcastAlpha * 0.8})`);
+    overGrad.addColorStop(1, `rgba(160, 165, 170, ${overcastAlpha * 0.5})`);
+    ctx.fillStyle = overGrad;
+    ctx.fillRect(0, 0, W, GROUND_Y + 20);
+  }
 }
 
 function drawSun() {
@@ -1843,7 +1889,8 @@ function drawSun() {
   const { phase, stage, t } = getTimeOfDay();
 
   // Sun visible: day + sunset; hidden: night; fading in: dawn
-  const sunOpacity = phase < 0.5 ? 1 : phase < 0.75 ? 0 : t;
+  const rainDim = weatherRain ? 0.15 : 1;
+  const sunOpacity = (phase < 0.5 ? 1 : phase < 0.75 ? 0 : t) * rainDim;
   const moonOpacity = phase < 0.5 ? 0 : phase < 0.75 ? 1 : 1 - t;
 
   // Sun Y: day=45, sunset=sinks to 65
@@ -2012,10 +2059,15 @@ function drawClouds() {
   // Cloud colors: [day=white, sunset=pinkish, night=dark gray, dawn=lightening]
   const cloudFill = ['#FFFFFF', '#FFD4D4', '#3A3A4A', '#E8E8F0'];
   const cloudShadow = ['#B4DCF0', '#E8B4C0', '#2A2A35', '#B0B8D0'];
-  const fillC = lerpColor(cloudFill[i], cloudFill[(i + 1) % 4], t);
-  const shadowC = lerpColor(cloudShadow[i], cloudShadow[(i + 1) % 4], t);
+  let fillC = lerpColor(cloudFill[i], cloudFill[(i + 1) % 4], t);
+  let shadowC = lerpColor(cloudShadow[i], cloudShadow[(i + 1) % 4], t);
   const highlightAlphas = [0.8, 0.6, 0.2, 0.5];
-  const highlightAlpha = highlightAlphas[i] + (highlightAlphas[(i + 1) % 4] - highlightAlphas[i]) * t;
+  let highlightAlpha = highlightAlphas[i] + (highlightAlphas[(i + 1) % 4] - highlightAlphas[i]) * t;
+  if (weatherRain) {
+    fillC = lerpColor(fillC, '#8A8E96', 0.6);
+    shadowC = lerpColor(shadowC, '#6A6E76', 0.6);
+    highlightAlpha *= 0.3;
+  }
 
   clouds.forEach(c => {
     const s = c.size;
@@ -2219,6 +2271,8 @@ function jump() {
     lastGoldenSpawnScore = 0;
     if (giantMusicActive && musicOn) switchToNormalMusic();
     giantMusicActive = false;
+    weatherRain = false; rainDrops = [];
+    lastTimeStage = 'day';
   }
   if (gameState === 'dead') {
     if (Date.now() - deathTime < 1000) return;
@@ -2256,6 +2310,8 @@ function jump() {
     lastGoldenSpawnScore = 0;
     if (giantMusicActive && musicOn) switchToNormalMusic();
     giantMusicActive = false;
+    weatherRain = false; rainDrops = [];
+    lastTimeStage = 'day';
   }
   if (gameState !== 'running') return;
   if (dog.ducking) return;
@@ -2619,8 +2675,33 @@ function update(dt) {
     return p.life > 0;
   });
 
+  // Weather particles (fixed speed, independent of game speed / slow mode)
+  const weatherScale = dt / DT_BASELINE * 0.5;
+  if (weatherRain) {
+    rainDrops.forEach(d => {
+      d.y += d.speed * weatherScale;
+      d.x -= 0.5 * weatherScale;
+      if (d.y > H) { d.y = -d.length; d.x = Math.random() * W; }
+      if (d.x < 0) d.x += W;
+    });
+  }
+
   // Score (with giant multiplier)
   score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier;
+
+  // Check for day/night transitions to roll for rain
+  const currentStage = getTimeOfDay().stage;
+  if (currentStage !== lastTimeStage) {
+    if ((currentStage === 'day' || currentStage === 'night') &&
+        (lastTimeStage === 'dawn' || lastTimeStage === 'sunset')) {
+      if (Math.random() < 0.25) {
+        if (!weatherRain) { weatherRain = true; initRain(); }
+      } else {
+        if (weatherRain) { weatherRain = false; rainDrops = []; }
+      }
+    }
+    lastTimeStage = currentStage;
+  }
 
   // Giant mode timer
   if (giantActive) {
@@ -2832,6 +2913,7 @@ function draw() {
   drawNearHills();
   drawGround();
   drawFlowers();
+  drawRain();
 
   // Draw obstacles
   obstacles.forEach(o => {
@@ -3112,6 +3194,11 @@ document.addEventListener('keydown', e => {
       height: 22,
       type: 'golden',
     });
+  }
+  if (e.code === 'KeyR') {
+    e.preventDefault();
+    weatherRain = !weatherRain;
+    if (weatherRain) initRain(); else rainDrops = [];
   }
 });
 
