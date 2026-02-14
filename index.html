@@ -572,7 +572,9 @@ const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
 const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
+const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
 let dogSpritesReady = false;
+let hatEnabled = false;
 
 function loadDogSprites() {
   const runPaths = ['png/dachshund/dachshund_run_00.png', 'png/dachshund/dachshund_run_01.png', 'png/dachshund/dachshund_run_02.png'];
@@ -612,6 +614,27 @@ function loadDogSprites() {
   biteSheet.onload = biteSheet.onerror = onLoad;
   biteSheet.src = 'png/dachshund/bite_3_image_sequence.png';
   dogSprites.bite = [biteSheet];
+
+  // Hat variant sprites
+  const hatDir = 'png/hats/Purple Wizard Hat';
+  const hatAnimPaths = {
+    run: [`${hatDir}/dachshund_run_00.png`, `${hatDir}/dachshund_run_01.png`, `${hatDir}/dachshund_run_02.png`],
+    slide: [`${hatDir}/dachshund_pancake_00.png`, `${hatDir}/dachshund_pancake_01.png`, `${hatDir}/dachshund_pancake_02.png`],
+    jump: [`${hatDir}/dachshund_jump_00.png`, `${hatDir}/dachshund_jump_01.png`, `${hatDir}/dachshund_jump_02.png`],
+    doublejump: [`${hatDir}/dachshund_flip_00.png`, `${hatDir}/dachshund_flip_01.png`, `${hatDir}/dachshund_flip_02.png`],
+  };
+  Object.entries(hatAnimPaths).forEach(([key, paths]) => {
+    paths.forEach((path, i) => {
+      const img = new Image();
+      img.src = path;
+      hatSprites[key][i] = img;
+    });
+  });
+  hatSprites.idle = hatSprites.run.slice(0, 1);
+  hatSprites.dead = hatSprites.run.slice(0, 1);
+  const hatBiteSheet = new Image();
+  hatBiteSheet.src = `${hatDir}/bite_3_image_sequence.png`;
+  hatSprites.bite = [hatBiteSheet];
 }
 loadDogSprites();
 
@@ -1040,7 +1063,7 @@ function drawDachshundSprite(x, y) {
 
   // Bite animation: 3-frame horizontal sprite sheet, source-rect slicing
   if (anim === 'bite' && dogSprites.bite && dogSprites.bite[0]) {
-    const sheet = dogSprites.bite[0];
+    const sheet = (hatEnabled && hatSprites.bite?.[0]?.complete && hatSprites.bite[0].naturalWidth) ? hatSprites.bite[0] : dogSprites.bite[0];
     if (!sheet.complete || !sheet.naturalWidth) return false;
     const frameW = 512;
     const frameH = 1024;
@@ -1055,10 +1078,11 @@ function drawDachshundSprite(x, y) {
     return true;
   }
 
-  const frames = dogSprites[anim];
+  const useHat = hatEnabled && hatSprites[anim] && hatSprites[anim].length > 0;
+  const frames = useHat ? hatSprites[anim] : dogSprites[anim];
   const frameIdx = (anim === 'jump' || anim === 'doublejump') ? getDogJumpFrameIndex() : (dogSpriteFrame % (frames?.length || 1));
   const img = (anim === 'doublejump' && frameIdx === 2)
-    ? (dogSprites.jump[2])
+    ? ((useHat && hatSprites.jump?.[2]) || dogSprites.jump[2])
     : (frames && frames[frameIdx]);
   if (!img || !img.complete || !img.naturalWidth) return false;
   const sw = img.naturalWidth;
@@ -3201,6 +3225,10 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') {
     e.preventDefault();
     slowMode = !slowMode;
+  }
+  if (e.code === 'KeyH') {
+    e.preventDefault();
+    hatEnabled = !hatEnabled;
   }
   // Debug: C = trigger squirrel chase (when running)
   if (e.code === 'KeyC' && gameState === 'running' && !chaseActive && !chaseEntering && !chaseEscaping) {
