@@ -20,6 +20,22 @@
     margin-bottom: 12px;
     letter-spacing: 2px;
   }
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .touch-hint {
+    display: none;
+    font-size: 13px;
+    color: #999;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .touch-device .touch-hint {
+    display: inline;
+  }
   canvas {
     border: 2px solid #4a8f3f;
     background: #87CEEB;
@@ -200,7 +216,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<h1>DACHSHUND DASH</h1>
+<div class="title-row">
+  <span class="touch-hint touch-hint-left">&larr; hold to duck</span>
+  <h1>DACHSHUND DASH</h1>
+  <span class="touch-hint touch-hint-right">tap to jump &rarr;</span>
+</div>
 <div class="game-wrapper">
   <canvas id="game" width="1600" height="500"></canvas>
   <div id="nameEntryOverlay">
@@ -260,6 +280,7 @@ const H = 250;
 // --- Mobile detection ---
 const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 const DUCK_ZONE_RATIO = 0.4; // left 40% of screen = duck zone
+if (isTouchDevice) document.body.classList.add('touch-device');
 
 // --- Constants ---
 const GROUND_Y = 200;
