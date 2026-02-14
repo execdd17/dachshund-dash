@@ -14,7 +14,7 @@ Inspired by Chrome's Dino Run, but with more personality (and more hot dogs).
 
 That's it. No tutorials, no loading screens, no accounts. Just run.
 
-**Note:** Best played on desktop — mobile works for jumping, but there's no way to duck (yet), and you'll need to duck.
+On mobile, turn your phone sideways — tap the right side to jump, hold the left side to duck.
 
 ## What You'll Find
 
@@ -33,6 +33,6 @@ Clone the repo and open `index.html` in any browser. No build step, no dependenc
 
 | Action | Keyboard | Mobile |
 |--------|----------|--------|
-| Jump | Space / Up | Tap |
-| Duck | Down / S | — |
+| Jump | Space / Up | Tap right side |
+| Duck | Down / S | Hold left side |
 | Toggle music | Click speaker icon | Tap speaker icon |

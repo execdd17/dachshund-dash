@@ -257,6 +257,10 @@ const ctx = canvas.getContext('2d');
 const W = 800;
 const H = 250;
 
+// --- Mobile detection ---
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const DUCK_ZONE_RATIO = 0.4; // left 40% of screen = duck zone
+
 // --- Constants ---
 const GROUND_Y = 200;
 const GRAVITY = 0.5;
@@ -3223,7 +3227,17 @@ canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   const p = getLogicalCoords(e);
   if (p.x < 38 && p.y < 32) { toggleMusic(); return; }
-  jump();
+  if (isTouchDevice && p.x < W * DUCK_ZONE_RATIO) {
+    duck(true);
+  } else {
+    jump();
+  }
+});
+
+canvas.addEventListener('touchend', e => {
+  if (isTouchDevice && dog.ducking) {
+    duck(false);
+  }
 });
 
 canvas.addEventListener('click', e => {
