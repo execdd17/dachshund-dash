@@ -27,7 +27,7 @@ That's it. No tutorials, no loading screens, no accounts. Just run.
 
 ## Run It Locally
 
-Open `index.html` in any browser. No build step, no dependencies, no framework. It's one file and it just works.
+Clone the repo and open `index.html` in any browser. No build step, no dependencies, no framework.
 
 ## Controls
 
