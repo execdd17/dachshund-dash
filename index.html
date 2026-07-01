@@ -219,7 +219,7 @@
   #customizeBtn {
     display: none;
     position: absolute;
-    top: 100px;
+    top: 60px;
     left: 50%;
     transform: translateX(-50%);
     font-family: 'Courier New', monospace;
@@ -1345,7 +1345,7 @@ function renderCosmeticsPreview() {
   pctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!dogSpritesReady) return;
   const anchorX = canvas.width / 2;
-  const groundY = canvas.height - 15;
+  const groundY = canvas.height - 40;
   drawSpriteFrameLayer(pctx, dogSprites.idle[0], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   COSMETIC_DRAW_ORDER.forEach(slot => {
     const itemId = equipped[slot];
