@@ -214,6 +214,137 @@
     font-size: 13px;
     padding: 16px;
   }
+
+  /* --- Customize button (idle screen only) --- */
+  #customizeBtn {
+    display: none;
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.85);
+    color: #4a8f3f;
+    border: 2px solid #4a8f3f;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 5;
+  }
+  #customizeBtn.visible { display: block; }
+  #customizeBtn:hover { background: #fff; }
+
+  /* --- Cosmetics menu overlay --- */
+  #cosmeticsMenu {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    z-index: 10;
+  }
+  #cosmeticsMenu.visible { display: flex; }
+  #cosmeticsMenu .cosmetics-panel {
+    background: #fdfdfd;
+    border: 2px solid #4a8f3f;
+    border-radius: 8px;
+    width: 320px;
+    padding: 14px 16px;
+  }
+  #cosmeticsMenu h2 {
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #535353;
+    margin-bottom: 10px;
+  }
+  #cosmeticsMenu .cosmetics-preview {
+    background: #eaf6ff;
+    border: 2px solid #cde;
+    border-radius: 6px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .cosmetics-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    justify-content: center;
+  }
+  .cosmetics-tab {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 12px;
+    border: 2px solid #ddd;
+    border-radius: 4px 4px 0 0;
+    background: #f0f0f0;
+    color: #999;
+    cursor: pointer;
+  }
+  .cosmetics-tab.active {
+    border-color: #4a8f3f;
+    background: #fff;
+    color: #4a8f3f;
+  }
+  .cosmetics-grid {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-height: 70px;
+  }
+  .cosmetics-tile {
+    width: 64px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    padding: 6px 3px 5px;
+    text-align: center;
+    background: #fff;
+    cursor: pointer;
+  }
+  .cosmetics-tile.selected {
+    border-color: #4a8f3f;
+    background: #eef8ec;
+  }
+  .cosmetics-tile-icon {
+    width: 36px; height: 36px;
+    margin: 0 auto 3px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cosmetics-tile-icon img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+  .cosmetics-tile-none {
+    width: 28px; height: 28px;
+    border: 2px dashed #ccc;
+    border-radius: 50%;
+    margin: 0 auto 3px;
+    display: flex; align-items: center; justify-content: center;
+    color: #bbb;
+    font-size: 13px;
+  }
+  .cosmetics-tile-label { font-size: 9px; color: #535353; }
+  #cosmeticsDoneBtn {
+    display: block;
+    margin: 12px auto 0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 6px 20px;
+    background: #4a8f3f;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #cosmeticsDoneBtn:hover { background: #5a9f4f; }
 </style>
 <!-- Firebase SDK (compat builds for no-build-step usage) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -227,6 +358,18 @@
     <span class="prompt">New high score! Enter your name:</span>
     <input type="text" id="nameInput" maxlength="12" placeholder="Your name" />
     <button type="button" id="nameSubmitBtn">Submit</button>
+  </div>
+  <button type="button" id="customizeBtn">CUSTOMIZE</button>
+  <div id="cosmeticsMenu">
+    <div class="cosmetics-panel">
+      <h2>CUSTOMIZE YOUR DOG</h2>
+      <div class="cosmetics-preview">
+        <canvas id="cosmeticsPreviewCanvas" width="160" height="110"></canvas>
+      </div>
+      <div class="cosmetics-tabs" id="cosmeticsTabs"></div>
+      <div class="cosmetics-grid" id="cosmeticsGrid"></div>
+      <button type="button" id="cosmeticsDoneBtn">DONE</button>
+    </div>
   </div>
 </div>
 <p class="hint hint-desktop">SPACE / UP to jump (tap twice to double jump!) &mdash; DOWN / S to duck</p>
@@ -1158,6 +1301,82 @@ function drawDachshundSprite(x, y) {
   });
 
   return true;
+}
+
+// --- Cosmetics menu ---
+let activeCosmeticTab = COSMETIC_SLOTS[0];
+const COSMETIC_SLOT_LABELS = { hat: 'HAT', sunglasses: 'SUNGLASSES', clothes: 'CLOTHES' };
+
+function renderCosmeticsTabs() {
+  const tabsEl = document.getElementById('cosmeticsTabs');
+  tabsEl.innerHTML = '';
+  COSMETIC_SLOTS.forEach(slot => {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'cosmetics-tab' + (slot === activeCosmeticTab ? ' active' : '');
+    tab.textContent = COSMETIC_SLOT_LABELS[slot];
+    tab.dataset.slot = slot;
+    tabsEl.appendChild(tab);
+  });
+}
+
+function renderCosmeticsGrid() {
+  const gridEl = document.getElementById('cosmeticsGrid');
+  gridEl.innerHTML = '';
+
+  const noneTile = document.createElement('div');
+  noneTile.className = 'cosmetics-tile' + (equipped[activeCosmeticTab] === null ? ' selected' : '');
+  noneTile.dataset.itemId = '';
+  noneTile.innerHTML = '<div class="cosmetics-tile-none">&empty;</div><div class="cosmetics-tile-label">None</div>';
+  gridEl.appendChild(noneTile);
+
+  COSMETIC_DEFS[activeCosmeticTab].forEach(item => {
+    const tile = document.createElement('div');
+    tile.className = 'cosmetics-tile' + (equipped[activeCosmeticTab] === item.id ? ' selected' : '');
+    tile.dataset.itemId = item.id;
+    tile.innerHTML = `<div class="cosmetics-tile-icon"><img src="${item.thumbnail}" alt="${item.name}"></div><div class="cosmetics-tile-label">${item.name}</div>`;
+    gridEl.appendChild(tile);
+  });
+}
+
+function renderCosmeticsPreview() {
+  const canvas = document.getElementById('cosmeticsPreviewCanvas');
+  const pctx = canvas.getContext('2d');
+  pctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!dogSpritesReady) return;
+  const anchorX = canvas.width / 2;
+  const groundY = canvas.height - 15;
+  drawSpriteFrameLayer(pctx, dogSprites.idle[0], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+  COSMETIC_DRAW_ORDER.forEach(slot => {
+    const itemId = equipped[slot];
+    if (!itemId) return;
+    const itemSprites = cosmeticSpritesById[slot][itemId];
+    const overlayImg = itemSprites && itemSprites.idle && itemSprites.idle[0];
+    if (overlayImg) drawSpriteFrameLayer(pctx, overlayImg, anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+  });
+}
+
+function selectCosmeticItem(slot, itemId) {
+  equipped[slot] = itemId || null;
+  saveEquippedCosmetics(equipped);
+  renderCosmeticsGrid();
+  renderCosmeticsPreview();
+}
+
+function openCosmeticsMenu() {
+  activeCosmeticTab = COSMETIC_SLOTS[0];
+  renderCosmeticsTabs();
+  renderCosmeticsGrid();
+  renderCosmeticsPreview();
+  document.getElementById('cosmeticsMenu').classList.add('visible');
+}
+
+function closeCosmeticsMenu() {
+  document.getElementById('cosmeticsMenu').classList.remove('visible');
+}
+
+function updateCustomizeButtonVisibility() {
+  document.getElementById('customizeBtn').classList.toggle('visible', gameState === 'idle');
 }
 
 function drawDachshund(x, y, legFrame) {
@@ -3009,6 +3228,7 @@ function update(dt) {
 }
 
 function draw() {
+  updateCustomizeButtonVisibility();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.scale(2, 2);
@@ -3366,6 +3586,21 @@ canvas.addEventListener('click', e => {
 });
 
 document.getElementById('nameSubmitBtn').addEventListener('click', submitNameEntry);
+
+document.getElementById('customizeBtn').addEventListener('click', openCosmeticsMenu);
+document.getElementById('cosmeticsDoneBtn').addEventListener('click', closeCosmeticsMenu);
+document.getElementById('cosmeticsTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.cosmetics-tab');
+  if (!tab) return;
+  activeCosmeticTab = tab.dataset.slot;
+  renderCosmeticsTabs();
+  renderCosmeticsGrid();
+});
+document.getElementById('cosmeticsGrid').addEventListener('click', e => {
+  const tile = e.target.closest('.cosmetics-tile');
+  if (!tile) return;
+  selectCosmeticItem(activeCosmeticTab, tile.dataset.itemId);
+});
 
 // --- Global leaderboard controls ---
 document.getElementById('lbSearch').addEventListener('input', e => {
