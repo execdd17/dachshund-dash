@@ -759,22 +759,22 @@ const cosmeticImageById = { hat: {}, sunglasses: {}, clothes: {} };
 let equipped = { hat: null, sunglasses: null, clothes: null };
 
 // Where the dog's head is in each pose, in the same local 512x1024 sprite-pixel
-// space as the base dachshund frames. Seed values only -- Task 3 tunes every
-// number here live against the actual game rendering, so treat these as rough
-// starting points, not final positions.
+// space as the base dachshund frames. Live-calibrated in Task 3 against the
+// actual running game (screenshots + a static-render harness reproducing the
+// exact drawCosmeticOverlay math), per pose and sub-frame.
 const HEAD_ANCHORS = {
-  run:        [{ x: 340, y: 400, angle: -6 },  { x: 345, y: 390, angle: -3 },  { x: 335, y: 405, angle: -8 }],
-  jump:       [{ x: 330, y: 380, angle: -10 }, { x: 340, y: 400, angle: -5 },  { x: 345, y: 420, angle: 0 }],
-  doublejump: [{ x: 300, y: 380, angle: -30 }, { x: 300, y: 420, angle: -150 }], // index 2 reuses jump[2], see getHeadAnchor
-  slide:      [{ x: 380, y: 440, angle: -4 },  { x: 385, y: 445, angle: -2 },  { x: 380, y: 440, angle: -4 }],
-  bite:       [{ x: 340, y: 400, angle: -6 },  { x: 345, y: 390, angle: -3 },  { x: 335, y: 405, angle: -8 }],
+  run:        [{ x: 340, y: 400, angle: -6 },  { x: 338, y: 392, angle: -3 },  { x: 288, y: 400, angle: -8 }],
+  jump:       [{ x: 353, y: 330, angle: -15 }, { x: 343, y: 357, angle: -8 }, { x: 278, y: 387, angle: -3 }],
+  doublejump: [{ x: 418, y: 482, angle: 20 },  { x: 313, y: 482, angle: -150 }], // index 2 reuses jump[2], see getHeadAnchor
+  slide:      [{ x: 343, y: 462, angle: -4 },  { x: 318, y: 477, angle: -2 },  { x: 303, y: 482, angle: -4 }],
+  bite:       [{ x: 338, y: 467, angle: -6 },  { x: 263, y: 367, angle: -25 }, { x: 343, y: 532, angle: -6 }],
 };
 
 // Per-slot fine-tune relative to the shared head anchor above (hat sits above
-// the crown, sunglasses sit at eye level).
+// the crown, sunglasses sit at eye level). Live-calibrated in Task 3.
 const SLOT_ANCHOR_OFFSET = {
-  hat:        { dx: 0, dy: -34, angleOffset: 0, scale: 1.0 },
-  sunglasses: { dx: 0, dy: -6,  angleOffset: 0, scale: 0.8 },
+  hat:        { dx: 0,  dy: -42, angleOffset: 0, scale: 0.35 },
+  sunglasses: { dx: 12, dy: 38,  angleOffset: 0, scale: 0.20 },
 };
 
 // anim/frameIdx here use the exact same values as getDogSpriteAnim()/dogSpriteFrame
