@@ -598,7 +598,9 @@ const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
 const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
+const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
 let dogSpritesReady = false;
+let hatEnabled = false;
 
 // --- Cosmetics (extensible: hat / sunglasses / clothes slots, stack together) ---
 const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
