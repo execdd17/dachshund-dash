@@ -423,6 +423,32 @@ function saveHighScores(scores) {
   } catch (_) {}
 }
 
+// --- Equipped cosmetics (localStorage) ---
+const EQUIPPED_COSMETICS_KEY = 'dachshundDashEquippedCosmetics';
+
+function loadEquippedCosmetics() {
+  const fallback = { hat: null, sunglasses: null, clothes: null };
+  try {
+    const raw = localStorage.getItem(EQUIPPED_COSMETICS_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return fallback;
+    const result = { ...fallback };
+    COSMETIC_SLOTS.forEach(slot => {
+      if (typeof parsed[slot] === 'string') result[slot] = parsed[slot];
+    });
+    return result;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveEquippedCosmetics(state) {
+  try {
+    localStorage.setItem(EQUIPPED_COSMETICS_KEY, JSON.stringify(state));
+  } catch (_) {}
+}
+
 function addToHighScores(name, scoreVal) {
   const n = (name || '').trim() || 'Player';
   const displayName = n.slice(0, 12).toUpperCase();
@@ -572,9 +598,18 @@ const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
 const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
 let dogSpritesReady = false;
-let hatEnabled = false;
+
+// --- Cosmetics (extensible: hat / sunglasses / clothes slots, stack together) ---
+const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
+const COSMETIC_DRAW_ORDER = ['clothes', 'sunglasses', 'hat']; // back-to-front compositing order
+const COSMETIC_DEFS = {
+  hat: [],
+  sunglasses: [],
+  clothes: [],
+};
+const cosmeticSpritesById = { hat: {}, sunglasses: {}, clothes: {} };
+let equipped = { hat: null, sunglasses: null, clothes: null };
 
 function loadDogSprites() {
   const runPaths = ['png/dachshund/dachshund_run_00.png', 'png/dachshund/dachshund_run_01.png', 'png/dachshund/dachshund_run_02.png'];
@@ -615,26 +650,34 @@ function loadDogSprites() {
   biteSheet.src = 'png/dachshund/bite_3_image_sequence.png';
   dogSprites.bite = [biteSheet];
 
-  // Hat variant sprites
-  const hatDir = 'png/hats/Purple Wizard Hat';
-  const hatAnimPaths = {
-    run: [`${hatDir}/dachshund_run_00.png`, `${hatDir}/dachshund_run_01.png`, `${hatDir}/dachshund_run_02.png`],
-    slide: [`${hatDir}/dachshund_pancake_00.png`, `${hatDir}/dachshund_pancake_01.png`, `${hatDir}/dachshund_pancake_02.png`],
-    jump: [`${hatDir}/dachshund_jump_00.png`, `${hatDir}/dachshund_jump_01.png`, `${hatDir}/dachshund_jump_02.png`],
-    doublejump: [`${hatDir}/dachshund_flip_00.png`, `${hatDir}/dachshund_flip_01.png`, `${hatDir}/dachshund_flip_02.png`],
-  };
-  Object.entries(hatAnimPaths).forEach(([key, paths]) => {
-    paths.forEach((path, i) => {
-      const img = new Image();
-      img.src = path;
-      hatSprites[key][i] = img;
+  // Cosmetic overlay sprites: same animation set/filenames as the base dog,
+  // loaded per item. COSMETIC_DEFS starts empty per slot, so this is a no-op
+  // until real items are added.
+  const cosmeticAnimKeys = ['run', 'slide', 'jump', 'doublejump'];
+  COSMETIC_SLOTS.forEach(slot => {
+    COSMETIC_DEFS[slot].forEach(item => {
+      const sprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
+      const animPaths = {
+        run: [`${item.dir}/dachshund_run_00.png`, `${item.dir}/dachshund_run_01.png`, `${item.dir}/dachshund_run_02.png`],
+        slide: [`${item.dir}/dachshund_pancake_00.png`, `${item.dir}/dachshund_pancake_01.png`, `${item.dir}/dachshund_pancake_02.png`],
+        jump: [`${item.dir}/dachshund_jump_00.png`, `${item.dir}/dachshund_jump_01.png`, `${item.dir}/dachshund_jump_02.png`],
+        doublejump: [`${item.dir}/dachshund_flip_00.png`, `${item.dir}/dachshund_flip_01.png`, `${item.dir}/dachshund_flip_02.png`],
+      };
+      cosmeticAnimKeys.forEach(key => {
+        animPaths[key].forEach((path, i) => {
+          const img = new Image();
+          img.src = path;
+          sprites[key][i] = img;
+        });
+      });
+      sprites.idle = sprites.run.slice(0, 1);
+      sprites.dead = sprites.run.slice(0, 1);
+      const biteSheet = new Image();
+      biteSheet.src = `${item.dir}/bite_3_image_sequence.png`;
+      sprites.bite = [biteSheet];
+      cosmeticSpritesById[slot][item.id] = sprites;
     });
   });
-  hatSprites.idle = hatSprites.run.slice(0, 1);
-  hatSprites.dead = hatSprites.run.slice(0, 1);
-  const hatBiteSheet = new Image();
-  hatBiteSheet.src = `${hatDir}/bite_3_image_sequence.png`;
-  hatSprites.bite = [hatBiteSheet];
 }
 loadDogSprites();
 
@@ -3318,6 +3361,7 @@ document.getElementById('lbNext').addEventListener('click', () => {
 
 // --- Start ---
 highScores = loadHighScores();
+equipped = loadEquippedCosmetics();
 highScore = highScores[0]?.score ?? 0;
 renderHtmlLeaderboard();
 fetchGlobalScores();
