@@ -745,14 +745,46 @@ let dogSpritesReady = false;
 
 // --- Cosmetics (extensible: hat / sunglasses / clothes slots, stack together) ---
 const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
-const COSMETIC_DRAW_ORDER = ['clothes', 'sunglasses', 'hat']; // back-to-front compositing order
+const COSMETIC_DRAW_ORDER = ['clothes', 'hat', 'sunglasses']; // back-to-front compositing order
 const COSMETIC_DEFS = {
-  hat: [],
-  sunglasses: [],
+  hat: [
+    { id: 'wizard', name: 'Wizard Hat', image: 'png/hats/Purple Wizard Hat/pixel-art-purple-hat-free-png.png' },
+  ],
+  sunglasses: [
+    { id: 'aviator', name: 'Aviators', image: 'png/sunglasses/aviator.png' },
+  ],
   clothes: [],
 };
-const cosmeticSpritesById = { hat: {}, sunglasses: {}, clothes: {} };
+const cosmeticImageById = { hat: {}, sunglasses: {}, clothes: {} };
 let equipped = { hat: null, sunglasses: null, clothes: null };
+
+// Where the dog's head is in each pose, in the same local 512x1024 sprite-pixel
+// space as the base dachshund frames. Seed values only -- Task 3 tunes every
+// number here live against the actual game rendering, so treat these as rough
+// starting points, not final positions.
+const HEAD_ANCHORS = {
+  run:        [{ x: 340, y: 400, angle: -6 },  { x: 345, y: 390, angle: -3 },  { x: 335, y: 405, angle: -8 }],
+  jump:       [{ x: 330, y: 380, angle: -10 }, { x: 340, y: 400, angle: -5 },  { x: 345, y: 420, angle: 0 }],
+  doublejump: [{ x: 300, y: 380, angle: -30 }, { x: 300, y: 420, angle: -150 }], // index 2 reuses jump[2], see getHeadAnchor
+  slide:      [{ x: 380, y: 440, angle: -4 },  { x: 385, y: 445, angle: -2 },  { x: 380, y: 440, angle: -4 }],
+  bite:       [{ x: 340, y: 400, angle: -6 },  { x: 345, y: 390, angle: -3 },  { x: 335, y: 405, angle: -8 }],
+};
+
+// Per-slot fine-tune relative to the shared head anchor above (hat sits above
+// the crown, sunglasses sit at eye level).
+const SLOT_ANCHOR_OFFSET = {
+  hat:        { dx: 0, dy: -34, angleOffset: 0, scale: 1.0 },
+  sunglasses: { dx: 0, dy: -6,  angleOffset: 0, scale: 0.8 },
+};
+
+// anim/frameIdx here use the exact same values as getDogSpriteAnim()/dogSpriteFrame
+// (or getDogJumpFrameIndex() for jump/doublejump) that drawDachshundSprite already computes.
+function getHeadAnchor(anim, frameIdx) {
+  if (anim === 'idle' || anim === 'dead') return HEAD_ANCHORS.run[0];
+  if (anim === 'doublejump' && frameIdx === 2) return HEAD_ANCHORS.jump[2];
+  const frames = HEAD_ANCHORS[anim];
+  return frames[frameIdx % frames.length];
+}
 
 function loadDogSprites() {
   const runPaths = ['png/dachshund/dachshund_run_00.png', 'png/dachshund/dachshund_run_01.png', 'png/dachshund/dachshund_run_02.png'];
@@ -793,32 +825,13 @@ function loadDogSprites() {
   biteSheet.src = 'png/dachshund/bite_3_image_sequence.png';
   dogSprites.bite = [biteSheet];
 
-  // Cosmetic overlay sprites: same animation set/filenames as the base dog,
-  // loaded per item. COSMETIC_DEFS starts empty per slot, so this is a no-op
-  // until real items are added.
-  const cosmeticAnimKeys = ['run', 'slide', 'jump', 'doublejump'];
+  // Cosmetic overlay images: one isolated image per item, positioned at render
+  // time via HEAD_ANCHORS + SLOT_ANCHOR_OFFSET (see getHeadAnchor / drawCosmeticOverlay).
   COSMETIC_SLOTS.forEach(slot => {
     COSMETIC_DEFS[slot].forEach(item => {
-      const sprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-      const animPaths = {
-        run: [`${item.dir}/dachshund_run_00.png`, `${item.dir}/dachshund_run_01.png`, `${item.dir}/dachshund_run_02.png`],
-        slide: [`${item.dir}/dachshund_pancake_00.png`, `${item.dir}/dachshund_pancake_01.png`, `${item.dir}/dachshund_pancake_02.png`],
-        jump: [`${item.dir}/dachshund_jump_00.png`, `${item.dir}/dachshund_jump_01.png`, `${item.dir}/dachshund_jump_02.png`],
-        doublejump: [`${item.dir}/dachshund_flip_00.png`, `${item.dir}/dachshund_flip_01.png`, `${item.dir}/dachshund_flip_02.png`],
-      };
-      cosmeticAnimKeys.forEach(key => {
-        animPaths[key].forEach((path, i) => {
-          const img = new Image();
-          img.src = path;
-          sprites[key][i] = img;
-        });
-      });
-      sprites.idle = sprites.run.slice(0, 1);
-      sprites.dead = sprites.run.slice(0, 1);
-      const biteSheet = new Image();
-      biteSheet.src = `${item.dir}/bite_3_image_sequence.png`;
-      sprites.bite = [biteSheet];
-      cosmeticSpritesById[slot][item.id] = sprites;
+      const img = new Image();
+      img.src = item.image;
+      cosmeticImageById[slot][item.id] = img;
     });
   });
 }
@@ -1263,6 +1276,23 @@ function drawSpriteSheetLayer(targetCtx, sheet, frameIdx, anchorX, groundY, scal
   targetCtx.drawImage(sheet, sx, 0, frameW, frameH, dx, dy, dw, dh);
 }
 
+function drawCosmeticOverlay(targetCtx, img, anchor, offset, anchorX, groundY, scale, groundOffset) {
+  if (!img || !img.complete || !img.naturalWidth) return;
+  const dw = 512 * scale, dh = 1024 * scale;
+  const dx = anchorX - dw / 2;
+  const dy = groundY - dh + groundOffset;
+  const px = dx + (anchor.x + offset.dx) * scale;
+  const py = dy + (anchor.y + offset.dy) * scale;
+  const angleRad = (anchor.angle + offset.angleOffset) * Math.PI / 180;
+  const iw = img.naturalWidth * scale * offset.scale;
+  const ih = img.naturalHeight * scale * offset.scale;
+  targetCtx.save();
+  targetCtx.translate(px, py);
+  targetCtx.rotate(angleRad);
+  targetCtx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+  targetCtx.restore();
+}
+
 function drawDachshundSprite(x, y) {
   const anim = getDogSpriteAnim();
   const anchorX = x + dog.width * DOG_SPRITE_ANCHOR;
@@ -1274,9 +1304,10 @@ function drawDachshundSprite(x, y) {
     drawSpriteSheetLayer(ctx, sheet, dogSpriteFrame, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
     COSMETIC_DRAW_ORDER.forEach(slot => {
       const itemId = equipped[slot];
-      const itemSprites = itemId && cosmeticSpritesById[slot][itemId];
-      const overlaySheet = itemSprites && itemSprites.bite && itemSprites.bite[0];
-      if (overlaySheet) drawSpriteSheetLayer(ctx, overlaySheet, dogSpriteFrame, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+      if (!itemId) return;
+      const img = cosmeticImageById[slot][itemId];
+      const anchor = getHeadAnchor('bite', dogSpriteFrame);
+      drawCosmeticOverlay(ctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
     });
     return true;
   }
@@ -1290,14 +1321,9 @@ function drawDachshundSprite(x, y) {
   COSMETIC_DRAW_ORDER.forEach(slot => {
     const itemId = equipped[slot];
     if (!itemId) return;
-    const itemSprites = cosmeticSpritesById[slot][itemId];
-    if (!itemSprites) return;
-    const overlayFrames = itemSprites[anim];
-    if (!overlayFrames || overlayFrames.length === 0) return;
-    const overlayImg = (anim === 'doublejump' && frameIdx === 2)
-      ? (itemSprites.jump[2] || null)
-      : overlayFrames[frameIdx % overlayFrames.length];
-    drawSpriteFrameLayer(ctx, overlayImg, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    const img = cosmeticImageById[slot][itemId];
+    const anchor = getHeadAnchor(anim, frameIdx);
+    drawCosmeticOverlay(ctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   });
 
   return true;
@@ -1347,12 +1373,12 @@ function renderCosmeticsPreview() {
   const anchorX = canvas.width / 2;
   const groundY = canvas.height - 40;
   drawSpriteFrameLayer(pctx, dogSprites.idle[0], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+  const anchor = getHeadAnchor('idle', 0);
   COSMETIC_DRAW_ORDER.forEach(slot => {
     const itemId = equipped[slot];
     if (!itemId) return;
-    const itemSprites = cosmeticSpritesById[slot][itemId];
-    const overlayImg = itemSprites && itemSprites.idle && itemSprites.idle[0];
-    if (overlayImg) drawSpriteFrameLayer(pctx, overlayImg, anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    const img = cosmeticImageById[slot][itemId];
+    drawCosmeticOverlay(pctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   });
 }
 
