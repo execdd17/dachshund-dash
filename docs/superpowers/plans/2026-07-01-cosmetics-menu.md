@@ -31,22 +31,13 @@
 - Produces: `COSMETIC_SLOTS` (array of slot id strings in menu-tab order, `['hat', 'sunglasses', 'clothes']`), `COSMETIC_DRAW_ORDER` (array of the same slot ids in back-to-front render order, `['clothes', 'sunglasses', 'hat']`), `COSMETIC_DEFS` (object keyed by slot → array of `{ id, name, dir, thumbnail }`), `cosmeticSpritesById` (object keyed by slot → itemId → `{ idle, run, jump, slide, fall, dead, doublejump, bite }` frame arrays, same shape as `dogSprites`), `equipped` (mutable object `{ hat, sunglasses, clothes }`, each `string | null`), `loadEquippedCosmetics()` (returns `equipped`-shaped object), `saveEquippedCosmetics(state)` (persists it).
 - Consumes: nothing new from other tasks (this is the foundation task).
 
-- [ ] **Step 1: Replace `hatSprites`/`hatEnabled` with the cosmetics data model**
+- [ ] **Step 1: Add the cosmetics data model alongside the existing hat state**
 
-In `index.html`, replace lines 574-577:
+`hatSprites`/`hatEnabled` are still read by `drawDachshundSprite()` and the `KeyH` handler until Task 2 rewrites them — do not delete the declarations yet, or the game will crash on the next frame with `ReferenceError: hatEnabled is not defined`. This step only adds the new model alongside the old one; Task 2 removes the old declarations once their last consumers are migrated.
 
-```js
-const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-let dogSpritesReady = false;
-let hatEnabled = false;
-```
-
-with:
+In `index.html`, immediately after line 577 (`let hatEnabled = false;`), insert:
 
 ```js
-const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-let dogSpritesReady = false;
 
 // --- Cosmetics (extensible: hat / sunglasses / clothes slots, stack together) ---
 const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
@@ -59,6 +50,8 @@ const COSMETIC_DEFS = {
 const cosmeticSpritesById = { hat: {}, sunglasses: {}, clothes: {} };
 let equipped = { hat: null, sunglasses: null, clothes: null };
 ```
+
+Leave the pre-existing lines 574-577 (`dogSprites`, `hatSprites`, `dogSpritesReady`, `hatEnabled`) untouched.
 
 - [ ] **Step 2: Replace the hardcoded hat-loading block with a generic loader**
 
@@ -164,6 +157,7 @@ git commit -m "Add extensible cosmetics data model and persistence"
 **Files:**
 - Modify: `index.html:1061-1097` (`drawDachshundSprite`, plus two new helper functions immediately before it)
 - Modify: `index.html:3229-3232` (`KeyH` debug hotkey handler)
+- Modify: `index.html` (delete the now-dead `hatSprites`/`hatEnabled` declarations that Task 1 deliberately left in place — see Step 4)
 
 **Interfaces:**
 - Consumes: `COSMETIC_DRAW_ORDER`, `cosmeticSpritesById`, `equipped`, `COSMETIC_DEFS` (from Task 1); `saveEquippedCosmetics` (from Task 1).
@@ -262,13 +256,24 @@ with:
   }
 ```
 
-- [ ] **Step 4: Verify rendering is unchanged and the hotkey is a harmless no-op**
+- [ ] **Step 4: Delete the now-dead `hatSprites`/`hatEnabled` declarations**
+
+After Steps 2 and 3, nothing in `index.html` reads `hatSprites` or `hatEnabled` anymore (Task 1 left them declared-but-unpopulated specifically so Task 2 could retire them once their last consumers were migrated). Find and delete these two lines (they sit right after `let dogSpritesReady = false;` and immediately before the `// --- Cosmetics` comment):
+
+```js
+const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
+let hatEnabled = false;
+```
+
+Confirm via `grep -n "hatSprites\|hatEnabled" index.html` that no references remain anywhere in the file.
+
+- [ ] **Step 5: Verify rendering is unchanged and the hotkey is a harmless no-op**
 
 Run: `python3 -m http.server 8000`, open `http://localhost:8000/`.
 
 Expected: play through idle, running, jumping, double-jumping, ducking, giant mode (press `G` to spawn a golden hot dog, or use existing debug keys), and death — the dog's visuals are pixel-identical to before this task (no cosmetics are equipped, so no overlays draw). Press `H`: no visual change and no console errors (expected, since `COSMETIC_DEFS.hat` is still empty — `equipped.hat` toggles between `null` and `null`).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add index.html
