@@ -598,9 +598,7 @@ const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
 const dogSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
-const hatSprites = { idle: [], run: [], jump: [], slide: [], fall: [], dead: [], doublejump: [], bite: [] };
 let dogSpritesReady = false;
-let hatEnabled = false;
 
 // --- Cosmetics (extensible: hat / sunglasses / clothes slots, stack together) ---
 const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
@@ -1103,41 +1101,62 @@ function getTimeOfDay() {
 //  DRAWING: DACHSHUND (PNG sprites only)
 // ============================================================
 
+function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, groundOffset) {
+  if (!img || !img.complete || !img.naturalWidth) return;
+  const sw = img.naturalWidth, sh = img.naturalHeight;
+  const dw = sw * scale, dh = sh * scale;
+  const dx = anchorX - dw / 2;
+  const dy = groundY - dh + groundOffset;
+  targetCtx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+}
+
+function drawSpriteSheetLayer(targetCtx, sheet, frameIdx, anchorX, groundY, scale, groundOffset) {
+  if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+  const frameW = 512, frameH = 1024;
+  const dw = frameW * scale, dh = frameH * scale;
+  const dx = anchorX - dw / 2;
+  const dy = groundY - dh + groundOffset;
+  const sx = (frameIdx % 3) * frameW;
+  targetCtx.drawImage(sheet, sx, 0, frameW, frameH, dx, dy, dw, dh);
+}
+
 function drawDachshundSprite(x, y) {
   const anim = getDogSpriteAnim();
+  const anchorX = x + dog.width * DOG_SPRITE_ANCHOR;
 
   // Bite animation: 3-frame horizontal sprite sheet, source-rect slicing
   if (anim === 'bite' && dogSprites.bite && dogSprites.bite[0]) {
-    const sheet = (hatEnabled && hatSprites.bite?.[0]?.complete && hatSprites.bite[0].naturalWidth) ? hatSprites.bite[0] : dogSprites.bite[0];
+    const sheet = dogSprites.bite[0];
     if (!sheet.complete || !sheet.naturalWidth) return false;
-    const frameW = 512;
-    const frameH = 1024;
-    const frameIdx = dogSpriteFrame % 3;
-    const sx = frameIdx * frameW;
-    const dw = frameW * DOG_SPRITE_SCALE;
-    const dh = frameH * DOG_SPRITE_SCALE;
-    const anchorX = dog.width * DOG_SPRITE_ANCHOR;
-    const dx = x + anchorX - dw / 2;
-    const dy = y - dh + DOG_SPRITE_GROUND_OFFSET;
-    ctx.drawImage(sheet, sx, 0, frameW, frameH, dx, dy, dw, dh);
+    drawSpriteSheetLayer(ctx, sheet, dogSpriteFrame, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    COSMETIC_DRAW_ORDER.forEach(slot => {
+      const itemId = equipped[slot];
+      const itemSprites = itemId && cosmeticSpritesById[slot][itemId];
+      const overlaySheet = itemSprites && itemSprites.bite && itemSprites.bite[0];
+      if (overlaySheet) drawSpriteSheetLayer(ctx, overlaySheet, dogSpriteFrame, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    });
     return true;
   }
 
-  const useHat = hatEnabled && hatSprites[anim] && hatSprites[anim].length > 0;
-  const frames = useHat ? hatSprites[anim] : dogSprites[anim];
-  const frameIdx = (anim === 'jump' || anim === 'doublejump') ? getDogJumpFrameIndex() : (dogSpriteFrame % (frames?.length || 1));
-  const img = (anim === 'doublejump' && frameIdx === 2)
-    ? ((useHat && hatSprites.jump?.[2]) || dogSprites.jump[2])
-    : (frames && frames[frameIdx]);
-  if (!img || !img.complete || !img.naturalWidth) return false;
-  const sw = img.naturalWidth;
-  const sh = img.naturalHeight;
-  const dw = sw * DOG_SPRITE_SCALE;
-  const dh = sh * DOG_SPRITE_SCALE;
-  const anchorX = dog.width * DOG_SPRITE_ANCHOR;
-  const dx = x + anchorX - dw / 2;
-  const dy = y - dh + DOG_SPRITE_GROUND_OFFSET;
-  ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+  const baseFrames = dogSprites[anim];
+  const frameIdx = (anim === 'jump' || anim === 'doublejump') ? getDogJumpFrameIndex() : (dogSpriteFrame % (baseFrames?.length || 1));
+  const baseImg = (anim === 'doublejump' && frameIdx === 2) ? dogSprites.jump[2] : (baseFrames && baseFrames[frameIdx]);
+  if (!baseImg || !baseImg.complete || !baseImg.naturalWidth) return false;
+  drawSpriteFrameLayer(ctx, baseImg, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+
+  COSMETIC_DRAW_ORDER.forEach(slot => {
+    const itemId = equipped[slot];
+    if (!itemId) return;
+    const itemSprites = cosmeticSpritesById[slot][itemId];
+    if (!itemSprites) return;
+    const overlayFrames = itemSprites[anim];
+    if (!overlayFrames || overlayFrames.length === 0) return;
+    const overlayImg = (anim === 'doublejump' && frameIdx === 2)
+      ? (itemSprites.jump[2] || null)
+      : overlayFrames[frameIdx % overlayFrames.length];
+    drawSpriteFrameLayer(ctx, overlayImg, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+  });
+
   return true;
 }
 
@@ -3273,7 +3292,9 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyH') {
     e.preventDefault();
-    hatEnabled = !hatEnabled;
+    const defaultHatId = COSMETIC_DEFS.hat[0]?.id ?? null;
+    equipped.hat = equipped.hat ? null : defaultHatId;
+    saveEquippedCosmetics(equipped);
   }
   // Debug: C = trigger squirrel chase (when running)
   if (e.code === 'KeyC' && gameState === 'running' && !chaseActive && !chaseEntering && !chaseEscaping) {
