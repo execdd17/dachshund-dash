@@ -3498,6 +3498,8 @@ document.addEventListener('keydown', e => {
   }
   // Don't capture keys when typing in the search box
   if (document.activeElement && document.activeElement.id === 'lbSearch') return;
+  // Don't capture keys while the cosmetics menu is open
+  if (document.getElementById('cosmeticsMenu').classList.contains('visible')) return;
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
     jump();
