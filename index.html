@@ -1360,7 +1360,7 @@ function renderCosmeticsGrid() {
     const tile = document.createElement('div');
     tile.className = 'cosmetics-tile' + (equipped[activeCosmeticTab] === item.id ? ' selected' : '');
     tile.dataset.itemId = item.id;
-    tile.innerHTML = `<div class="cosmetics-tile-icon"><img src="${item.thumbnail}" alt="${item.name}"></div><div class="cosmetics-tile-label">${item.name}</div>`;
+    tile.innerHTML = `<div class="cosmetics-tile-icon"><img src="${item.image}" alt="${item.name}"></div><div class="cosmetics-tile-label">${item.name}</div>`;
     gridEl.appendChild(tile);
   });
 }
