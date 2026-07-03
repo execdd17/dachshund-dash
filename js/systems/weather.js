@@ -1,0 +1,45 @@
+// Weather: rain rolls happen on dawn→day and sunset→night transitions.
+
+import { W, H } from '../config.js';
+import { getTimeOfDay } from '../core/timeOfDay.js';
+
+export function initRain(state, rng = Math.random) {
+  state.rainDrops = [];
+  for (let i = 0; i < 120; i++) {
+    state.rainDrops.push({
+      x: rng() * W,
+      y: rng() * H,
+      speed: 4 + rng() * 3,
+      length: 4 + rng() * 4,
+      opacity: 0.2 + rng() * 0.3,
+    });
+  }
+}
+
+// Advance raindrop positions. weatherScale is fixed-speed (independent of
+// game speed / slow mode).
+export function updateRain(state, weatherScale, rng = Math.random) {
+  if (!state.weatherRain) return;
+  state.rainDrops.forEach(d => {
+    d.y += d.speed * weatherScale;
+    d.x -= 0.5 * weatherScale;
+    if (d.y > H) { d.y = -d.length; d.x = rng() * W; }
+    if (d.x < 0) d.x += W;
+  });
+}
+
+// Check for day/night stage transitions and roll for rain (25% chance).
+export function rollWeatherOnStageChange(state, rng = Math.random) {
+  const currentStage = getTimeOfDay(state.score).stage;
+  if (currentStage !== state.lastTimeStage) {
+    if ((currentStage === 'day' || currentStage === 'night') &&
+        (state.lastTimeStage === 'dawn' || state.lastTimeStage === 'sunset')) {
+      if (rng() < 0.25) {
+        if (!state.weatherRain) { state.weatherRain = true; initRain(state, rng); }
+      } else {
+        if (state.weatherRain) { state.weatherRain = false; state.rainDrops = []; }
+      }
+    }
+    state.lastTimeStage = currentStage;
+  }
+}

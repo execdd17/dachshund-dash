@@ -1,0 +1,103 @@
+// Cosmetics menu overlay (DOM): tabs per slot, item grid, live preview of
+// the idle dog wearing the equipped items.
+
+import { DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET } from '../config.js';
+import {
+  COSMETIC_SLOTS, COSMETIC_DRAW_ORDER, COSMETIC_SLOT_LABELS, COSMETIC_DEFS,
+  SLOT_ANCHOR_OFFSET, getHeadAnchor,
+} from './cosmetics.js';
+import { drawSpriteFrameLayer, drawCosmeticOverlay } from '../render/actors.js';
+
+export function createCosmeticsMenu(cosmetics, sprites, state) {
+  let activeTab = COSMETIC_SLOTS[0];
+
+  function renderTabs() {
+    const tabsEl = document.getElementById('cosmeticsTabs');
+    tabsEl.innerHTML = '';
+    COSMETIC_SLOTS.forEach(slot => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'cosmetics-tab' + (slot === activeTab ? ' active' : '');
+      tab.textContent = COSMETIC_SLOT_LABELS[slot];
+      tab.dataset.slot = slot;
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  function renderGrid() {
+    const gridEl = document.getElementById('cosmeticsGrid');
+    gridEl.innerHTML = '';
+
+    const noneTile = document.createElement('div');
+    noneTile.className = 'cosmetics-tile' + (cosmetics.equipped[activeTab] === null ? ' selected' : '');
+    noneTile.dataset.itemId = '';
+    noneTile.innerHTML = '<div class="cosmetics-tile-none">&empty;</div><div class="cosmetics-tile-label">None</div>';
+    gridEl.appendChild(noneTile);
+
+    COSMETIC_DEFS[activeTab].forEach(item => {
+      const tile = document.createElement('div');
+      tile.className = 'cosmetics-tile' + (cosmetics.equipped[activeTab] === item.id ? ' selected' : '');
+      tile.dataset.itemId = item.id;
+      tile.innerHTML = `<div class="cosmetics-tile-icon"><img src="${item.image}" alt="${item.name}"></div><div class="cosmetics-tile-label">${item.name}</div>`;
+      gridEl.appendChild(tile);
+    });
+  }
+
+  function renderPreview() {
+    const canvas = document.getElementById('cosmeticsPreviewCanvas');
+    const pctx = canvas.getContext('2d');
+    pctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!sprites.dogSpritesReady) return;
+    const anchorX = canvas.width / 2;
+    const groundY = canvas.height - 40;
+    drawSpriteFrameLayer(pctx, sprites.dogSprites.idle[0], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    const anchor = getHeadAnchor('idle', 0);
+    COSMETIC_DRAW_ORDER.forEach(slot => {
+      const itemId = cosmetics.equipped[slot];
+      if (!itemId) return;
+      const img = cosmetics.imageById[slot][itemId];
+      drawCosmeticOverlay(pctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    });
+  }
+
+  function open() {
+    activeTab = COSMETIC_SLOTS[0];
+    renderTabs();
+    renderGrid();
+    renderPreview();
+    document.getElementById('cosmeticsMenu').classList.add('visible');
+  }
+
+  function close() {
+    document.getElementById('cosmeticsMenu').classList.remove('visible');
+  }
+
+  function isOpen() {
+    return document.getElementById('cosmeticsMenu').classList.contains('visible');
+  }
+
+  function updateCustomizeButtonVisibility() {
+    document.getElementById('customizeBtn').classList.toggle('visible', state.gameState === 'idle');
+  }
+
+  function wireControls() {
+    document.getElementById('customizeBtn').addEventListener('click', open);
+    document.getElementById('cosmeticsDoneBtn').addEventListener('click', close);
+    document.getElementById('cosmeticsTabs').addEventListener('click', e => {
+      const tab = e.target.closest('.cosmetics-tab');
+      if (!tab) return;
+      activeTab = tab.dataset.slot;
+      renderTabs();
+      renderGrid();
+    });
+    document.getElementById('cosmeticsGrid').addEventListener('click', e => {
+      const tile = e.target.closest('.cosmetics-tile');
+      if (!tile) return;
+      cosmetics.select(activeTab, tile.dataset.itemId);
+      renderGrid();
+      renderPreview();
+    });
+  }
+
+  return { open, close, isOpen, updateCustomizeButtonVisibility, wireControls };
+}

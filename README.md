@@ -27,7 +27,28 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 
 ## Run It Locally
 
-Clone the repo and open `index.html` in any browser. No build step, no dependencies, no framework.
+Clone the repo and serve it with any static file server — the game uses native ES modules, which browsers won't load from `file://`:
+
+```bash
+python3 -m http.server 8000   # then visit http://localhost:8000
+```
+
+No build step, no dependencies, no framework.
+
+## Run the Tests
+
+The game logic has a unit test suite that runs on Node's built-in test runner (Node 18+, no packages to install):
+
+```bash
+npm test          # or: node --test tests/*.test.js
+```
+
+## Code Layout
+
+- `index.html` — thin HTML shell
+- `css/style.css` — all styles
+- `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, chase/boss/giant modes), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
+- `tests/` — unit tests for the game logic
 
 ## Controls
 

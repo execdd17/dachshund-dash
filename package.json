@@ -1,0 +1,11 @@
+{
+  "name": "dachshund-dash",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pixel-art endless runner starring a dachshund. Static site — no build step; package.json exists only to run the unit tests.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "serve": "python3 -m http.server 8000"
+  }
+}
