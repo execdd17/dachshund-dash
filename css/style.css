@@ -260,12 +260,13 @@
     background: #eaf6ff;
     border: 2px solid #cde;
     border-radius: 6px;
-    height: 110px;
+    padding: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 12px;
   }
+  #cosmeticsPreviewCanvas { display: block; }
   .cosmetics-tabs {
     display: flex;
     gap: 4px;

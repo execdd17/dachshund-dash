@@ -1,7 +1,7 @@
 // Cosmetics menu overlay (DOM): tabs per slot, item grid, live preview of
 // the idle dog wearing the equipped items.
 
-import { DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET } from '../config.js';
+import { DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET, COSMETICS_PREVIEW_SCALE } from '../config.js';
 import {
   COSMETIC_SLOTS, COSMETIC_DRAW_ORDER, COSMETIC_SLOT_LABELS, COSMETIC_DEFS,
   getItemAnchorOffset, getHeadAnchor,
@@ -48,15 +48,20 @@ export function createCosmeticsMenu(cosmetics, sprites, state) {
     const pctx = canvas.getContext('2d');
     pctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!sprites.dogSpritesReady) return;
+    // groundOffset is in destination pixels, so it scales with the preview size too
+    const scale = DOG_SPRITE_SCALE * COSMETICS_PREVIEW_SCALE;
+    const groundOffset = DOG_SPRITE_GROUND_OFFSET * COSMETICS_PREVIEW_SCALE;
     const anchorX = canvas.width / 2;
-    const groundY = canvas.height - 40;
-    drawSpriteFrameLayer(pctx, sprites.dogSprites.idle[0], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    // The sprite's pixels reach ~28px (at 1x) below the nominal ground line
+    // GROUND_OFFSET was calibrated for, so raise groundY to keep the dog in frame.
+    const groundY = canvas.height - 16 - 28 * COSMETICS_PREVIEW_SCALE;
+    drawSpriteFrameLayer(pctx, sprites.dogSprites.idle[0], anchorX, groundY, scale, groundOffset);
     const anchor = getHeadAnchor('idle', 0);
     COSMETIC_DRAW_ORDER.forEach(slot => {
       const itemId = cosmetics.equipped[slot];
       if (!itemId) return;
       const img = cosmetics.imageById[slot][itemId];
-      drawCosmeticOverlay(pctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+      drawCosmeticOverlay(pctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, groundY, scale, groundOffset);
     });
   }
 

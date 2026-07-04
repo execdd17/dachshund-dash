@@ -58,6 +58,7 @@ export const DOG_SPRITE_FPS = 12;   // 10-14 range: lower = choppier, higher = s
 export const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024
 export const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 export const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
+export const COSMETICS_PREVIEW_SCALE = 2;   // preview dog size vs in-game (2 = golden-hot-dog giant size)
 
 // --- Squirrel sprite animation (PNG from png/squirrel) ---
 export const SQUIRREL_SPRITE_FPS = 12;
