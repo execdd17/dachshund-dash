@@ -7,7 +7,7 @@ import {
   SQUIRREL_SPRITE_SCALE, SQUIRREL_SPRITE_GROUND_OFFSET,
 } from '../config.js';
 import { getDogSpriteAnim, getDogJumpFrameIndex } from '../assets/sprites.js';
-import { COSMETIC_DRAW_ORDER, SLOT_ANCHOR_OFFSET, getHeadAnchor } from '../cosmetics/cosmetics.js';
+import { COSMETIC_DRAW_ORDER, getItemAnchorOffset, getHeadAnchor } from '../cosmetics/cosmetics.js';
 
 export function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, groundOffset) {
   if (!img || !img.complete || !img.naturalWidth) return;
@@ -51,7 +51,7 @@ function drawEquippedCosmetics(ctx, cosmetics, anim, frameIdx, anchorX, y) {
     if (!itemId) return;
     const img = cosmetics.imageById[slot][itemId];
     const anchor = getHeadAnchor(anim, frameIdx);
-    drawCosmeticOverlay(ctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    drawCosmeticOverlay(ctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   });
 }
 

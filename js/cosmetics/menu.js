@@ -4,7 +4,7 @@
 import { DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET } from '../config.js';
 import {
   COSMETIC_SLOTS, COSMETIC_DRAW_ORDER, COSMETIC_SLOT_LABELS, COSMETIC_DEFS,
-  SLOT_ANCHOR_OFFSET, getHeadAnchor,
+  getItemAnchorOffset, getHeadAnchor,
 } from './cosmetics.js';
 import { drawSpriteFrameLayer, drawCosmeticOverlay } from '../render/actors.js';
 
@@ -56,7 +56,7 @@ export function createCosmeticsMenu(cosmetics, sprites, state) {
       const itemId = cosmetics.equipped[slot];
       if (!itemId) return;
       const img = cosmetics.imageById[slot][itemId];
-      drawCosmeticOverlay(pctx, img, anchor, SLOT_ANCHOR_OFFSET[slot], anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+      drawCosmeticOverlay(pctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, groundY, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
     });
   }
 

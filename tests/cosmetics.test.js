@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  COSMETIC_SLOTS, COSMETIC_DEFS, HEAD_ANCHORS, getHeadAnchor,
+  COSMETIC_SLOTS, COSMETIC_DEFS, HEAD_ANCHORS, SLOT_ANCHOR_OFFSET,
+  getHeadAnchor, getItemAnchorOffset,
   loadEquippedCosmetics, saveEquippedCosmetics, createCosmetics,
 } from '../js/cosmetics/cosmetics.js';
 import { EQUIPPED_COSMETICS_KEY } from '../js/config.js';
@@ -61,4 +62,29 @@ test('cosmetics service select() persists and toggleDefaultHat() flips', () => {
 
 test('every slot has a defs entry', () => {
   COSMETIC_SLOTS.forEach(slot => assert.ok(Array.isArray(COSMETIC_DEFS[slot])));
+});
+
+test('getItemAnchorOffset merges per-item overrides onto the slot offset', () => {
+  // aviator has no override: slot offset comes back as-is
+  assert.deepEqual(getItemAnchorOffset('sunglasses', 'aviator'), SLOT_ANCHOR_OFFSET.sunglasses);
+  // heart overrides scale only; dx/dy/angleOffset stay from the slot
+  const heart = getItemAnchorOffset('sunglasses', 'heart');
+  assert.equal(heart.scale, 0.27);
+  assert.equal(heart.dx, SLOT_ANCHOR_OFFSET.sunglasses.dx);
+  assert.equal(heart.dy, SLOT_ANCHOR_OFFSET.sunglasses.dy);
+  // unknown item falls back to the slot offset
+  assert.deepEqual(getItemAnchorOffset('hat', 'nope'), SLOT_ANCHOR_OFFSET.hat);
+});
+
+test('every item has id/name/image and ids are unique within a slot', () => {
+  COSMETIC_SLOTS.forEach(slot => {
+    const ids = new Set();
+    COSMETIC_DEFS[slot].forEach(item => {
+      assert.ok(item.id && typeof item.id === 'string', `${slot} item missing id`);
+      assert.ok(item.name && typeof item.name === 'string', `${slot}/${item.id} missing name`);
+      assert.match(item.image, new RegExp(`^png/`), `${slot}/${item.id} image not under png/`);
+      assert.ok(!ids.has(item.id), `duplicate id ${item.id} in slot ${slot}`);
+      ids.add(item.id);
+    });
+  });
 });

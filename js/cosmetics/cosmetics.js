@@ -14,9 +14,17 @@ export const COSMETIC_SLOT_LABELS = { hat: 'HAT', sunglasses: 'SUNGLASSES', clot
 export const COSMETIC_DEFS = {
   hat: [
     { id: 'wizard', name: 'Wizard Hat', image: 'png/hats/Purple Wizard Hat/pixel-art-purple-hat-free-png.png' },
+    { id: 'tophat', name: 'Top Hat', image: 'png/hats/top-hat.png' },
+    { id: 'cowboy', name: 'Cowboy Hat', image: 'png/hats/cowboy.png' },
+    { id: 'crown', name: 'Crown', image: 'png/hats/crown.png' },
+    { id: 'party', name: 'Party Hat', image: 'png/hats/party.png' },
+    { id: 'beanie', name: 'Beanie', image: 'png/hats/beanie.png' },
   ],
   sunglasses: [
     { id: 'aviator', name: 'Aviators', image: 'png/sunglasses/aviator.png' },
+    { id: 'pixel', name: 'Pixel Shades', image: 'png/sunglasses/pixel.png', offset: { scale: 0.27 } },
+    { id: 'heart', name: 'Heart Glasses', image: 'png/sunglasses/heart.png', offset: { scale: 0.27 } },
+    { id: 'visor', name: 'Sport Visor', image: 'png/sunglasses/visor.png', offset: { scale: 0.27 } },
   ],
   clothes: [],
 };
@@ -37,8 +45,16 @@ export const HEAD_ANCHORS = {
 // the crown, sunglasses sit at eye level). Live-calibrated.
 export const SLOT_ANCHOR_OFFSET = {
   hat:        { dx: 0,  dy: -38, angleOffset: 0, scale: 0.68 },
-  sunglasses: { dx: 12, dy: 38,  angleOffset: 0, scale: 0.20 },
+  sunglasses: { dx: 50, dy: 38,  angleOffset: 0, scale: 0.20 },
 };
+
+// Slot offset with any per-item `offset` fine-tune merged on top (an item's
+// art may need a different scale or nudge than the slot default).
+export function getItemAnchorOffset(slot, itemId) {
+  const base = SLOT_ANCHOR_OFFSET[slot];
+  const item = COSMETIC_DEFS[slot]?.find(i => i.id === itemId);
+  return item?.offset ? { ...base, ...item.offset } : base;
+}
 
 // anim/frameIdx use the exact same values as getDogSpriteAnim()/dogSpriteFrame
 // (or getDogJumpFrameIndex() for jump/doublejump) that drawDachshundSprite computes.
