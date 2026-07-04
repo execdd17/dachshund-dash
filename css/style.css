@@ -208,7 +208,7 @@
     padding: 16px;
   }
 
-  /* --- Customize button (idle screen only) --- */
+  /* --- Customize button (idle & game-over screens) --- */
   #customizeBtn {
     display: none;
     position: absolute;
@@ -229,6 +229,11 @@
   }
   #customizeBtn.visible { display: block; }
   #customizeBtn:hover { background: #fff; }
+  /* On touch devices the canvas shrinks but absolute offsets don't, so a
+     mid-canvas button would cover the start/game-over text. Reserve a strip
+     above the canvas and pin the button there instead. */
+  .touch-device .game-wrapper { padding-top: 36px; }
+  .touch-device #customizeBtn { top: 2px; }
 
   /* --- Cosmetics menu overlay --- */
   #cosmeticsMenu {

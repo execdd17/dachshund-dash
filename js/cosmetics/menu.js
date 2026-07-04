@@ -82,7 +82,8 @@ export function createCosmeticsMenu(cosmetics, sprites, state) {
   }
 
   function updateCustomizeButtonVisibility() {
-    document.getElementById('customizeBtn').classList.toggle('visible', state.gameState === 'idle');
+    const show = state.gameState === 'idle' || state.gameState === 'dead';
+    document.getElementById('customizeBtn').classList.toggle('visible', show);
   }
 
   function wireControls() {
