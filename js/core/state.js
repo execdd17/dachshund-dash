@@ -56,6 +56,7 @@ export function createState(rng = Math.random) {
     deathTime: 0,
     pendingScore: null,
     slowMode: false,
+    touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
 
     // --- Local high scores (loaded from storage at startup) ---
     highScores: [],
@@ -113,6 +114,7 @@ export function createState(rng = Math.random) {
     groundOffset: 0,
     clouds: createClouds(),
     flowers: createFlowers(rng),
+    skyTop: 0,  // top of visible sky in world coords (≤0; set by the app-mode view)
   };
 }
 

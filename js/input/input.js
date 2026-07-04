@@ -9,9 +9,9 @@ export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 }
 
-// deps: { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice }
+// deps: { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view }
 export function wireInput(deps) {
-  const { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice } = deps;
+  const { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view } = deps;
 
   document.addEventListener('keydown', e => {
     if (state.gameState === 'enteringName') {
@@ -82,19 +82,28 @@ export function wireInput(deps) {
   });
 
   function getLogicalCoords(e) {
-    const rect = canvas.getBoundingClientRect();
     const cx = ('touches' in e ? e.touches[0].clientX : e.clientX);
     const cy = ('touches' in e ? e.touches[0].clientY : e.clientY);
+    if (view) return view.toWorld(cx, cy);
+    const rect = canvas.getBoundingClientRect();
     return {
       x: (cx - rect.left) / rect.width * W,
       y: (cy - rect.top) / rect.height * H,
     };
   }
 
+  // The music icon tracks the visible top-left corner (see drawMusicIcon),
+  // which sits above world y=0 when the sky is extended in app mode.
+  function inMusicZone(p) {
+    const safe = view?.safe ?? { top: 0, left: 0 };
+    const top = -(view?.extraTop ?? 0) + safe.top;
+    return p.x < 38 + safe.left && p.y < top + 32;
+  }
+
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const p = getLogicalCoords(e);
-    if (p.x < 38 && p.y < 32) { music.toggle(); return; }
+    if (inMusicZone(p)) { music.toggle(); return; }
     if (touchDevice && p.x < W * DUCK_ZONE_RATIO) {
       duck(state, true, services);
     } else {
@@ -110,7 +119,7 @@ export function wireInput(deps) {
 
   canvas.addEventListener('click', e => {
     const p = getLogicalCoords(e);
-    if (p.x < 38 && p.y < 32) { music.toggle(); return; }
+    if (inMusicZone(p)) { music.toggle(); return; }
     jump(state, services);
   });
 }

@@ -15,6 +15,7 @@ import { loadHighScores } from './leaderboard/local.js';
 import { createNameEntry } from './ui/nameEntry.js';
 import { update } from './systems/update.js';
 import { draw } from './render/draw.js';
+import { createView } from './render/view.js';
 import { wireInput, isTouchDevice } from './input/input.js';
 
 // --- DOM / device setup ---
@@ -23,10 +24,29 @@ const ctx = canvas.getContext('2d');
 const touchDevice = isTouchDevice();
 if (touchDevice) document.body.classList.add('touch-device');
 
+// App mode: launched from the home screen (standalone/fullscreen) or forced
+// with ?app=1 for testing. The game goes full-bleed; landscape only.
+const appMode = window.matchMedia('(display-mode: standalone)').matches
+  || window.matchMedia('(display-mode: fullscreen)').matches
+  || window.navigator.standalone === true
+  || new URLSearchParams(window.location.search).has('app');
+if (appMode) document.body.classList.add('app-mode');
+
 // --- State ---
 const state = createState();
+state.touchDevice = touchDevice;
 state.highScores = loadHighScores(localStorage);
 state.highScore = state.highScores[0]?.score ?? 0;
+
+// --- View (canvas sizing / world-to-screen mapping) ---
+const view = createView(canvas, { appMode });
+function handleResize() {
+  view.resize();
+  state.skyTop = -view.extraTop;
+}
+window.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', handleResize);
+handleResize();
 
 // --- Services ---
 const sfx = createSfx();
@@ -56,7 +76,7 @@ const services = {
 };
 
 // --- Wiring ---
-wireInput({ state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice });
+wireInput({ state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view });
 nameEntry.wireControls();
 cosmeticsMenu.wireControls();
 leaderboardUi.wireControls();
@@ -70,7 +90,7 @@ function gameLoop(now) {
   update(state, dt, services);
   cosmeticsMenu.updateCustomizeButtonVisibility();
   draw({
-    canvas, ctx, state, sprites, cosmetics, music,
+    canvas, ctx, state, sprites, cosmetics, music, view,
     // Periodic global score refresh while sitting on the idle screen
     onIdleFrame: () => globalScores.maybeRefresh(),
   });

@@ -344,3 +344,62 @@
     cursor: pointer;
   }
   #cosmeticsDoneBtn:hover { background: #5a9f4f; }
+
+  /* --- App mode (launched from the home screen, or ?app=1) --- */
+  #rotateOverlay { display: none; }
+
+  /* Landscape: the game fills the entire screen; page furniture hides. */
+  @media (orientation: landscape) {
+    body.app-mode {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      padding: 0;
+      background: #0D1B2A;
+    }
+    .app-mode h1,
+    .app-mode .hint,
+    .app-mode #globalLeaderboard { display: none; }
+    .app-mode .game-wrapper,
+    .touch-device.app-mode .game-wrapper {
+      position: fixed;
+      inset: 0;
+      padding-top: 0;
+    }
+    .app-mode #game {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      border: none;
+      display: block;
+      touch-action: none;
+    }
+    .app-mode #customizeBtn,
+    .touch-device.app-mode #customizeBtn {
+      top: calc(env(safe-area-inset-top, 0px) + 10px);
+    }
+  }
+
+  /* Portrait: hide the game and ask for a rotate; leaderboard stays browsable. */
+  @media (orientation: portrait) {
+    .app-mode .game-wrapper,
+    .app-mode .hint { display: none; }
+    .app-mode #rotateOverlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin: 28px 0 8px;
+      color: #535353;
+      font-size: 15px;
+    }
+    .app-mode #rotateOverlay .rotate-phone {
+      font-size: 44px;
+      animation: rotate-nudge 1.8s ease-in-out infinite;
+    }
+    @keyframes rotate-nudge {
+      0%, 15% { transform: rotate(0deg); }
+      45%, 70% { transform: rotate(-90deg); }
+      100% { transform: rotate(0deg); }
+    }
+  }

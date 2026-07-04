@@ -32,7 +32,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
   - `update.js` — per-frame orchestrator (physics, scrolling, scoring, weather) that calls the others
   - `control.js` (jump/duck + run reset), `spawning.js`, `collision.js` (hitbox math + resolution), `giant.js`, `chase.js`, `boss.js`, `death.js`, `weather.js`
   - `services` = `{ sfx, music, globalScores, showNameEntryOverlay }`; randomness and clock are injectable (`rng`, `now`) for deterministic tests.
-- **`render/`** — canvas drawing only, all functions take `(ctx, state, …)`: `draw.js` (frame orchestrator), `background.js`, `obstacles.js` (incl. the per-type/skin dispatch in `drawObstacle`), `actors.js` (dog/squirrel sprites + cosmetic overlays), `effects.js`, `hud.js`, `primitives.js`.
+- **`render/`** — canvas drawing only, all functions take `(ctx, state, …)`: `draw.js` (frame orchestrator), `view.js` (world→canvas mapping: desktop 2x fixed canvas vs. app-mode full-bleed sizing, extended sky, safe-area insets), `background.js`, `obstacles.js` (incl. the per-type/skin dispatch in `drawObstacle`), `actors.js` (dog/squirrel sprites + cosmetic overlays), `effects.js`, `hud.js`, `primitives.js`.
 - **`audio/`** — `sfx.js` (Web Audio-synthesized effects behind a `createSfx()` interface; `createSilentSfx()` for tests) and `music.js` (normal + giant-mode EDM tracks, autoplay unlock, `createSilentMusic()` for tests).
 - **`assets/sprites.js`** — PNG sprite loading and frame-advance state for dog/squirrel; the frame-selection helpers are pure.
 - **`cosmetics/`** — `cosmetics.js` (slot/item registry `COSMETIC_DEFS`, head-anchor calibration data, equipped-state persistence) and `menu.js` (DOM overlay UI).
@@ -49,6 +49,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 - The dachshund/squirrel are PNG sprite sequences (`png/…`); every other obstacle is drawn with canvas primitives.
 - Encounters (squirrel chase, boss, giant mode) are mutually exclusive; each is its own module under `systems/`.
 - Music requires a user interaction to start (browser autoplay policy) — see `music.attachAutoplayUnlock()`.
+- **App mode** (installable web app): launched from a phone home screen (`display-mode: standalone`, or forced with `?app=1` for testing), the canvas fills the whole viewport in landscape — the world keeps its 800-unit width, the ground pins to the bottom, and extra height becomes sky above world y=0 (`extraTop` in `render/view.js`; systems see it as `state.skyTop ≤ 0`). Portrait shows a rotate prompt plus the leaderboard. Desktop and plain mobile-browser views keep the classic fixed 1600×500 canvas. `manifest.json` + `icons/` provide the home-screen install metadata.
 
 ### Extending the game
 

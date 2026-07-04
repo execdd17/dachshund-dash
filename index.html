@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>Dachshund Dash!</title>
+<!-- Installable web app: full-screen when launched from the home screen -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dachshund Dash">
+<meta name="theme-color" content="#87CEEB">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
 <!-- Firebase SDK (compat builds for no-build-step usage) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -11,6 +20,10 @@
 </head>
 <body>
 <h1>DACHSHUND DASH</h1>
+<div id="rotateOverlay">
+  <span class="rotate-phone">&#x1F4F1;</span>
+  <p>Rotate your phone to play!</p>
+</div>
 <div class="game-wrapper">
   <canvas id="game" width="1600" height="500"></canvas>
   <div id="nameEntryOverlay">

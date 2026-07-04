@@ -4,11 +4,14 @@ import { W, H } from '../config.js';
 import { getTimeOfDay } from '../core/timeOfDay.js';
 
 export function initRain(state, rng = Math.random) {
+  // state.skyTop (≤0) is the top of the visible sky — below 0 when app mode
+  // extends the sky above the world (see render/view.js).
+  const skyTop = state.skyTop ?? 0;
   state.rainDrops = [];
   for (let i = 0; i < 120; i++) {
     state.rainDrops.push({
       x: rng() * W,
-      y: rng() * H,
+      y: skyTop + rng() * (H - skyTop),
       speed: 4 + rng() * 3,
       length: 4 + rng() * 4,
       opacity: 0.2 + rng() * 0.3,
@@ -23,7 +26,7 @@ export function updateRain(state, weatherScale, rng = Math.random) {
   state.rainDrops.forEach(d => {
     d.y += d.speed * weatherScale;
     d.x -= 0.5 * weatherScale;
-    if (d.y > H) { d.y = -d.length; d.x = rng() * W; }
+    if (d.y > H) { d.y = (state.skyTop ?? 0) - d.length; d.x = rng() * W; }
     if (d.x < 0) d.x += W;
   });
 }

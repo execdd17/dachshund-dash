@@ -6,7 +6,19 @@ import {
 } from '../config.js';
 import { roundRect } from './primitives.js';
 
-export function drawScore(ctx, state, now = performance.now()) {
+// In app mode the HUD hugs the visible top edge (above world y=0, inside the
+// device safe areas) instead of the world's top — see view.js.
+export function hudOrigin(view) {
+  const safe = view?.safe ?? { top: 0, left: 0, right: 0 };
+  return {
+    top: -(view?.extraTop ?? 0) + safe.top,
+    left: 14 + safe.left,
+    right: W - safe.right,
+  };
+}
+
+export function drawScore(ctx, state, view, now = performance.now()) {
+  const hud = hudOrigin(view);
   ctx.font = 'bold 18px Courier New';
   ctx.textAlign = 'right';
 
@@ -14,10 +26,10 @@ export function drawScore(ctx, state, now = performance.now()) {
   const hi = state.highScores[0]?.score ?? state.highScore;
   if (hi > 0) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillText('HI ' + String(Math.floor(hi)).padStart(5, '0') + '  ', W - 100, 30);
+    ctx.fillText('HI ' + String(Math.floor(hi)).padStart(5, '0') + '  ', hud.right - 100, hud.top + 30);
   }
   ctx.fillStyle = '#fff';
-  ctx.fillText(scoreStr, W - 15, 30);
+  ctx.fillText(scoreStr, hud.right - 15, hud.top + 30);
 
   // Giant mode multiplier + timer bar
   if (state.giantActive) {
@@ -27,13 +39,13 @@ export function drawScore(ctx, state, now = performance.now()) {
       ctx.fillStyle = '#FFD700';
       ctx.font = 'bold 14px Courier New';
       ctx.textAlign = 'left';
-      ctx.fillText('x' + GIANT_SCORE_MULTIPLIER, 14, 48);
+      ctx.fillText('x' + GIANT_SCORE_MULTIPLIER, hud.left, hud.top + 48);
     }
     // Timer bar
     const barW = 60;
     const barH = 4;
-    const barX = 14;
-    const barY = 52;
+    const barX = hud.left;
+    const barY = hud.top + 52;
     const fill = Math.max(0, remaining / GIANT_DURATION);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(barX, barY, barW, barH);
@@ -73,8 +85,9 @@ export function drawLocalLeaderboard(ctx, state, baseY) {
   }
 }
 
-export function drawMusicIcon(ctx, musicOn) {
-  const ix = 14, iy = 16;
+export function drawMusicIcon(ctx, musicOn, view) {
+  const hud = hudOrigin(view);
+  const ix = hud.left, iy = hud.top + 16;
   // Speaker body
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   ctx.beginPath();
@@ -117,7 +130,7 @@ export function drawIdleScreen(ctx, state) {
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 20px Courier New';
   ctx.textAlign = 'center';
-  ctx.fillText('Press SPACE to start!', W / 2, 84);
+  ctx.fillText(state.touchDevice ? 'Tap to start!' : 'Press SPACE to start!', W / 2, 84);
   drawLocalLeaderboard(ctx, state, 108);
 }
 
@@ -130,7 +143,7 @@ export function drawGameOverScreen(ctx, state) {
   ctx.textAlign = 'center';
   ctx.fillText('GAME OVER', W / 2, 65);
   ctx.font = '16px Courier New';
-  ctx.fillText('Press SPACE to restart', W / 2, 93);
+  ctx.fillText(state.touchDevice ? 'Tap to restart' : 'Press SPACE to restart', W / 2, 93);
 
   // Draw a little dizzy effect (X eyes on new head position)
   const dog = state.dog;

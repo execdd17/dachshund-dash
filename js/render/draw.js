@@ -18,13 +18,15 @@ import { drawScore, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale } from '../systems/giant.js';
 
-// deps: { canvas, ctx, state, sprites, cosmetics, music, globalScores, onIdleFrame }
+// deps: { canvas, ctx, state, sprites, cosmetics, music, view, globalScores, onIdleFrame }
 export function draw(deps) {
-  const { canvas, ctx, state, sprites, cosmetics, music } = deps;
+  const { canvas, ctx, state, sprites, cosmetics, music, view } = deps;
+  const extraTop = view?.extraTop ?? 0;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
-  ctx.scale(2, 2);
+  ctx.scale(view?.scale ?? 2, view?.scale ?? 2);
+  ctx.translate(view?.offsetX ?? 0, extraTop);
 
   // Screen shake on death (decaying over ~250ms)
   if ((state.gameState === 'dead' || state.gameState === 'enteringName') && state.deathTime > 0) {
@@ -36,9 +38,9 @@ export function draw(deps) {
     }
   }
 
-  drawSky(ctx, state);
-  drawSun(ctx, state);
-  drawClouds(ctx, state);
+  drawSky(ctx, state, extraTop);
+  drawSun(ctx, state, extraTop);
+  drawClouds(ctx, state, extraTop);
   drawFarHills(ctx, state);
   drawNearHills(ctx, state);
   drawGround(ctx, state);
@@ -127,8 +129,8 @@ export function draw(deps) {
   drawBirdJumpEffects(ctx, state);
   drawLandingParticles(ctx, state);
 
-  drawScore(ctx, state);
-  drawMusicIcon(ctx, music.isOn());
+  drawScore(ctx, state, view);
+  drawMusicIcon(ctx, music.isOn(), view);
 
   if (state.gameState === 'idle') {
     deps.onIdleFrame?.();

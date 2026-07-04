@@ -34,7 +34,8 @@ export function mountainY(x, offset, amp, freq) {
   return amp * (base + peaks + ridges + jag + crag);
 }
 
-export function drawSky(ctx, state) {
+// extraTop: logical units of extended sky above world y=0 (app mode; see view.js)
+export function drawSky(ctx, state, extraTop = 0) {
   // Sky gradient colors per stage: [day, sunset, night, dawn] -> top, mid, bottom
   const skyTop = ['#4AB8E8', '#FF8C42', '#0D1B2A', '#6B4E71'];
   const skyMid = ['#87CEEB', '#FF6B6B', '#1B263B', '#9B8AA6'];
@@ -46,28 +47,31 @@ export function drawSky(ctx, state) {
   const top = lerpColor(skyTop[i], skyTop[(i + 1) % 4], t);
   const mid = lerpColor(skyMid[i], skyMid[(i + 1) % 4], t);
   const bottom = lerpColor(skyBottom[i], skyBottom[(i + 1) % 4], t);
-  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 20);
+  const grad = ctx.createLinearGradient(0, -extraTop, 0, GROUND_Y + 20);
   grad.addColorStop(0, top);
   grad.addColorStop(0.7, mid);
   grad.addColorStop(1, bottom);
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, GROUND_Y + 20);
+  ctx.fillRect(0, -extraTop, W, extraTop + GROUND_Y + 20);
 
   // Overcast overlay when raining
   if (state.weatherRain) {
     const { stage } = getTimeOfDay(state.score);
     const overcastAlpha = stage === 'night' ? 0.15 : stage === 'sunset' ? 0.3 : 0.4;
-    const overGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 20);
+    const overGrad = ctx.createLinearGradient(0, -extraTop, 0, GROUND_Y + 20);
     overGrad.addColorStop(0, `rgba(120, 125, 135, ${overcastAlpha})`);
     overGrad.addColorStop(0.6, `rgba(140, 145, 155, ${overcastAlpha * 0.8})`);
     overGrad.addColorStop(1, `rgba(160, 165, 170, ${overcastAlpha * 0.5})`);
     ctx.fillStyle = overGrad;
-    ctx.fillRect(0, 0, W, GROUND_Y + 20);
+    ctx.fillRect(0, -extraTop, W, extraTop + GROUND_Y + 20);
   }
 }
 
-export function drawSun(ctx, state) {
+// The sun/moon/stars hug the top of the visible sky, so shift them up by
+// extraTop when the sky is extended.
+export function drawSun(ctx, state, extraTop = 0) {
   const sunX = 700;
+  const skyShift = -extraTop;
   const { phase, stage, t } = getTimeOfDay(state.score);
 
   // Sun visible: day + sunset; hidden: night; fading in: dawn
@@ -76,7 +80,7 @@ export function drawSun(ctx, state) {
   const moonOpacity = phase < 0.5 ? 0 : phase < 0.75 ? 1 : 1 - t;
 
   // Sun Y: day=45, sunset=sinks to 65
-  const sunY = phase < 0.25 ? 45 : phase < 0.5 ? 45 + (phase - 0.25) / 0.25 * 20 : 65;
+  const sunY = skyShift + (phase < 0.25 ? 45 : phase < 0.5 ? 45 + (phase - 0.25) / 0.25 * 20 : 65);
 
   // Sun color: yellow (day) -> orange (sunset)
   const sunColor = phase < 0.25 ? '#FFD700' : phase < 0.5 ? lerpColor('#FFD700', '#FF8C00', (phase - 0.25) / 0.25) : '#FF8C00';
@@ -88,7 +92,7 @@ export function drawSun(ctx, state) {
       ctx.globalAlpha = moonOpacity * (0.6 + Math.sin(sx * 0.1 + state.frameCount * 0.02) * 0.4);
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
-      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.arc(sx, sy + skyShift, 1.5, 0, Math.PI * 2);
       ctx.fill();
     });
     ctx.globalAlpha = 1;
@@ -97,7 +101,7 @@ export function drawSun(ctx, state) {
   // Moon (night/dawn)
   if (moonOpacity > 0.01) {
     const moonX = 700;
-    const moonY = 50;
+    const moonY = 50 + skyShift;
     const moonR = 12;
     ctx.globalAlpha = moonOpacity;
     ctx.fillStyle = '#E8E8E8';
@@ -116,7 +120,7 @@ export function drawSun(ctx, state) {
 
   // Sun (day/sunset/dawn)
   if (sunOpacity > 0.01) {
-    const drawY = phase >= 0.75 ? 45 : sunY;
+    const drawY = phase >= 0.75 ? 45 + skyShift : sunY;
     const glow = ctx.createRadialGradient(sunX, drawY, 15, sunX, drawY, 50);
     glow.addColorStop(0, `rgba(255, 244, 130, ${0.4 * sunOpacity})`);
     glow.addColorStop(1, 'rgba(255, 244, 130, 0)');
@@ -148,7 +152,7 @@ export function drawSun(ctx, state) {
   }
 }
 
-export function drawClouds(ctx, state) {
+export function drawClouds(ctx, state, extraTop = 0) {
   const { phase } = getTimeOfDay(state.score);
   const p = phase * 4;
   const i = Math.floor(p) % 4;
@@ -168,24 +172,27 @@ export function drawClouds(ctx, state) {
 
   state.clouds.forEach(c => {
     const s = c.size;
+    // Spread cloud heights proportionally over the (possibly extended) sky:
+    // world y=0 maps to the visible top, GROUND_Y stays put.
+    const cy = c.y * (GROUND_Y + extraTop) / GROUND_Y - extraTop;
     ctx.fillStyle = shadowC + '80';
     ctx.beginPath();
-    ctx.arc(c.x + 18 * s, c.y + 6 * s, 14 * s, 0, Math.PI * 2);
-    ctx.arc(c.x + 34 * s, c.y + 4 * s, 10 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 18 * s, cy + 6 * s, 14 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 34 * s, cy + 4 * s, 10 * s, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = fillC;
     ctx.beginPath();
-    ctx.arc(c.x + 10 * s, c.y, 10 * s, 0, Math.PI * 2);
-    ctx.arc(c.x + 24 * s, c.y - 6 * s, 14 * s, 0, Math.PI * 2);
-    ctx.arc(c.x + 38 * s, c.y - 2 * s, 10 * s, 0, Math.PI * 2);
-    ctx.arc(c.x + 20 * s, c.y + 2 * s, 12 * s, 0, Math.PI * 2);
-    ctx.arc(c.x + 34 * s, c.y + 2 * s, 8 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 10 * s, cy, 10 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 24 * s, cy - 6 * s, 14 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 38 * s, cy - 2 * s, 10 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 20 * s, cy + 2 * s, 12 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 34 * s, cy + 2 * s, 8 * s, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = `rgba(255,255,255,${highlightAlpha})`;
     ctx.beginPath();
-    ctx.arc(c.x + 22 * s, c.y - 8 * s, 8 * s, 0, Math.PI * 2);
+    ctx.arc(c.x + 22 * s, cy - 8 * s, 8 * s, 0, Math.PI * 2);
     ctx.fill();
   });
 }
