@@ -26,12 +26,12 @@ test('getHeadAnchor wraps frame index within pose frames', () => {
 
 test('equipped cosmetics round-trip through storage', () => {
   const storage = createFakeStorage();
-  saveEquippedCosmetics(storage, { hat: 'wizard', sunglasses: null, clothes: null });
-  assert.deepEqual(loadEquippedCosmetics(storage), { hat: 'wizard', sunglasses: null, clothes: null });
+  saveEquippedCosmetics(storage, { hat: 'wizard', sunglasses: null, clothes: null, body: null });
+  assert.deepEqual(loadEquippedCosmetics(storage), { hat: 'wizard', sunglasses: null, clothes: null, body: null });
 });
 
 test('loadEquippedCosmetics falls back on junk data and ignores unknown keys', () => {
-  const fallback = { hat: null, sunglasses: null, clothes: null };
+  const fallback = { hat: null, sunglasses: null, clothes: null, body: null };
   const storage = createFakeStorage();
   assert.deepEqual(loadEquippedCosmetics(storage), fallback);
 
@@ -39,7 +39,7 @@ test('loadEquippedCosmetics falls back on junk data and ignores unknown keys', (
   assert.deepEqual(loadEquippedCosmetics(storage), fallback);
 
   storage.setItem(EQUIPPED_COSMETICS_KEY, JSON.stringify({ hat: 'wizard', bogus: 'x', sunglasses: 42 }));
-  assert.deepEqual(loadEquippedCosmetics(storage), { hat: 'wizard', sunglasses: null, clothes: null });
+  assert.deepEqual(loadEquippedCosmetics(storage), { hat: 'wizard', sunglasses: null, clothes: null, body: null });
 });
 
 test('cosmetics service select() persists and toggleDefaultHat() flips', () => {
@@ -110,8 +110,8 @@ test('getOverlayFrame mirrors base-sprite frame selection', () => {
   assert.equal(getOverlayFrame({}, 'run', 0), null);               // anchor items have no frames
 });
 
-test('per-frame clothes items declare a frames dir under png/', () => {
-  COSMETIC_DEFS.clothes.forEach(item => {
+test('per-frame clothes and body items declare a frames dir under png/', () => {
+  [...COSMETIC_DEFS.clothes, ...COSMETIC_DEFS.body].forEach(item => {
     assert.match(item.frames, /^png\//, `${item.id} frames not under png/`);
   });
 });
