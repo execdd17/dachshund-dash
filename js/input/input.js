@@ -14,7 +14,7 @@ export function wireInput(deps) {
   const { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view } = deps;
 
   document.addEventListener('keydown', e => {
-    if (state.gameState === 'enteringName') {
+    if (state.gameState === 'setup') {
       if (e.code === 'Enter') {
         e.preventDefault();
         nameEntry.submit();

@@ -1,6 +1,6 @@
-// Shared death handling: stop all encounter modes, decide whether the score
-// qualifies for name entry (local or global leaderboard), and transition the
-// state machine.
+// Shared death handling: stop all encounter modes, record the score if it
+// qualifies (local or global leaderboard) under the name chosen at setup,
+// and transition the state machine. No prompting — straight to dead.
 
 import { qualifiesLocally } from '../leaderboard/local.js';
 
@@ -23,12 +23,10 @@ export function killDog(state, services) {
 
   const qualifies = qualifiesLocally(state.highScores, state.score)
     || services.globalScores.qualifies(state.score);
+  state.gameState = 'dead';
   if (qualifies) {
-    state.gameState = 'enteringName';
-    state.pendingScore = state.score;
-    services.showNameEntryOverlay();
-  } else {
-    state.gameState = 'dead';
-    if (state.score > state.highScore) state.highScore = state.score;
+    services.recordScore(state.score);
+  } else if (state.score > state.highScore) {
+    state.highScore = state.score;
   }
 }

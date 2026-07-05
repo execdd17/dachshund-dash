@@ -57,7 +57,7 @@ test('first hit spends a heart instead of killing', () => {
   const state = stateWithObstacleAtDog('hotdog');
   const died = checkCollision(state, createTestServices(), 1000);
   assert.equal(died, false);
-  assert.equal(state.hearts, 1);
+  assert.equal(state.hearts, state.startingHearts - 1);
   assert.deepEqual(state.obstacles, [], 'obstacle knocked away');
   assert.equal(state.giantBonkEffects.length, 1);
   assert.equal(state.heartLostAt, 1000);

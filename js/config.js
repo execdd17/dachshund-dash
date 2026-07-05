@@ -54,7 +54,17 @@ export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee 
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
 // --- Hearts (extra lives) ---
-export const STARTING_HEARTS = 2;                   // total hits the dog can take per run
+// Difficulty is picked once on the start overlay (slider index into this
+// list) and only changes how many hearts a run starts with. Locked for the
+// session — reload the page to change it.
+export const DIFFICULTY_LEVELS = [
+  { label: 'VERY EASY', hearts: 6 },
+  { label: 'EASY',      hearts: 4 },
+  { label: 'NORMAL',    hearts: 3 },
+  { label: 'HARD',      hearts: 2 },
+  { label: 'VERY HARD', hearts: 1 },
+];
+export const DEFAULT_DIFFICULTY_INDEX = 2;          // NORMAL
 export const HEART_HIT_INVULN = 1500;               // ms of invulnerability after losing a heart
 export const HEART_LOSS_FLASH = 800;                // ms the just-lost heart blinks in the HUD
 

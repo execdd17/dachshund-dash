@@ -5,8 +5,10 @@
 
 import {
   W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X, BOSS_SQUIRREL_START_X,
-  STARTING_HEARTS,
+  DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
 } from '../config.js';
+
+const DEFAULT_HEARTS = DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].hearts;
 
 export function createDog() {
   return {
@@ -47,7 +49,7 @@ export function createFlowers(rng = Math.random) {
 
 export function createState(rng = Math.random) {
   return {
-    // --- Game state machine: idle, running, dead, enteringName ---
+    // --- Game state machine: setup (start overlay), idle, running, dead ---
     gameState: 'idle',
     score: 0,
     highScore: 0,
@@ -55,8 +57,8 @@ export function createState(rng = Math.random) {
     frameCount: 0,
     lastMilestone: 0,
     deathTime: 0,
-    pendingScore: null,
     slowMode: false,
+    playerName: null,  // chosen once on the start overlay; reused for every score submit
     touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
 
     // --- Local high scores (loaded from storage at startup) ---
@@ -66,7 +68,8 @@ export function createState(rng = Math.random) {
     dog: createDog(),
 
     // --- Hearts (extra lives) ---
-    hearts: STARTING_HEARTS,
+    startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
+    hearts: DEFAULT_HEARTS,
     invulnUntil: 0,   // timestamp: collisions are ignored until then (post-hit i-frames)
     heartLostAt: 0,   // timestamp of the last heart loss (drives the HUD blink)
 
@@ -135,7 +138,7 @@ export function resetRun(state) {
   state.nextObstacleIn = 60;
   state.lastObstacleType = 'hotdog';
 
-  state.hearts = STARTING_HEARTS;
+  state.hearts = state.startingHearts;
   state.invulnUntil = 0;
   state.heartLostAt = 0;
 

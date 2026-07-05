@@ -27,9 +27,14 @@
 <div class="game-wrapper">
   <canvas id="game" width="1600" height="500"></canvas>
   <div id="nameEntryOverlay">
-    <span class="prompt">New high score! Enter your name:</span>
+    <span class="prompt">Who's playing? Enter your name:</span>
     <input type="text" id="nameInput" maxlength="12" placeholder="Your name" />
-    <button type="button" id="nameSubmitBtn">Submit</button>
+    <div class="difficulty-row">
+      <label for="difficultySlider">DIFFICULTY: <span id="difficultyValue">NORMAL &mdash; 3 HEARTS</span></label>
+      <input type="range" id="difficultySlider" min="0" max="4" step="1" value="2" />
+      <div class="difficulty-ends"><span>VERY EASY</span><span>VERY HARD</span></div>
+    </div>
+    <button type="button" id="nameSubmitBtn">Start</button>
   </div>
   <button type="button" id="customizeBtn">CUSTOMIZE</button>
   <div id="cosmeticsMenu">

@@ -29,7 +29,7 @@ export function draw(deps) {
   ctx.translate(view?.offsetX ?? 0, extraTop);
 
   // Screen shake on death (decaying over ~250ms)
-  if ((state.gameState === 'dead' || state.gameState === 'enteringName') && state.deathTime > 0) {
+  if (state.gameState === 'dead' && state.deathTime > 0) {
     const elapsed = Date.now() - state.deathTime;
     if (elapsed < 250) {
       const decay = 1 - elapsed / 250;
@@ -137,7 +137,7 @@ export function draw(deps) {
   drawLandingParticles(ctx, state);
 
   drawScore(ctx, state, view);
-  if (state.gameState !== 'idle') drawHearts(ctx, state, view);
+  if (state.gameState !== 'idle' && state.gameState !== 'setup') drawHearts(ctx, state, view);
   drawMusicIcon(ctx, music.isOn(), view);
 
   if (state.gameState === 'idle') {
@@ -145,7 +145,7 @@ export function draw(deps) {
     drawIdleScreen(ctx, state);
   }
 
-  if (state.gameState === 'dead' || state.gameState === 'enteringName') {
+  if (state.gameState === 'dead') {
     drawGameOverScreen(ctx, state);
   }
 

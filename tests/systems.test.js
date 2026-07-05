@@ -150,26 +150,27 @@ test('boss squirrel trails the dog without catching it (peak stays behind hitbox
 
 // --- Death handling ---
 
-test('killDog: non-qualifying score goes straight to dead', () => {
+test('killDog: non-qualifying score goes straight to dead without recording', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
   state.score = 10;
   state.highScores = [500, 400, 300, 200, 100].map(s => ({ name: 'X', score: s }));
-  killDog(state, createTestServices());
+  let recorded = false;
+  killDog(state, createTestServices({ recordScore: () => { recorded = true; } }));
   assert.equal(state.gameState, 'dead');
-  assert.equal(state.pendingScore, null);
+  assert.equal(recorded, false);
 });
 
-test('killDog: qualifying score prompts for a name', () => {
+test('killDog: qualifying score is recorded immediately, no name prompt', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
   state.score = 999;
-  let overlayShown = false;
-  const services = createTestServices({ showNameEntryOverlay: () => { overlayShown = true; } });
+  state.playerName = 'KID';
+  let recordedScore = null;
+  const services = createTestServices({ recordScore: (s) => { recordedScore = s; } });
   killDog(state, services);
-  assert.equal(state.gameState, 'enteringName');
-  assert.equal(state.pendingScore, 999);
-  assert.equal(overlayShown, true);
+  assert.equal(state.gameState, 'dead');
+  assert.equal(recordedScore, 999);
 });
 
 test('killDog clears all encounter modes', () => {

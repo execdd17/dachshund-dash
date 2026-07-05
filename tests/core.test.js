@@ -2,9 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { lerpColor } from '../js/core/color.js';
+import { getDogSpriteAnim } from '../js/assets/sprites.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
 import { createState, resetRun } from '../js/core/state.js';
-import { INITIAL_SPEED, GROUND_Y, DOG_BASE_X, STARTING_HEARTS } from '../js/config.js';
+import {
+  INITIAL_SPEED, GROUND_Y, DOG_BASE_X,
+  DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
+} from '../js/config.js';
 
 test('lerpColor returns endpoints at t=0 and t=1', () => {
   assert.equal(lerpColor('#000000', '#ffffff', 0), '#000000');
@@ -80,7 +84,32 @@ test('resetRun restores a dirty state to run defaults', () => {
   assert.equal(s.giantScoreMultiplier, 1);
   assert.equal(s.weatherRain, false);
   assert.equal(s.lastTimeStage, 'day');
-  assert.equal(s.hearts, STARTING_HEARTS);
+  assert.equal(s.hearts, DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].hearts);
   assert.equal(s.invulnUntil, 0);
   assert.equal(s.heartLostAt, 0);
+});
+
+test('resetRun refills hearts from the session difficulty', () => {
+  const s = createState(() => 0.5);
+  s.startingHearts = 6;  // VERY EASY, picked on the start overlay
+  s.hearts = 1;
+  resetRun(s);
+  assert.equal(s.hearts, 6);
+});
+
+test('difficulty levels map to the expected starting hearts', () => {
+  assert.deepEqual(DIFFICULTY_LEVELS.map(l => l.hearts), [6, 4, 3, 2, 1]);
+  assert.equal(DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label, 'NORMAL');
+});
+
+test('dog sprite anim per game state: setup and idle stand still, running runs', () => {
+  const s = createState(() => 0.5);
+  s.gameState = 'setup';
+  assert.equal(getDogSpriteAnim(s, 0), 'idle', 'dog must not run behind the start overlay');
+  s.gameState = 'idle';
+  assert.equal(getDogSpriteAnim(s, 0), 'idle');
+  s.gameState = 'running';
+  assert.equal(getDogSpriteAnim(s, 0), 'run');
+  s.gameState = 'dead';
+  assert.equal(getDogSpriteAnim(s, 0), 'dead');
 });

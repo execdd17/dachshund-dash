@@ -31,7 +31,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 - **`systems/`** — pure-ish gameplay logic operating on `(state, …, services)`:
   - `update.js` — per-frame orchestrator (physics, scrolling, scoring, weather) that calls the others
   - `control.js` (jump/duck + run reset), `spawning.js`, `collision.js` (hitbox math + resolution, incl. heart spend/i-frames), `giant.js`, `chase.js`, `boss.js`, `death.js`, `weather.js`
-  - `services` = `{ sfx, music, globalScores, showNameEntryOverlay }`; randomness and clock are injectable (`rng`, `now`) for deterministic tests.
+  - `services` = `{ sfx, music, globalScores, recordScore }`; randomness and clock are injectable (`rng`, `now`) for deterministic tests.
 - **`render/`** — canvas drawing only, all functions take `(ctx, state, …)`: `draw.js` (frame orchestrator), `view.js` (world→canvas mapping: desktop 2x fixed canvas vs. app-mode full-bleed sizing, extended sky, safe-area insets), `background.js`, `obstacles.js` (incl. the per-type/skin dispatch in `drawObstacle`), `actors.js` (dog/squirrel sprites + cosmetic overlays), `effects.js`, `hud.js`, `primitives.js`.
 - **`audio/`** — `sfx.js` (Web Audio-synthesized effects behind a `createSfx()` interface; `createSilentSfx()` for tests) and `music.js` (normal + giant-mode EDM tracks, autoplay unlock, `createSilentMusic()` for tests).
 - **`assets/sprites.js`** — PNG sprite loading and frame-advance state for dog/squirrel; the frame-selection helpers are pure.
@@ -43,13 +43,13 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 
 ### Key runtime facts
 
-- `state.gameState` is the state machine: `idle` → `running` → `dead`/`enteringName` → back to `running`.
+- `state.gameState` is the state machine: `setup` (start overlay: name + difficulty, once per page load) → `idle` → `running` → `dead` → back to `running`. Qualifying scores are recorded on death under the setup name (`services.recordScore`) — there is no post-death name prompt.
 - Logical canvas is `W=800, H=250` (config.js), scaled 2x for display; all coordinates are in logical space.
 - The game was tuned at a 120Hz-equivalent baseline; `update()` scales by `dt / DT_BASELINE` for frame-rate independence, and dt is capped at 100ms.
 - The dachshund/squirrel are PNG sprite sequences (`png/…`); every other obstacle is drawn with canvas primitives.
 - Encounters (squirrel chase, boss, giant mode) are mutually exclusive; each is its own module under `systems/`.
 - Music requires a user interaction to start (browser autoplay policy) — see `music.attachAutoplayUnlock()`.
-- **Hearts (lives)**: runs start with `STARTING_HEARTS` (2). A non-fatal hit in `checkCollision` spends a heart, knocks the obstacle away with the giant-mode bonk effect, and grants `HEART_HIT_INVULN` ms of i-frames (`state.invulnUntil`; the dog flickers in `draw.js`). A hit on the last heart kills. The HUD hearts (`drawHearts` in `render/hud.js`, pixel-art bitmap) sit top-left below the speaker/giant-timer slot; boss catches bypass hearts and kill directly.
+- **Hearts (lives)**: runs start with `state.startingHearts`, set by the difficulty slider on the start overlay (`DIFFICULTY_LEVELS` in config.js: VERY EASY 6 → VERY HARD 1, default NORMAL 3; locked per session — reload to change). A non-fatal hit in `checkCollision` spends a heart, knocks the obstacle away with the giant-mode bonk effect, and grants `HEART_HIT_INVULN` ms of i-frames (`state.invulnUntil`; the dog flickers in `draw.js`). A hit on the last heart kills. The HUD hearts (`drawHearts` in `render/hud.js`, pixel-art bitmap) sit top-left below the speaker/giant-timer slot; boss catches bypass hearts and kill directly.
 - **App mode** (installable web app): launched from a phone home screen (`display-mode: standalone`, or forced with `?app=1` for testing), the canvas fills the whole viewport in landscape — the world keeps its 800-unit width, the ground pins to the bottom, and extra height becomes sky above world y=0 (`extraTop` in `render/view.js`; systems see it as `state.skyTop ≤ 0`). Portrait shows a rotate prompt plus the leaderboard. Desktop and plain mobile-browser views keep the classic fixed 1600×500 canvas. `manifest.json` + `icons/` provide the home-screen install metadata.
 
 ### Extending the game

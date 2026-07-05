@@ -75,12 +75,12 @@ export function loadSquirrelSprites(store) {
 // Which animation set the dog should be showing, given game state.
 // `now` is injected for testability (defaults to performance.now()).
 export function getDogSpriteAnim(state, now = performance.now()) {
-  if (state.gameState === 'dead' || state.gameState === 'enteringName') return 'dead';
+  if (state.gameState === 'dead') return 'dead';
   if (state.giantActive && state.giantChompEffects.length > 0
     && now - state.giantChompEffects[state.giantChompEffects.length - 1].startTime < 250) return 'bite';
   if (state.dog.ducking) return 'slide';
   if (state.dog.jumping) return state.dog.doubleJumped ? 'doublejump' : 'jump';
-  if (state.gameState === 'idle') return 'idle';
+  if (state.gameState === 'idle' || state.gameState === 'setup') return 'idle';
   return 'run';
 }
 

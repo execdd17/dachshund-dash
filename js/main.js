@@ -72,7 +72,7 @@ const services = {
   sfx,
   music,
   globalScores,
-  showNameEntryOverlay: nameEntry.show,
+  recordScore: nameEntry.recordScore,
 };
 
 // --- Wiring ---
@@ -100,4 +100,6 @@ function gameLoop(now) {
 // --- Start ---
 leaderboardUi.render();
 globalScores.fetch();
+// Ask for name + difficulty once per page load, before the first run.
+nameEntry.show();
 gameLoop();

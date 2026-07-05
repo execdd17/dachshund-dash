@@ -4,7 +4,7 @@ import { JUMP_FORCE, DOUBLE_JUMP_FORCE } from '../config.js';
 import { resetRun } from '../core/state.js';
 
 export function jump(state, services) {
-  if (state.gameState === 'enteringName') return;
+  if (state.gameState === 'setup') return;
   if (state.gameState === 'idle') {
     state.gameState = 'running';
     resetRun(state);

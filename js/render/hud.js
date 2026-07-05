@@ -3,7 +3,7 @@
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
-  STARTING_HEARTS, HEART_LOSS_FLASH,
+  HEART_LOSS_FLASH,
 } from '../config.js';
 import { roundRect } from './primitives.js';
 
@@ -85,7 +85,7 @@ function drawPixelHeart(ctx, x, y, filled) {
 export function drawHearts(ctx, state, view, now = performance.now()) {
   const hud = hudOrigin(view);
   const y = hud.top + 62;
-  for (let i = 0; i < STARTING_HEARTS; i++) {
+  for (let i = 0; i < state.startingHearts; i++) {
     const x = hud.left + i * (HEART_W + 6);
     let filled = i < state.hearts;
     if (i === state.hearts && now - state.heartLostAt < HEART_LOSS_FLASH) {
