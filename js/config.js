@@ -13,8 +13,8 @@ export const GROUND_Y = 200;
 export const GRAVITY = 0.5;
 export const JUMP_FORCE = -11;
 export const DOUBLE_JUMP_FORCE = -7;
-export const INITIAL_SPEED = 2.85;
-export const MAX_SPEED = 20.25;
+export const INITIAL_SPEED = 3.5;
+export const MAX_SPEED = 7;
 export const SPEED_INCREMENT = 0.001;
 export const MIN_OBSTACLE_GAP = 300;
 export const MAX_OBSTACLE_GAP = 500;
@@ -51,7 +51,7 @@ export const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animat
 export const GIANT_SCORE_MULTIPLIER = 2;            // score multiplier while giant
 export const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten
 export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
-export const GIANT_END_INVULN = 2000;               // ms of invulnerability after giant mode ends
+export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
 // --- Hearts (extra lives) ---
