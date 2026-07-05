@@ -5,7 +5,10 @@ import {
   getDogHitbox, getObstacleHitbox, rectsOverlap, checkCollision,
 } from '../js/systems/collision.js';
 import { createState, createDog } from '../js/core/state.js';
-import { GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS } from '../js/config.js';
+import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
+import {
+  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN,
+} from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
 test('dog hitbox is lower-profile when ducking', () => {
@@ -79,6 +82,16 @@ test('collisions are ignored during post-hit invulnerability', () => {
   assert.equal(died, false);
   assert.equal(state.hearts, 1);
   assert.equal(state.obstacles.length, 1, 'obstacle passes through untouched');
+});
+
+test('overlapping an obstacle right as giant mode ends does not kill', () => {
+  const state = stateWithObstacleAtDog('hotdog');
+  state.hearts = 1;
+  activateGiantMode(state, createTestServices(), 0);
+  deactivateGiantMode(state, createTestServices(), 1000);
+  const died = checkCollision(state, createTestServices(), 1000 + GIANT_END_INVULN - 1);
+  assert.equal(died, false);
+  assert.equal(state.hearts, 1, 'no heart spent during the grace period');
 });
 
 test('golden hot dog still works during invulnerability', () => {

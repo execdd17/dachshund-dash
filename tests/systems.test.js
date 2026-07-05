@@ -10,7 +10,7 @@ import { updateBoss } from '../js/systems/boss.js';
 import { killDog } from '../js/systems/death.js';
 import { jump, duck } from '../js/systems/control.js';
 import {
-  W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER,
+  W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
   BOSS_MILESTONE, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
 } from '../js/config.js';
@@ -39,8 +39,16 @@ test('giant mode activation and timed visual scale easing', () => {
   assert.equal(state.giantActive, false);
   assert.equal(state.giantShrinking, true);
   assert.equal(state.giantScoreMultiplier, 1);
+  assert.equal(state.invulnUntil, 5000 + GIANT_END_INVULN, 'grace i-frames after shrink');
   assert.equal(getGiantVisualScale(state, 5000 + GIANT_SCALE_TRANSITION), 1);
   assert.equal(state.giantShrinking, false);
+});
+
+test('giant-end grace period does not shorten longer existing i-frames', () => {
+  const state = createState(() => 0.5);
+  state.invulnUntil = 5000 + GIANT_END_INVULN + 1000;
+  deactivateGiantMode(state, createTestServices(), 5000);
+  assert.equal(state.invulnUntil, 5000 + GIANT_END_INVULN + 1000);
 });
 
 // --- Chase state machine ---

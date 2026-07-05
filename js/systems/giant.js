@@ -2,7 +2,7 @@
 // switches music, doubles score, and makes obstacles edible.
 
 import {
-  GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER,
+  GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
 } from '../config.js';
 
 export function activateGiantMode(state, { sfx, music }, now = performance.now()) {
@@ -22,6 +22,9 @@ export function deactivateGiantMode(state, { sfx, music }, now = performance.now
   state.giantGrowing = false;
   state.giantTransitionStart = now;
   state.giantScoreMultiplier = 1;
+  // Grace period: the shrink can land the dog inside an obstacle the player
+  // meant to eat, so reuse the post-hit i-frames instead of killing them.
+  state.invulnUntil = Math.max(state.invulnUntil, now + GIANT_END_INVULN);
   sfx.playGiantDeactivate();
   if (music.isGiantActive()) music.switchToNormal();
 }

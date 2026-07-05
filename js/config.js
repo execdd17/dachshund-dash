@@ -51,6 +51,7 @@ export const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animat
 export const GIANT_SCORE_MULTIPLIER = 2;            // score multiplier while giant
 export const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten
 export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
+export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends (matches HEART_HIT_INVULN)
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
 // --- Hearts (extra lives) ---
