@@ -1,0 +1,37 @@
+// Reference copy of the Firestore security rules for the global leaderboard.
+// NOT deployed from this repo — the live rules are edited in the Firebase
+// console (Firestore -> Rules) and must be updated there by hand. Keep this
+// file in sync with the console, and keep the field list in sync with the
+// document shape submitted by js/leaderboard/global.js submit().
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /scores/{scoreId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll(['name', 'score', 'difficulty', 'timestamp', 'checksum'])
+        && request.resource.data.keys().size() == 5
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 12
+        && request.resource.data.difficulty in ['VERY EASY', 'EASY', 'NORMAL', 'HARD', 'VERY HARD']
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100000
+        && request.resource.data.timestamp is number
+        && request.resource.data.timestamp > request.time.toMillis() - 300000
+        && request.resource.data.timestamp <= request.time.toMillis() + 60000
+        && request.resource.data.checksum is string
+        && request.resource.data.checksum.size() >= 1;
+
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
