@@ -1,17 +1,15 @@
 // Maps the fixed logical game world (W×H, ground at the bottom) onto the
-// real canvas. Desktop keeps the classic fixed-size 2x canvas. App mode
-// (installed to the home screen, or ?app=1) stretches the canvas over the
-// whole viewport: the world fills the width, the ground stays pinned to the
-// bottom edge, and all extra height becomes sky above world y=0 (so visible
-// sky spans y in [-extraTop, GROUND_Y]).
+// real canvas. The canvas is stretched over the whole viewport on every
+// device: the world fills the width, the ground stays pinned to the bottom
+// edge, and all extra height becomes sky above world y=0 (so visible sky
+// spans y in [-extraTop, GROUND_Y]).
 
 import { W, H } from '../config.js';
 
 const MAX_DPR = 2; // cap backing-store resolution; 3x retina buys nothing visible here
 
-export function createView(canvas, { appMode = false } = {}) {
+export function createView(canvas) {
   const view = {
-    appMode,
     scale: 2,     // canvas backing px per logical unit
     extraTop: 0,  // logical units of extra sky above world y=0
     offsetX: 0,   // logical units of horizontal centering (wider-than-3.2:1 screens only)
@@ -42,11 +40,17 @@ export function createView(canvas, { appMode = false } = {}) {
   }
 
   function resize() {
-    if (!appMode) return; // desktop page keeps the fixed 1600×500 canvas
-
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    canvas.width = Math.round(window.innerWidth * dpr);
-    canvas.height = Math.round(window.innerHeight * dpr);
+    // Size the backing store from the canvas's real laid-out CSS box so the
+    // buffer's aspect always equals the displayed aspect — window.inner* can
+    // disagree with the fixed-position wrapper when mobile browser bars are
+    // in play. Layout metrics lag events like rotation, so measurements must
+    // happen post-layout: the ResizeObserver in main.js re-runs this with
+    // settled geometry. The box reads 0 while hidden (touch portrait);
+    // fall back to the window size (canvas isn't visible anyway).
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.round((rect.width || window.innerWidth) * dpr);
+    canvas.height = Math.round((rect.height || window.innerHeight) * dpr);
 
     // Fill the width; extra height becomes sky. If the screen is wider than
     // the world's aspect (rare), fit by height and center horizontally.

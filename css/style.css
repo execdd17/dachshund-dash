@@ -395,46 +395,64 @@
   }
   #cosmeticsDoneBtn:hover { background: #5a9f4f; }
 
-  /* --- App mode (launched from the home screen, or ?app=1) --- */
+  /* --- App layout (main.js sets app-mode on every device) --- */
   #rotateOverlay { display: none; }
 
-  /* Landscape: the game fills the entire screen; page furniture hides. */
+  /* Desktop (no touch): the game fills the first viewport of a scrollable
+     page. Touch devices get their own fixed sizing in the media queries
+     below — keep them off this rule, real iOS disagrees with dvh/measured
+     boxes in ways desktop doesn't. */
+  .app-mode:not(.touch-device) .game-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    padding-top: 0;
+  }
+  .app-mode #game {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border: none;
+    display: block;
+    touch-action: none;
+  }
+  .app-mode #customizeBtn,
+  .touch-device.app-mode #customizeBtn {
+    top: calc(env(safe-area-inset-top, 0px) + 10px);
+  }
+
+  /* Desktop (no touch): a laptop can't rotate, so the page scrolls — the
+     full-viewport game sits up top, hints + leaderboard below the fold. */
+  body.app-mode:not(.touch-device) { padding: 0; }
+  .app-mode:not(.touch-device) h1 { display: none; }
+  .app-mode:not(.touch-device) #globalLeaderboard { padding-bottom: 32px; }
+
+  /* Touch landscape: lock the page; the game is the whole screen. */
   @media (orientation: landscape) {
-    body.app-mode {
+    body.touch-device.app-mode {
       position: fixed;
       inset: 0;
       overflow: hidden;
       padding: 0;
       background: #0D1B2A;
     }
-    .app-mode h1,
-    .app-mode .hint,
-    .app-mode #globalLeaderboard { display: none; }
-    .app-mode .game-wrapper,
+    .touch-device.app-mode h1,
+    .touch-device.app-mode .hint,
+    .touch-device.app-mode #globalLeaderboard { display: none; }
     .touch-device.app-mode .game-wrapper {
       position: fixed;
       inset: 0;
       padding-top: 0;
     }
-    .app-mode #game {
-      width: 100%;
-      height: 100%;
-      max-width: none;
-      border: none;
-      display: block;
-      touch-action: none;
-    }
-    .app-mode #customizeBtn,
-    .touch-device.app-mode #customizeBtn {
-      top: calc(env(safe-area-inset-top, 0px) + 10px);
-    }
   }
 
-  /* Portrait: hide the game and ask for a rotate; leaderboard stays browsable. */
+  /* Touch portrait: hide the game and ask for a rotate; leaderboard stays
+     browsable. */
   @media (orientation: portrait) {
-    .app-mode .game-wrapper,
-    .app-mode .hint { display: none; }
-    .app-mode #rotateOverlay {
+    .touch-device.app-mode .game-wrapper,
+    .touch-device.app-mode .hint { display: none; }
+    .touch-device.app-mode #rotateOverlay {
       display: flex;
       flex-direction: column;
       align-items: center;

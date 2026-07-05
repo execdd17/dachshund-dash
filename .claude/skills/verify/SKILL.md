@@ -29,7 +29,7 @@ const browser = await chromium.launch({
 
 ## Reading game state (it's all canvas — no DOM text)
 
-- Sample logical-coordinate pixels via `document.getElementById('game').getContext('2d').getImageData(x*2, y*2, 1, 1)` (desktop view is 2x scale, offset 0). HUD origin is `(14, top)` — e.g. hearts sit at logical y≈62.
+- The canvas fills the viewport on every device, so the logical→pixel scale depends on the window size: scale = `canvas.width / 800`, and extra height is sky above world y=0 (`extraTop = canvas.height/scale - 250`). Sample logical `(x, y)` via `getImageData(x*scale, (y+extraTop)*scale, 1, 1)`. HUD origin is `(14, top)` — e.g. hearts sit at logical y≈62.
 - DOM signals: `#customizeBtn.visible` ⇔ gameState idle/dead; `#nameEntryOverlay.visible` ⇔ enteringName (death with qualifying score — always qualifies on a fresh profile).
 - After death there is a 1s input lockout (`control.js`) before restart works.
 

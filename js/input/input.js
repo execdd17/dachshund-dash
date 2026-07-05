@@ -18,6 +18,12 @@ export function wireInput(deps) {
       if (e.code === 'Enter') {
         e.preventDefault();
         nameEntry.submit();
+      } else if (!(document.activeElement instanceof HTMLInputElement)
+          && (e.code === 'Space' || e.code.startsWith('Arrow'))) {
+        // Keep the page from scrolling under the setup overlay (the desktop
+        // layout scrolls to the leaderboard); inputs keep their key defaults
+        // (spaces in the name field, arrows on the difficulty slider).
+        e.preventDefault();
       }
       return;
     }

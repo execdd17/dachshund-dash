@@ -24,13 +24,11 @@ const ctx = canvas.getContext('2d');
 const touchDevice = isTouchDevice();
 if (touchDevice) document.body.classList.add('touch-device');
 
-// App mode: launched from the home screen (standalone/fullscreen) or forced
-// with ?app=1 for testing. The game goes full-bleed; landscape only.
-const appMode = window.matchMedia('(display-mode: standalone)').matches
-  || window.matchMedia('(display-mode: fullscreen)').matches
-  || window.navigator.standalone === true
-  || new URLSearchParams(window.location.search).has('app');
-if (appMode) document.body.classList.add('app-mode');
+// Full-bleed app layout on every device. Touch devices lock to the viewport:
+// landscape plays, portrait shows the rotate prompt + leaderboard. Desktop
+// can't rotate, so the page scrolls beneath the full-viewport game to reach
+// the hints + leaderboard. The CSS keys off app-mode + touch-device.
+document.body.classList.add('app-mode');
 
 // --- State ---
 const state = createState();
@@ -39,13 +37,17 @@ state.highScores = loadHighScores(localStorage);
 state.highScore = state.highScores[0]?.score ?? 0;
 
 // --- View (canvas sizing / world-to-screen mapping) ---
-const view = createView(canvas, { appMode });
+const view = createView(canvas);
 function handleResize() {
   view.resize();
   state.skyTop = -view.extraTop;
 }
 window.addEventListener('resize', handleResize);
 window.addEventListener('orientationchange', handleResize);
+// The authoritative signal: fires with the canvas's settled post-layout box
+// (rotation and mobile browser-bar changes), where the events above can run
+// while layout metrics are still stale.
+new ResizeObserver(handleResize).observe(canvas);
 handleResize();
 
 // --- Services ---
