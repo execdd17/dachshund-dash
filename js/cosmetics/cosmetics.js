@@ -9,7 +9,7 @@ import { EQUIPPED_COSMETICS_KEY } from '../config.js';
 
 export const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes']; // canonical slot list + menu tab order
 export const COSMETIC_DRAW_ORDER = ['clothes', 'hat', 'sunglasses']; // back-to-front compositing order
-export const COSMETIC_SLOT_LABELS = { hat: 'HAT', sunglasses: 'SUNGLASSES', clothes: 'CLOTHES' };
+export const COSMETIC_SLOT_LABELS = { hat: 'HAT', sunglasses: 'SUNGLASSES', clothes: 'SHOES' }; // slot id stays 'clothes' for stored-state compatibility
 
 export const COSMETIC_DEFS = {
   hat: [
@@ -26,7 +26,26 @@ export const COSMETIC_DEFS = {
     { id: 'heart', name: 'Heart Glasses', image: 'png/sunglasses/heart.png', offset: { scale: 0.27 } },
     { id: 'visor', name: 'Sport Visor', image: 'png/sunglasses/visor.png', offset: { scale: 0.27 } },
   ],
-  clothes: [],
+  // Shoes are per-frame overlays: full-size transparent PNGs generated from
+  // the dog sprites with the paws recolored, one per animation frame (plus
+  // the bite sheet). Drawn with the same geometry as the base frame, so they
+  // track the feet exactly. `image` is only the menu tile icon.
+  clothes: [
+    { id: 'sneakers-red', name: 'Red Sneakers', image: 'png/clothes/sneakers-red/icon.png', frames: 'png/clothes/sneakers-red' },
+    { id: 'sneakers-blue', name: 'Blue Sneakers', image: 'png/clothes/sneakers-blue/icon.png', frames: 'png/clothes/sneakers-blue' },
+    { id: 'sneakers-green', name: 'Green Sneakers', image: 'png/clothes/sneakers-green/icon.png', frames: 'png/clothes/sneakers-green' },
+    { id: 'sneakers-pink', name: 'Pink Sneakers', image: 'png/clothes/sneakers-pink/icon.png', frames: 'png/clothes/sneakers-pink' },
+    { id: 'sneakers-gold', name: 'Gold Sneakers', image: 'png/clothes/sneakers-gold/icon.png', frames: 'png/clothes/sneakers-gold' },
+    { id: 'sneakers-white', name: 'White Sneakers', image: 'png/clothes/sneakers-white/icon.png', frames: 'png/clothes/sneakers-white' },
+  ],
+};
+
+// Frame files for per-frame overlay items, matching loadDogSprites().
+export const OVERLAY_FRAME_FILES = {
+  run: ['dachshund_run_00.png', 'dachshund_run_01.png', 'dachshund_run_02.png'],
+  jump: ['dachshund_jump_00.png', 'dachshund_jump_01.png', 'dachshund_jump_02.png'],
+  doublejump: ['dachshund_flip_00.png', 'dachshund_flip_01.png', 'dachshund_flip_02.png'],
+  slide: ['dachshund_pancake_00.png', 'dachshund_pancake_01.png', 'dachshund_pancake_02.png'],
 };
 
 // Where the dog's head is in each pose, in the same local 512x1024 sprite-pixel
@@ -65,6 +84,18 @@ export function getHeadAnchor(anim, frameIdx) {
   return frames[frameIdx % frames.length];
 }
 
+// Which overlay a per-frame item shows for a given base anim/frame; mirrors
+// the base-sprite selection in drawDachshundSprite (idle/dead reuse run[0],
+// doublejump frame 2 reuses jump[2], bite uses the sheet).
+export function getOverlayFrame(entry, anim, frameIdx) {
+  if (!entry || !entry.frames) return null;
+  if (anim === 'bite') return null; // callers use entry.biteSheet + sheet drawing
+  if (anim === 'idle' || anim === 'dead') return entry.frames.run[0];
+  if (anim === 'doublejump' && frameIdx === 2) return entry.frames.jump[2];
+  const frames = entry.frames[anim];
+  return frames ? frames[frameIdx % frames.length] : null;
+}
+
 export function loadEquippedCosmetics(storage) {
   const fallback = { hat: null, sunglasses: null, clothes: null };
   try {
@@ -95,15 +126,29 @@ export function createCosmetics(storage) {
     equipped: loadEquippedCosmetics(storage),
     imageById,
 
-    // Cosmetic overlay images: one isolated image per item, positioned at
-    // render time via HEAD_ANCHORS + SLOT_ANCHOR_OFFSET (see getHeadAnchor /
-    // drawCosmeticOverlay). Browser-only.
+    // Cosmetic overlay images. Anchor items (hats, sunglasses): one isolated
+    // image, positioned at render time via HEAD_ANCHORS + SLOT_ANCHOR_OFFSET.
+    // Per-frame items (item.frames set): a full-size overlay per dog frame
+    // plus the bite sheet, drawn with the base sprite's geometry. Browser-only.
     loadImages() {
       COSMETIC_SLOTS.forEach(slot => {
         COSMETIC_DEFS[slot].forEach(item => {
-          const img = new Image();
-          img.src = item.image;
-          imageById[slot][item.id] = img;
+          if (item.frames) {
+            const load = file => {
+              const img = new Image();
+              img.src = `${item.frames}/${file}`;
+              return img;
+            };
+            const frames = {};
+            Object.entries(OVERLAY_FRAME_FILES).forEach(([anim, files]) => {
+              frames[anim] = files.map(load);
+            });
+            imageById[slot][item.id] = { frames, biteSheet: load('bite_3_image_sequence.png') };
+          } else {
+            const img = new Image();
+            img.src = item.image;
+            imageById[slot][item.id] = img;
+          }
         });
       });
     },

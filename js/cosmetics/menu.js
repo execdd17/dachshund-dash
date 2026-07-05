@@ -4,7 +4,7 @@
 import { DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET, COSMETICS_PREVIEW_SCALE } from '../config.js';
 import {
   COSMETIC_SLOTS, COSMETIC_DRAW_ORDER, COSMETIC_SLOT_LABELS, COSMETIC_DEFS,
-  getItemAnchorOffset, getHeadAnchor,
+  getItemAnchorOffset, getHeadAnchor, getOverlayFrame,
 } from './cosmetics.js';
 import { drawSpriteFrameLayer, drawCosmeticOverlay } from '../render/actors.js';
 
@@ -60,7 +60,14 @@ export function createCosmeticsMenu(cosmetics, sprites, state) {
     COSMETIC_DRAW_ORDER.forEach(slot => {
       const itemId = cosmetics.equipped[slot];
       if (!itemId) return;
-      const img = cosmetics.imageById[slot][itemId];
+      const entry = cosmetics.imageById[slot][itemId];
+      const img = entry && entry.frames ? getOverlayFrame(entry, 'idle', 0) : entry;
+      // overlay images load async: repaint the preview when this one arrives
+      if (img && !img.complete) img.addEventListener('load', renderPreview, { once: true });
+      if (entry && entry.frames) {
+        drawSpriteFrameLayer(pctx, img, anchorX, groundY, scale, groundOffset);
+        return;
+      }
       drawCosmeticOverlay(pctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, groundY, scale, groundOffset);
     });
   }

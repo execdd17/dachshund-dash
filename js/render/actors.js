@@ -7,7 +7,7 @@ import {
   SQUIRREL_SPRITE_SCALE, SQUIRREL_SPRITE_GROUND_OFFSET,
 } from '../config.js';
 import { getDogSpriteAnim, getDogJumpFrameIndex } from '../assets/sprites.js';
-import { COSMETIC_DRAW_ORDER, getItemAnchorOffset, getHeadAnchor } from '../cosmetics/cosmetics.js';
+import { COSMETIC_DRAW_ORDER, getItemAnchorOffset, getHeadAnchor, getOverlayFrame } from '../cosmetics/cosmetics.js';
 
 export function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, groundOffset) {
   if (!img || !img.complete || !img.naturalWidth) return;
@@ -49,9 +49,18 @@ function drawEquippedCosmetics(ctx, cosmetics, anim, frameIdx, anchorX, y) {
   COSMETIC_DRAW_ORDER.forEach(slot => {
     const itemId = cosmetics.equipped[slot];
     if (!itemId) return;
-    const img = cosmetics.imageById[slot][itemId];
+    const entry = cosmetics.imageById[slot][itemId];
+    if (entry && entry.frames) {
+      // per-frame overlay (shoes): same geometry as the base sprite frame
+      if (anim === 'bite') {
+        drawSpriteSheetLayer(ctx, entry.biteSheet, frameIdx, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+      } else {
+        drawSpriteFrameLayer(ctx, getOverlayFrame(entry, anim, frameIdx), anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+      }
+      return;
+    }
     const anchor = getHeadAnchor(anim, frameIdx);
-    drawCosmeticOverlay(ctx, img, anchor, getItemAnchorOffset(slot, itemId), anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
+    drawCosmeticOverlay(ctx, entry, anchor, getItemAnchorOffset(slot, itemId), anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   });
 }
 

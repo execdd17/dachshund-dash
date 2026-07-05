@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   COSMETIC_SLOTS, COSMETIC_DEFS, HEAD_ANCHORS, SLOT_ANCHOR_OFFSET,
-  getHeadAnchor, getItemAnchorOffset,
+  getHeadAnchor, getItemAnchorOffset, getOverlayFrame,
   loadEquippedCosmetics, saveEquippedCosmetics, createCosmetics,
 } from '../js/cosmetics/cosmetics.js';
 import { EQUIPPED_COSMETICS_KEY } from '../js/config.js';
@@ -86,5 +86,32 @@ test('every item has id/name/image and ids are unique within a slot', () => {
       assert.ok(!ids.has(item.id), `duplicate id ${item.id} in slot ${slot}`);
       ids.add(item.id);
     });
+  });
+});
+
+test('getOverlayFrame mirrors base-sprite frame selection', () => {
+  const entry = {
+    frames: {
+      run: ['r0', 'r1', 'r2'],
+      jump: ['j0', 'j1', 'j2'],
+      doublejump: ['d0', 'd1', 'd2'],
+      slide: ['s0', 's1', 's2'],
+    },
+    biteSheet: 'sheet',
+  };
+  assert.equal(getOverlayFrame(entry, 'run', 1), 'r1');
+  assert.equal(getOverlayFrame(entry, 'run', 4), 'r1');            // wraps
+  assert.equal(getOverlayFrame(entry, 'idle', 0), 'r0');           // idle/dead -> run[0]
+  assert.equal(getOverlayFrame(entry, 'dead', 2), 'r0');
+  assert.equal(getOverlayFrame(entry, 'doublejump', 2), 'j2');     // flip frame 2 reuses jump[2]
+  assert.equal(getOverlayFrame(entry, 'doublejump', 0), 'd0');
+  assert.equal(getOverlayFrame(entry, 'bite', 1), null);           // bite drawn via biteSheet
+  assert.equal(getOverlayFrame(null, 'run', 0), null);
+  assert.equal(getOverlayFrame({}, 'run', 0), null);               // anchor items have no frames
+});
+
+test('per-frame clothes items declare a frames dir under png/', () => {
+  COSMETIC_DEFS.clothes.forEach(item => {
+    assert.match(item.frames, /^png\//, `${item.id} frames not under png/`);
   });
 });
