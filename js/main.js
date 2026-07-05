@@ -64,7 +64,12 @@ const globalScores = createGlobalScores(initFirebase());
 const leaderboardUi = createLeaderboardUi(globalScores);
 globalScores.onChange = leaderboardUi.render;
 
-const nameEntry = createNameEntry(state, { storage: localStorage, globalScores });
+const nameEntry = createNameEntry(state, {
+  storage: localStorage,
+  globalScores,
+  // Land the leaderboard on the board the player is actually competing on.
+  onDifficultyChosen: label => leaderboardUi.setDifficulty(label),
+});
 const cosmeticsMenu = createCosmeticsMenu(cosmetics, sprites, state);
 
 // Everything update() needs to cause effects outside the state object.

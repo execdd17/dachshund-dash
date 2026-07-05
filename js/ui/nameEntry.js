@@ -6,7 +6,7 @@
 import { normalizeName, insertScore, saveHighScores } from '../leaderboard/local.js';
 import { DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX } from '../config.js';
 
-export function createNameEntry(state, { storage, globalScores }) {
+export function createNameEntry(state, { storage, globalScores, onDifficultyChosen = () => {} }) {
   function difficultyText(idx) {
     const level = DIFFICULTY_LEVELS[idx] ?? DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX];
     return `${level.label} — ${level.hearts} HEART${level.hearts === 1 ? '' : 'S'}`;
@@ -33,10 +33,12 @@ export function createNameEntry(state, { storage, globalScores }) {
     state.playerName = normalizeName(document.getElementById('nameInput').value);
     const idx = Number(document.getElementById('difficultySlider').value);
     const level = DIFFICULTY_LEVELS[idx] ?? DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX];
+    state.difficulty = level.label;
     state.startingHearts = level.hearts;
     state.hearts = level.hearts;
     state.gameState = 'idle';
     hide();
+    onDifficultyChosen(level.label);
   }
 
   // Records a qualifying score locally and globally under the setup name.
@@ -46,7 +48,7 @@ export function createNameEntry(state, { storage, globalScores }) {
     state.highScores = insertScore(state.highScores, displayName, scoreVal);
     saveHighScores(storage, state.highScores);
     state.highScore = state.highScores[0]?.score ?? 0;
-    globalScores.submit(displayName, scoreVal);
+    globalScores.submit(displayName, scoreVal, state.difficulty);
   }
 
   function wireControls() {

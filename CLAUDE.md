@@ -62,7 +62,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 ### Leaderboards
 
 - **Local**: top scores in localStorage (`leaderboard/local.js`, capped at `MAX_HIGH_SCORES`).
-- **Global**: Firebase Firestore `scores` collection (`firebase.js` + `leaderboard/global.js`). Submissions carry a simple non-cryptographic checksum (`checksum.js`, DJB2-style salted hash) as friction against casual tampering — not real security.
+- **Global**: Firebase Firestore `scores` collection (`firebase.js` + `leaderboard/global.js`), **per difficulty**: every submission carries the session's difficulty label (`state.difficulty`, e.g. `'NORMAL'`), the UI (`leaderboard/ui.js`) shows one board per difficulty with tabs to switch (defaults to NORMAL; jumps to the player's chosen difficulty after setup), and `qualifies(score, difficulty)` judges against that difficulty's board only. Fetch is a single mixed query (limit `GLOBAL_MAX_SCORES × #difficulties`) bucketed client-side by the pure `getScoresForDifficulty`; legacy docs without a `difficulty` field are filtered out entirely. Submissions carry a simple non-cryptographic checksum (`checksum.js`, DJB2-style salted hash over name|score|timestamp|difficulty) as friction against casual tampering — not real security.
 - The Firebase config/API key in `js/firebase.js` is a public client-side web config (expected to be visible in a static site) — don't treat it as a secret to redact, but also don't assume it's a security boundary. Firestore rules (not in this repo) gate write access.
 
 ### Input

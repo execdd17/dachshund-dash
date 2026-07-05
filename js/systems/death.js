@@ -22,7 +22,7 @@ export function killDog(state, services) {
   services.music.resetToNormal();
 
   const qualifies = qualifiesLocally(state.highScores, state.score)
-    || services.globalScores.qualifies(state.score);
+    || services.globalScores.qualifies(state.score, state.difficulty);
   state.gameState = 'dead';
   if (qualifies) {
     services.recordScore(state.score);

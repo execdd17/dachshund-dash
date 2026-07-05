@@ -134,6 +134,33 @@
     text-align: center;
     margin-bottom: 12px;
   }
+  #globalLeaderboard .lb-difficulty-tabs {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  #globalLeaderboard .lb-difficulty-tabs button {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    background: #fff;
+    color: #999;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #globalLeaderboard .lb-difficulty-tabs button:hover:not(.active) {
+    background: #eee;
+  }
+  #globalLeaderboard .lb-difficulty-tabs button.active {
+    background: #535353;
+    border-color: #535353;
+    color: #fff;
+    cursor: default;
+  }
   #globalLeaderboard .lb-controls {
     display: flex;
     justify-content: space-between;
@@ -194,7 +221,7 @@
   #globalLeaderboard tbody td:last-child {
     text-align: right;
   }
-  #globalLeaderboard tbody .lb-empty {
+  #globalLeaderboard tbody td.lb-empty {
     text-align: center;
     color: #aaa;
     padding: 20px;
@@ -224,7 +251,7 @@
     border-color: #ddd;
     cursor: default;
   }
-  #globalLeaderboard .lb-status {
+  #globalLeaderboard tbody td.lb-status {
     text-align: center;
     color: #aaa;
     font-size: 13px;

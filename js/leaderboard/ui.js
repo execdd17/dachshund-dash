@@ -1,13 +1,26 @@
-// HTML global-leaderboard table: search, pagination, rendering.
-// Browser-only (touches the DOM); list filtering itself is the pure
-// getFilteredScores() in global.js.
+// HTML global-leaderboard table: difficulty tabs, search, pagination,
+// rendering. Browser-only (touches the DOM); list slicing/filtering itself
+// is the pure getScoresForDifficulty()/getFilteredScores() in global.js.
 
-import { GLOBAL_PAGE_SIZE } from '../config.js';
-import { getFilteredScores } from './global.js';
+import { GLOBAL_PAGE_SIZE, DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX } from '../config.js';
+import { getFilteredScores, getScoresForDifficulty } from './global.js';
 
 export function createLeaderboardUi(globalScores) {
   let page = 0;
   let searchTerm = '';
+  let difficulty = DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label;
+
+  function currentBoard() {
+    return getFilteredScores(getScoresForDifficulty(globalScores.scores, difficulty), searchTerm);
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('lbDifficultyTabs');
+    if (!tabs) return;
+    for (const btn of tabs.querySelectorAll('button')) {
+      btn.classList.toggle('active', btn.dataset.difficulty === difficulty);
+    }
+  }
 
   function render() {
     const body = document.getElementById('lbBody');
@@ -15,6 +28,7 @@ export function createLeaderboardUi(globalScores) {
     const prevBtn = document.getElementById('lbPrev');
     const nextBtn = document.getElementById('lbNext');
     if (!body) return;
+    renderTabs();
 
     if (!globalScores.loaded && !globalScores.error) {
       body.innerHTML = '<tr><td colspan="3" class="lb-status">Loading...</td></tr>';
@@ -32,7 +46,7 @@ export function createLeaderboardUi(globalScores) {
       return;
     }
 
-    const filtered = getFilteredScores(globalScores.scores, searchTerm);
+    const filtered = currentBoard();
     const totalPages = Math.max(1, Math.ceil(filtered.length / GLOBAL_PAGE_SIZE));
     if (page >= totalPages) page = totalPages - 1;
     if (page < 0) page = 0;
@@ -43,7 +57,7 @@ export function createLeaderboardUi(globalScores) {
     if (filtered.length === 0) {
       body.innerHTML = searchTerm
         ? '<tr><td colspan="3" class="lb-empty">No matching scores</td></tr>'
-        : '<tr><td colspan="3" class="lb-empty">No scores yet — be the first!</td></tr>';
+        : `<tr><td colspan="3" class="lb-empty">No ${difficulty} scores yet — be the first!</td></tr>`;
       pageInfo.textContent = '';
       prevBtn.disabled = true;
       nextBtn.disabled = true;
@@ -61,7 +75,25 @@ export function createLeaderboardUi(globalScores) {
     nextBtn.disabled = page >= totalPages - 1;
   }
 
+  // Switch the visible board (also called when the player picks a difficulty
+  // on the start overlay, so they land on their own board).
+  function setDifficulty(label) {
+    if (!DIFFICULTY_LEVELS.some(l => l.label === label) || label === difficulty) return;
+    difficulty = label;
+    page = 0;
+    render();
+  }
+
   function wireControls() {
+    const tabs = document.getElementById('lbDifficultyTabs');
+    for (const level of DIFFICULTY_LEVELS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.difficulty = level.label;
+      btn.textContent = level.label;
+      btn.addEventListener('click', () => setDifficulty(level.label));
+      tabs.appendChild(btn);
+    }
     document.getElementById('lbSearch').addEventListener('input', e => {
       searchTerm = e.target.value.trim();
       page = 0;
@@ -71,11 +103,10 @@ export function createLeaderboardUi(globalScores) {
       if (page > 0) { page--; render(); }
     });
     document.getElementById('lbNext').addEventListener('click', () => {
-      const filtered = getFilteredScores(globalScores.scores, searchTerm);
-      const totalPages = Math.ceil(filtered.length / GLOBAL_PAGE_SIZE);
+      const totalPages = Math.ceil(currentBoard().length / GLOBAL_PAGE_SIZE);
       if (page < totalPages - 1) { page++; render(); }
     });
   }
 
-  return { render, wireControls };
+  return { render, wireControls, setDifficulty };
 }

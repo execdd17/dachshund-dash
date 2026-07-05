@@ -68,6 +68,7 @@ export function createState(rng = Math.random) {
     dog: createDog(),
 
     // --- Hearts (extra lives) ---
+    difficulty: DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label,  // label of the session difficulty; recorded with global scores
     startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
     hearts: DEFAULT_HEARTS,
     invulnUntil: 0,   // timestamp: collisions are ignored until then (post-hit i-frames)
