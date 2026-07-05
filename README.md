@@ -57,3 +57,4 @@ npm test          # or: node --test tests/*.test.js
 | Jump | Space / Up | Tap right side |
 | Duck | Down / S | Hold left side |
 | Toggle music | Click speaker icon | Tap speaker icon |
+
