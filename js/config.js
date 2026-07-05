@@ -62,7 +62,7 @@ export const TRAMP_BOUNCE_VY = -14;       // super-bounce launch velocity (see p
 export const TRAMP_BOUNCE_BONUS = 50;     // points per clean bounce
 export const TRAMP_BREATHER = 120;        // baseline frames of empty field between reps (~1s)
 export const TRAMP_TILE_W = 32;           // thorn tile width
-export const TRAMP_HITBOX_PAD = 8;        // horizontal forgiveness on the trampoline surface
+export const TRAMP_HITBOX_PAD = 12;       // horizontal forgiveness on the trampoline surface (both sides)
 // exitFactor 26 everywhere (plan said 30): exit tiles are ceil'd to 32px
 // widths, and at factor 30 the rounded-up exit was too wide to clear on the
 // bounce alone — playtesting showed a post-bounce double jump was mandatory.
@@ -70,8 +70,8 @@ export const TRAMP_HITBOX_PAD = 8;        // horizontal forgiveness on the tramp
 // bonus correction for mistimed landings, not a requirement.
 export const TRAMP_REPS = [
   { islandOffsetFactor: 22, trampWidth: 84, exitFactor: 26 },  // rep 0: close, wide
-  { islandOffsetFactor: 26, trampWidth: 72, exitFactor: 26 },  // rep 1
-  { islandOffsetFactor: 30, trampWidth: 60, exitFactor: 26 },  // rep 2: deep, narrow
+  { islandOffsetFactor: 26, trampWidth: 78, exitFactor: 26 },  // rep 1
+  { islandOffsetFactor: 30, trampWidth: 72, exitFactor: 26 },  // rep 2: deep, still landable
 ];
 
 // --- Hearts (extra lives) ---

@@ -40,7 +40,12 @@ export function getObstacleHitbox(obs) {
     return { x: obs.x + 8, y: obs.y + 4, w: obs.width - 16, h: obs.height - 6 };
   }
   if (obs.type === 'thorns') {
-    return { x: obs.x + 4, y: obs.y + 8, w: obs.width - 8, h: obs.height - 8 };
+    // Top inset (+14) puts the hitbox top exactly at ground level, which is
+    // also the trampoline bounce-trigger height: on any frame where thorns
+    // could hurt a descending dog, a bounce in range has already fired
+    // (updateTrampoline runs first), so island-edge landings never clip the
+    // neighboring tile. Grounded contact is unchanged.
+    return { x: obs.x + 4, y: obs.y + 14, w: obs.width - 8, h: obs.height - 14 };
   }
   return { x: obs.x + 12, y: obs.y + 8, w: obs.width - 24, h: obs.height - 10 };
 }
