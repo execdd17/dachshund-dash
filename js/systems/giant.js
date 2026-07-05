@@ -60,11 +60,14 @@ export function triggerBonkEffect(state, obs, now = performance.now(), rng = Mat
   state.giantBonkEffects.push({
     x: obs.x,
     y: obs.y,
+    width: obs.width,
+    height: obs.height,
     vx: 3 + rng() * 2,
     vy: -6 - rng() * 3,
     rotation: 0,
     rotSpeed: 0.3 + rng() * 0.3,
     startTime: now,
     type: obs.type,
+    skin: obs.skin ?? (state.chaseActive ? 'chase' : 'normal'),
   });
 }

@@ -2,7 +2,9 @@
 // landing dust particles.
 
 import { BIRD_JUMP_BONUS } from '../config.js';
-import { drawFrisbee } from './obstacles.js';
+import {
+  drawFrisbee, drawBird, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
+} from './obstacles.js';
 
 export function drawChompEffects(ctx, state, now = performance.now()) {
   state.giantChompEffects.forEach(e => {
@@ -26,16 +28,36 @@ export function drawChompEffects(ctx, state, now = performance.now()) {
   });
 }
 
+// The knocked-away obstacle keeps its original look, mirroring the skin/type
+// dispatch in drawObstacle (birds keep flapping via frameCount).
+function drawBonkedObstacle(ctx, e, frameCount) {
+  if (e.skin === 'chase') {
+    if (e.type === 'frisbee' || e.type === 'bird') drawAcorn(ctx, e.x, e.y - 8, frameCount * 0.15);
+    else if (e.type === 'stack') drawAcornPile(ctx, e.x, e.y);
+    else drawAcorn(ctx, e.x, e.y);
+  } else if (e.type === 'bird') {
+    drawBird(ctx, e.x, e.y, frameCount);
+  } else if (e.type === 'stack') {
+    drawChocolateStack(ctx, e.x, e.y, frameCount);
+  } else if (e.type === 'hotdog') {
+    drawChocolateBar(ctx, e.x, e.y);
+  } else {
+    drawFrisbee(ctx, e.x, e.y, frameCount);
+  }
+}
+
 export function drawBonkEffects(ctx, state, now = performance.now()) {
   state.giantBonkEffects.forEach(e => {
     const age = (now - e.startTime) / 1500;
     if (age > 1) return;
+    const cx = e.x + e.width / 2;
+    const cy = e.y + e.height / 2;
     ctx.save();
     ctx.globalAlpha = 1 - age * 0.7;
-    ctx.translate(e.x + 22, e.y + 7);
+    ctx.translate(cx, cy);
     ctx.rotate(e.rotation);
-    ctx.translate(-(e.x + 22), -(e.y + 7));
-    drawFrisbee(ctx, e.x, e.y, state.frameCount);
+    ctx.translate(-cx, -cy);
+    drawBonkedObstacle(ctx, e, state.frameCount);
     ctx.restore();
     if (age < 0.4) {
       ctx.save();
@@ -43,7 +65,7 @@ export function drawBonkEffects(ctx, state, now = performance.now()) {
       ctx.fillStyle = '#FF69B4';
       ctx.font = `bold ${12 + age * 15}px Courier New`;
       ctx.textAlign = 'center';
-      ctx.fillText('BONK!', e.x + 22, e.y - 15 - age * 30);
+      ctx.fillText('BONK!', cx, e.y - 15 - age * 30);
       ctx.restore();
     }
   });

@@ -112,7 +112,7 @@ export function createState(rng = Math.random) {
     giantScoreMultiplier: 1,
     lastGoldenSpawnScore: 0,
     giantChompEffects: [],  // [{x, y, startTime}]
-    giantBonkEffects: [],   // [{x, y, vx, vy, rotation, rotSpeed, startTime}]
+    giantBonkEffects: [],   // [{x, y, width, height, vx, vy, rotation, rotSpeed, startTime, type, skin}]
     birdJumpEffects: [],    // [{x, y, startTime}]
 
     // --- Weather ---
