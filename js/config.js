@@ -42,8 +42,8 @@ export const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger ga
 
 // --- Giant mode ---
 export const GIANT_FIRST_AT = 500;                  // golden hot dog can't appear before this score
-export const GIANT_COOLDOWN = 600;                  // minimum score between golden hot dog spawns
-export const GIANT_SPAWN_CHANCE = 0.03;             // 3% chance per obstacle spawn cycle when eligible
+export const GIANT_COOLDOWN = 300;                  // minimum score between golden hot dog spawns
+export const GIANT_SPAWN_CHANCE = 0.06;             // 6% chance per obstacle spawn cycle when eligible
 export const GIANT_DURATION = 15000;                // ms (15 seconds — matches giant music track)
 export const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
 export const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog
