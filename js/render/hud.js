@@ -1,8 +1,9 @@
-// HUD: score readout, giant-mode timer, local leaderboard panel, music icon,
-// idle/game-over text.
+// HUD: score readout, giant-mode timer, hearts, local leaderboard panel,
+// music icon, idle/game-over text.
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
+  STARTING_HEARTS, HEART_LOSS_FLASH,
 } from '../config.js';
 import { roundRect } from './primitives.js';
 
@@ -51,6 +52,46 @@ export function drawScore(ctx, state, view, now = performance.now()) {
     ctx.fillRect(barX, barY, barW, barH);
     ctx.fillStyle = remaining < GIANT_WARN_AT ? '#FF6347' : '#FFD700';
     ctx.fillRect(barX, barY, barW * fill, barH);
+  }
+}
+
+// Pixel-art heart bitmap: R = fill, W = highlight, . = transparent.
+const HEART_PIXELS = [
+  '.RR.RR.',
+  'RWRRRRR',
+  'RRRRRRR',
+  '.RRRRR.',
+  '..RRR..',
+  '...R...',
+];
+const HEART_COLORS = { R: '#FF4D6D', W: '#FFD9E0' };
+const HEART_PX = 2;                                     // canvas px per bitmap pixel
+const HEART_W = HEART_PIXELS[0].length * HEART_PX;      // 14
+
+function drawPixelHeart(ctx, x, y, filled) {
+  for (let row = 0; row < HEART_PIXELS.length; row++) {
+    for (let col = 0; col < HEART_PIXELS[row].length; col++) {
+      const ch = HEART_PIXELS[row][col];
+      if (ch === '.') continue;
+      ctx.fillStyle = filled ? HEART_COLORS[ch] : 'rgba(255,255,255,0.25)';
+      ctx.fillRect(x + col * HEART_PX, y + row * HEART_PX, HEART_PX, HEART_PX);
+    }
+  }
+}
+
+// Hearts sit under the giant-mode timer bar slot (top-left, below the speaker).
+// Remaining hearts are filled; spent slots stay as dim silhouettes, and the
+// just-lost heart blinks briefly.
+export function drawHearts(ctx, state, view, now = performance.now()) {
+  const hud = hudOrigin(view);
+  const y = hud.top + 62;
+  for (let i = 0; i < STARTING_HEARTS; i++) {
+    const x = hud.left + i * (HEART_W + 6);
+    let filled = i < state.hearts;
+    if (i === state.hearts && now - state.heartLostAt < HEART_LOSS_FLASH) {
+      filled = Math.sin(now * 0.03) > 0;
+    }
+    drawPixelHeart(ctx, x, y, filled);
   }
 }
 

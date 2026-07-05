@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { lerpColor } from '../js/core/color.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
 import { createState, resetRun } from '../js/core/state.js';
-import { INITIAL_SPEED, GROUND_Y, DOG_BASE_X } from '../js/config.js';
+import { INITIAL_SPEED, GROUND_Y, DOG_BASE_X, STARTING_HEARTS } from '../js/config.js';
 
 test('lerpColor returns endpoints at t=0 and t=1', () => {
   assert.equal(lerpColor('#000000', '#ffffff', 0), '#000000');
@@ -62,6 +62,9 @@ test('resetRun restores a dirty state to run defaults', () => {
   s.giantScoreMultiplier = 2;
   s.weatherRain = true;
   s.lastTimeStage = 'night';
+  s.hearts = 1;
+  s.invulnUntil = 9999;
+  s.heartLostAt = 5555;
 
   resetRun(s);
 
@@ -77,4 +80,7 @@ test('resetRun restores a dirty state to run defaults', () => {
   assert.equal(s.giantScoreMultiplier, 1);
   assert.equal(s.weatherRain, false);
   assert.equal(s.lastTimeStage, 'day');
+  assert.equal(s.hearts, STARTING_HEARTS);
+  assert.equal(s.invulnUntil, 0);
+  assert.equal(s.heartLostAt, 0);
 });

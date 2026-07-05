@@ -53,9 +53,40 @@ function stateWithObstacleAtDog(type) {
   return state;
 }
 
-test('normal collision with a hotdog kills the dog', () => {
+test('first hit spends a heart instead of killing', () => {
   const state = stateWithObstacleAtDog('hotdog');
-  assert.equal(checkCollision(state, createTestServices()), true);
+  const died = checkCollision(state, createTestServices(), 1000);
+  assert.equal(died, false);
+  assert.equal(state.hearts, 1);
+  assert.deepEqual(state.obstacles, [], 'obstacle knocked away');
+  assert.equal(state.giantBonkEffects.length, 1);
+  assert.equal(state.heartLostAt, 1000);
+  assert.ok(state.invulnUntil > 1000, 'i-frames granted');
+});
+
+test('hit on the last heart kills the dog', () => {
+  const state = stateWithObstacleAtDog('hotdog');
+  state.hearts = 1;
+  assert.equal(checkCollision(state, createTestServices(), 1000), true);
+  assert.equal(state.hearts, 0);
+});
+
+test('collisions are ignored during post-hit invulnerability', () => {
+  const state = stateWithObstacleAtDog('hotdog');
+  state.hearts = 1;
+  state.invulnUntil = 2000;
+  const died = checkCollision(state, createTestServices(), 1500);
+  assert.equal(died, false);
+  assert.equal(state.hearts, 1);
+  assert.equal(state.obstacles.length, 1, 'obstacle passes through untouched');
+});
+
+test('golden hot dog still works during invulnerability', () => {
+  const state = stateWithObstacleAtDog('golden');
+  state.invulnUntil = 2000;
+  const died = checkCollision(state, createTestServices(), 1500);
+  assert.equal(died, false);
+  assert.equal(state.giantActive, true);
 });
 
 test('golden hot dog activates giant mode instead of killing', () => {
@@ -95,6 +126,7 @@ test('ducking avoids a frisbee at head height', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
   state.obstacles = [{ x: state.dog.x + 20, y: GROUND_Y - 12, width: 44, height: 14, type: 'frisbee' }];
+  state.hearts = 1;  // no spare heart, so a hit is fatal
   assert.equal(checkCollision(state, createTestServices()), true, 'standing dog is hit');
   state.dog.ducking = true;
   assert.equal(checkCollision(state, createTestServices()), false, 'ducking dog slides under');

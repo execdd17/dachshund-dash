@@ -2,7 +2,7 @@
 // giant mode, golden pickup, or death).
 
 import {
-  GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS,
+  GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect } from './giant.js';
 
@@ -47,7 +47,7 @@ export function rectsOverlap(a, b) {
 }
 
 // Walk obstacles, resolving overlaps. Returns true if the dog died.
-export function checkCollision(state, services) {
+export function checkCollision(state, services, now = performance.now()) {
   const dogBox = getDogHitbox(state.dog, state.giantActive);
 
   for (let i = state.obstacles.length - 1; i >= 0; i--) {
@@ -75,7 +75,20 @@ export function checkCollision(state, services) {
         continue;
       }
 
-      // Normal collision: death
+      // Post-hit invulnerability: pass through unharmed
+      if (now < state.invulnUntil) continue;
+
+      // Normal collision: spend a heart, knock the obstacle away, and keep
+      // running behind brief i-frames — until the last heart is gone.
+      state.hearts--;
+      if (state.hearts > 0) {
+        state.heartLostAt = now;
+        state.invulnUntil = now + HEART_HIT_INVULN;
+        triggerBonkEffect(state, obs, now);
+        services.sfx.playBonk();
+        state.obstacles.splice(i, 1);
+        continue;
+      }
       return true;
     }
   }

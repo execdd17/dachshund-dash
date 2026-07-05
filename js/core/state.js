@@ -5,6 +5,7 @@
 
 import {
   W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X, BOSS_SQUIRREL_START_X,
+  STARTING_HEARTS,
 } from '../config.js';
 
 export function createDog() {
@@ -63,6 +64,11 @@ export function createState(rng = Math.random) {
 
     // --- Dog ---
     dog: createDog(),
+
+    // --- Hearts (extra lives) ---
+    hearts: STARTING_HEARTS,
+    invulnUntil: 0,   // timestamp: collisions are ignored until then (post-hit i-frames)
+    heartLostAt: 0,   // timestamp of the last heart loss (drives the HUD blink)
 
     // --- Landing dust particles ---
     landingParticles: [],
@@ -128,6 +134,10 @@ export function resetRun(state) {
   state.landingParticles = [];
   state.nextObstacleIn = 60;
   state.lastObstacleType = 'hotdog';
+
+  state.hearts = STARTING_HEARTS;
+  state.invulnUntil = 0;
+  state.heartLostAt = 0;
 
   state.dog.x = DOG_BASE_X;
   state.dog.y = GROUND_Y;

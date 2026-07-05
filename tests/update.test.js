@@ -69,10 +69,12 @@ test('running into an obstacle kills the dog', () => {
   const state = runningState();
   let died = false;
   const services = createTestServices({ showNameEntryOverlay: () => { died = true; } });
+  // Advance the clock each frame so post-hit i-frames expire between hits
   for (let i = 0; i < 20000 && state.gameState === 'running'; i++) {
-    update(state, DT, services, () => 0.99, 0);
+    update(state, DT, services, () => 0.99, i * DT);
   }
   assert.notEqual(state.gameState, 'running', 'dog eventually hit something');
+  assert.equal(state.hearts, 0, 'both hearts were spent');
   assert.ok(state.gameState === 'dead' || died);
 });
 

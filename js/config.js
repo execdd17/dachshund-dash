@@ -53,6 +53,11 @@ export const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle
 export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
+// --- Hearts (extra lives) ---
+export const STARTING_HEARTS = 2;                   // total hits the dog can take per run
+export const HEART_HIT_INVULN = 1500;               // ms of invulnerability after losing a heart
+export const HEART_LOSS_FLASH = 800;                // ms the just-lost heart blinks in the HUD
+
 // --- Dog sprite animation (PNG from png/dachshund) ---
 export const DOG_SPRITE_FPS = 12;   // 10-14 range: lower = choppier, higher = smoother
 export const DOG_SPRITE_SCALE = 70 / 512;   // dachshund_run_* are 512x1024

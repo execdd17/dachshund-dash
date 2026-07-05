@@ -14,7 +14,7 @@ import { drawDachshund, drawSquirrel } from './actors.js';
 import {
   drawChompEffects, drawBonkEffects, drawBirdJumpEffects, drawLandingParticles,
 } from './effects.js';
-import { drawScore, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
+import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale } from '../systems/giant.js';
 
@@ -85,6 +85,12 @@ export function draw(deps) {
   advanceDogSpriteFrame(sprites, state);
   const dog = state.dog;
   const giantScale = getGiantVisualScale(state);
+
+  // Post-hit invulnerability: flicker the dog while i-frames last
+  ctx.save();
+  if (state.gameState === 'running' && performance.now() < state.invulnUntil) {
+    ctx.globalAlpha = Math.sin(performance.now() * 0.04) > 0 ? 0.85 : 0.3;
+  }
   if (giantScale !== 1) {
     const pivotX = dog.x + dog.width * DOG_SPRITE_ANCHOR;
     const pivotY = GROUND_Y + 24;
@@ -123,6 +129,7 @@ export function draw(deps) {
   } else {
     drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y);
   }
+  ctx.restore();
 
   drawChompEffects(ctx, state);
   drawBonkEffects(ctx, state);
@@ -130,6 +137,7 @@ export function draw(deps) {
   drawLandingParticles(ctx, state);
 
   drawScore(ctx, state, view);
+  if (state.gameState !== 'idle') drawHearts(ctx, state, view);
   drawMusicIcon(ctx, music.isOn(), view);
 
   if (state.gameState === 'idle') {

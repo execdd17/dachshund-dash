@@ -151,7 +151,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
   }
 
   // Collision
-  if (checkCollision(state, services)) {
+  if (checkCollision(state, services, now)) {
     killDog(state, services);
   }
 }
