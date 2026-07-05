@@ -54,6 +54,26 @@ export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee 
 export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
+// --- Trampoline scene ---
+export const TRAMP_FIRST_AT = 350;        // score before the first scene can arm
+export const TRAMP_COOLDOWN = 400;        // score between scenes (from lastTrampEndScore)
+export const TRAMP_BOUNCES = 3;           // reps per scene
+export const TRAMP_BOUNCE_VY = -14;       // super-bounce launch velocity (see physics table)
+export const TRAMP_BOUNCE_BONUS = 50;     // points per clean bounce
+export const TRAMP_BREATHER = 120;        // baseline frames of empty field between reps (~1s)
+export const TRAMP_TILE_W = 32;           // thorn tile width
+export const TRAMP_HITBOX_PAD = 8;        // horizontal forgiveness on the trampoline surface
+// exitFactor 26 everywhere (plan said 30): exit tiles are ceil'd to 32px
+// widths, and at factor 30 the rounded-up exit was too wide to clear on the
+// bounce alone — playtesting showed a post-bounce double jump was mandatory.
+// At 26 the bounce always clears by itself; the double-jump reset stays as a
+// bonus correction for mistimed landings, not a requirement.
+export const TRAMP_REPS = [
+  { islandOffsetFactor: 22, trampWidth: 84, exitFactor: 26 },  // rep 0: close, wide
+  { islandOffsetFactor: 26, trampWidth: 72, exitFactor: 26 },  // rep 1
+  { islandOffsetFactor: 30, trampWidth: 60, exitFactor: 26 },  // rep 2: deep, narrow
+];
+
 // --- Hearts (extra lives) ---
 // Difficulty is picked once on the start overlay (slider index into this
 // list) and only changes how many hearts a run starts with. Locked for the

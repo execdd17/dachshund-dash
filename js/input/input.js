@@ -61,6 +61,12 @@ export function wireInput(deps) {
       state.bossPending = true;
       state.obstacles = [];  // clear obstacles so boss starts immediately
     }
+    // Debug: T = trigger trampoline scene (when running)
+    if (e.code === 'KeyT' && state.gameState === 'running' && !state.trampActive && !state.trampPending) {
+      e.preventDefault();
+      state.trampPending = true;
+      state.obstacles = [];  // clear field so the scene starts immediately
+    }
     // Debug: G = spawn a golden hot dog right in front of the dog
     if (e.code === 'KeyG' && state.gameState === 'running' && !state.giantActive) {
       e.preventDefault();

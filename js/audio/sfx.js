@@ -143,6 +143,34 @@ export function createSfx() {
     osc2.stop(a.currentTime + 0.12);
   }
 
+  function playBoing() {
+    const ctx = getAudioCtx();
+    // Bouncy rising sweep — bigger and springier than the jump sound
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+    // Springy overtone
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(300, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
+    gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc2.start(ctx.currentTime);
+    osc2.stop(ctx.currentTime + 0.22);
+  }
+
   function playGiantActivate() {
     const a = getAudioCtx();
     // Ascending power-up fanfare
@@ -179,7 +207,7 @@ export function createSfx() {
 
   return {
     playJump, playScore, playDeath, playDoubleJump, playDuck,
-    playCrunch, playBonk, playGiantActivate, playGiantDeactivate,
+    playCrunch, playBonk, playGiantActivate, playGiantDeactivate, playBoing,
   };
 }
 
@@ -188,7 +216,7 @@ export function createSilentSfx() {
   const noop = () => {};
   return {
     playJump: noop, playScore: noop, playDeath: noop, playDoubleJump: noop,
-    playDuck: noop, playCrunch: noop, playBonk: noop,
+    playDuck: noop, playCrunch: noop, playBonk: noop, playBoing: noop,
     playGiantActivate: noop, playGiantDeactivate: noop,
   };
 }

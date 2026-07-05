@@ -12,7 +12,8 @@ import {
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
 import {
-  drawChompEffects, drawBonkEffects, drawBirdJumpEffects, drawLandingParticles,
+  drawChompEffects, drawBonkEffects, drawBirdJumpEffects, drawTrampBounceEffects,
+  drawLandingParticles,
 } from './effects.js';
 import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame } from '../assets/sprites.js';
@@ -134,6 +135,7 @@ export function draw(deps) {
   drawChompEffects(ctx, state);
   drawBonkEffects(ctx, state);
   drawBirdJumpEffects(ctx, state);
+  drawTrampBounceEffects(ctx, state);
   drawLandingParticles(ctx, state);
 
   drawScore(ctx, state, view);

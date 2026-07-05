@@ -16,6 +16,7 @@ import { checkCollision } from './collision.js';
 import { deactivateGiantMode } from './giant.js';
 import { updateChase } from './chase.js';
 import { updateBoss } from './boss.js';
+import { updateTrampoline } from './trampoline.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
 import { killDog } from './death.js';
 
@@ -77,7 +78,8 @@ export function update(state, dt, services, rng = Math.random, now = performance
   // Obstacles
   state.nextObstacleIn -= effectiveSpeed * scale;
   if (state.nextObstacleIn <= 0 && !state.chasePending && !state.chaseEntering
-    && !state.bossPending && !state.bossLosing) {
+    && !state.bossPending && !state.bossLosing
+    && !state.trampPending && !state.trampActive) {
     spawnObstacle(state, rng);
     if (state.nextObstacleIn <= 0) {
       const gap = state.bossChasing
@@ -98,7 +100,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   });
 
-  state.obstacles = state.obstacles.filter(o => o.x > -40);
+  state.obstacles = state.obstacles.filter(o => o.x + o.width > -10);
 
   // Landing dust particles
   state.landingParticles = state.landingParticles.filter(p => {
@@ -136,12 +138,16 @@ export function update(state, dt, services, rng = Math.random, now = performance
     return now - e.startTime < 1500;
   });
   state.birdJumpEffects = state.birdJumpEffects.filter(e => now - e.startTime < 800);
+  state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < 800);
 
   // Chase mode
   updateChase(state, scale);
 
   // Boss chase state machine (may kill the dog)
   updateBoss(state, scale, services);
+
+  // Trampoline scene (bounce before collision resolves thorns on the same frame)
+  updateTrampoline(state, scale, services, now);
 
   // Chime at 100-point milestones
   const milestone = Math.floor(state.score / 100);

@@ -115,6 +115,14 @@ export function createState(rng = Math.random) {
     giantBonkEffects: [],   // [{x, y, width, height, vx, vy, rotation, rotSpeed, startTime, type, skin}]
     birdJumpEffects: [],    // [{x, y, startTime}]
 
+    // --- Trampoline scene ---
+    trampPending: false,        // waiting for obstacles to clear
+    trampActive: false,         // scene running (spawns its own field)
+    trampRep: 0,                // reps spawned so far (0..TRAMP_BOUNCES)
+    trampBreatherFrames: 0,     // countdown between reps
+    lastTrampEndScore: 0,       // 0 = never run (gates TRAMP_FIRST_AT vs cooldown)
+    trampBounceEffects: [],     // [{x, y, startTime}] "+50" popups
+
     // --- Weather ---
     weatherRain: false,
     lastTimeStage: 'day',   // track stage transitions for weather rolls
@@ -170,6 +178,13 @@ export function resetRun(state) {
   state.giantBonkEffects = [];
   state.birdJumpEffects = [];
   state.lastGoldenSpawnScore = 0;
+
+  state.trampPending = false;
+  state.trampActive = false;
+  state.trampRep = 0;
+  state.trampBreatherFrames = 0;
+  state.lastTrampEndScore = 0;
+  state.trampBounceEffects = [];
 
   state.weatherRain = false;
   state.rainDrops = [];

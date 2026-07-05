@@ -1,7 +1,7 @@
 // Transient visual effects: CHOMP!/BONK! popups, bird-jump bonus text,
 // landing dust particles.
 
-import { BIRD_JUMP_BONUS } from '../config.js';
+import { BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS } from '../config.js';
 import {
   drawFrisbee, drawBird, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
 } from './obstacles.js';
@@ -81,6 +81,20 @@ export function drawBirdJumpEffects(ctx, state, now = performance.now()) {
     ctx.font = `bold ${12 + age * 6}px Courier New`;
     ctx.textAlign = 'center';
     ctx.fillText('NICE! +' + BIRD_JUMP_BONUS, e.x, e.y - 5 - age * 30);
+    ctx.restore();
+  });
+}
+
+export function drawTrampBounceEffects(ctx, state, now = performance.now()) {
+  state.trampBounceEffects.forEach(e => {
+    const age = (now - e.startTime) / 800;
+    if (age > 1) return;
+    ctx.save();
+    ctx.globalAlpha = 1 - age;
+    ctx.fillStyle = '#7A4FBF';
+    ctx.font = `bold ${12 + age * 6}px Courier New`;
+    ctx.textAlign = 'center';
+    ctx.fillText('BOING! +' + TRAMP_BOUNCE_BONUS, e.x, e.y - 5 - age * 30);
     ctx.restore();
   });
 }

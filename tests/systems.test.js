@@ -98,6 +98,40 @@ test('chase does not arm during giant or boss modes', () => {
   assert.equal(state.chasePending, false);
 });
 
+test('chase and boss do not arm behind a golden pickup, and stand down if giant wins', () => {
+  // A golden on the field blocks arming (giant mode is imminent)
+  const golden = { x: 400, y: 0, width: 36, height: 22, type: 'golden' };
+  const chaseState = createState(() => 0.5);
+  chaseState.score = CHASE_FIRST_AT + 100;
+  chaseState.obstacles = [golden];
+  updateChase(chaseState, 1);
+  assert.equal(chaseState.chasePending, false);
+
+  const bossState = createState(() => 0.5);
+  bossState.score = BOSS_MILESTONE + 5;
+  bossState.obstacles = [golden];
+  updateBoss(bossState, 1, createTestServices());
+  assert.equal(bossState.bossPending, false, 'milestone not consumed either');
+  assert.equal(bossState.lastBossMilestone, 0);
+
+  // Giant activating while pending: both stand down; boss refunds its milestone
+  const chasePend = createState(() => 0.5);
+  chasePend.chasePending = true;
+  chasePend.giantActive = true;
+  updateChase(chasePend, 1);
+  assert.equal(chasePend.chasePending, false);
+  assert.equal(chasePend.chaseEntering, false);
+
+  const bossPend = createState(() => 0.5);
+  bossPend.bossPending = true;
+  bossPend.lastBossMilestone = 1;
+  bossPend.giantActive = true;
+  updateBoss(bossPend, 1, createTestServices());
+  assert.equal(bossPend.bossPending, false);
+  assert.equal(bossPend.bossChasing, false);
+  assert.equal(bossPend.lastBossMilestone, 0, 'milestone refunded for re-arm after giant');
+});
+
 // --- Boss state machine ---
 
 test('boss arms at each BOSS_MILESTONE and cancels pending chase', () => {

@@ -15,10 +15,14 @@ export function killDog(state, services) {
   state.bossPending = false;
   state.bossChasing = false;
   state.bossLosing = false;
+  state.trampPending = false;
+  state.trampActive = false;
   state.giantActive = false;
   state.giantGrowing = false;
   state.giantShrinking = false;
   state.giantScoreMultiplier = 1;
+  state.trampPending = false;
+  state.trampActive = false;
   services.music.resetToNormal();
 
   const qualifies = qualifiesLocally(state.highScores, state.score)

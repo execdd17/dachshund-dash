@@ -8,6 +8,7 @@ import {
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
 } from '../config.js';
 import { killDog } from './death.js';
+import { giantBusy, chaseBusy, trampBusy, goldenOnField } from './encounters.js';
 
 export function updateBoss(state, scale, services) {
   if (state.bossChasing) {
@@ -68,7 +69,14 @@ export function updateBoss(state, scale, services) {
       state.bossLosing = false;
     }
   } else if (state.bossPending) {
-    if (state.obstacles.length === 0) {
+    // Giant mode won the race (a golden eaten after we armed): stand down so
+    // giant mode keeps its normal edible field. Return the consumed milestone
+    // so the boss re-arms right after the shrink ends (the giantBusy check in
+    // bossCanStart below keeps the refund from double-arming mid-transition).
+    if (giantBusy(state)) {
+      state.bossPending = false;
+      state.lastBossMilestone--;
+    } else if (state.obstacles.length === 0) {
       state.bossPending = false;
       state.bossChasing = true;
       state.bossSquirrelX = BOSS_SQUIRREL_START_X;
@@ -77,8 +85,8 @@ export function updateBoss(state, scale, services) {
   } else {
     // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with chase)
     const currentMilestone = Math.floor(state.score / BOSS_MILESTONE);
-    const bossCanStart = !state.giantActive && !state.chasePending && !state.chaseActive
-      && !state.chaseEntering && !state.chaseEscaping
+    const bossCanStart = !giantBusy(state) && !chaseBusy(state) && !trampBusy(state)
+      && !goldenOnField(state)
       && currentMilestone > state.lastBossMilestone;
     if (bossCanStart) {
       state.bossPending = true;

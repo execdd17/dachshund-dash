@@ -39,6 +39,9 @@ export function getObstacleHitbox(obs) {
   if (obs.type === 'stack') {
     return { x: obs.x + 8, y: obs.y + 4, w: obs.width - 16, h: obs.height - 6 };
   }
+  if (obs.type === 'thorns') {
+    return { x: obs.x + 4, y: obs.y + 8, w: obs.width - 8, h: obs.height - 8 };
+  }
   return { x: obs.x + 12, y: obs.y + 8, w: obs.width - 24, h: obs.height - 10 };
 }
 
@@ -58,6 +61,24 @@ export function checkCollision(state, services, now = performance.now()) {
         activateGiantMode(state, services);
         state.obstacles.splice(i, 1);
         continue;
+      }
+
+      if (obs.type === 'trampoline') continue;
+
+      if (obs.type === 'thorns') {
+        // Terrain: a rising dog (fresh jump or trampoline bounce) is leaving
+        // the brambles — the bounce must win over a same-frame overlap at the
+        // island edge, and a grazing upward arc shouldn't count either.
+        if (state.dog.vy < 0) continue;
+        if (now < state.invulnUntil) continue;
+        state.hearts--;
+        if (state.hearts > 0) {
+          state.heartLostAt = now;
+          state.invulnUntil = now + HEART_HIT_INVULN;
+          services.sfx.playBonk();
+          continue;
+        }
+        return true;
       }
 
       // Giant mode: eat or bonk

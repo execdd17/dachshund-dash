@@ -23,6 +23,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 - A soulful soundtrack (with an EDM remix for special occasions)
 - Squirrel chases and a boss encounter
 - Giant mode — grab a golden hot dog and become unstoppable
+- Trampoline scenes — thorn patches where a super-bounce off a trampoline island is the only way through
 - Local and global high score leaderboards
 
 ## Run It Locally

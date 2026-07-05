@@ -6,12 +6,12 @@ import {
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   GIANT_FIRST_AT, GIANT_COOLDOWN, GIANT_SPAWN_CHANCE,
 } from '../config.js';
+import { giantBusy, chaseBusy, bossBusy, trampBusy } from './encounters.js';
 
 export function spawnObstacle(state, rng = Math.random) {
   // --- Golden hot dog spawn check ---
-  const goldenEligible = !state.giantActive && !state.giantGrowing && !state.giantShrinking
-    && !state.chaseActive && !state.chasePending && !state.chaseEntering
-    && !state.bossPending && !state.bossChasing && !state.bossLosing
+  const goldenEligible = !giantBusy(state) && !chaseBusy(state) && !bossBusy(state)
+    && !trampBusy(state)
     && state.score >= GIANT_FIRST_AT
     && state.score >= state.lastGoldenSpawnScore + GIANT_COOLDOWN
     && rng() < GIANT_SPAWN_CHANCE;

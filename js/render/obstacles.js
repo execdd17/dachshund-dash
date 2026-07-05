@@ -636,11 +636,135 @@ export function drawAcornPile(ctx, x, y) {
   drawAcorn(ctx, x + 8, y + 4);
 }
 
+// Trampoline island: splayed legs, red-padded frame bar, blue membrane with
+// a constant idle wobble so it reads as bouncy on first sight.
+export function drawTrampoline(ctx, x, y, width, frameCount, squashed) {
+  const barY = y + 2;          // frame bar center
+  const legTop = y + 4;
+  const legBottom = GROUND_Y + 24;  // feet on the visual ground line
+
+  // --- Legs (two splayed dark legs) ---
+  ctx.strokeStyle = '#3A3A3A';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x + 10, legTop);
+  ctx.lineTo(x + 4, legBottom);
+  ctx.moveTo(x + width - 10, legTop);
+  ctx.lineTo(x + width - 4, legBottom);
+  ctx.stroke();
+
+  // --- Membrane (sags visibly below the frame bar; the constant wobble is
+  // the primary "this is bouncy" telegraph) ---
+  const idleDip = 3 + Math.sin(frameCount * 0.15) * 1.5;
+  const dip = squashed ? 9 : idleDip;
+  ctx.fillStyle = '#2E5FB7';
+  ctx.beginPath();
+  ctx.moveTo(x + 4, barY);
+  ctx.quadraticCurveTo(x + width / 2, barY + dip + 4, x + width - 4, barY);
+  ctx.lineTo(x + width - 4, barY + 4);
+  ctx.quadraticCurveTo(x + width / 2, barY + dip + 9, x + 4, barY + 4);
+  ctx.closePath();
+  ctx.fill();
+  // Sheen line on the membrane
+  ctx.strokeStyle = '#6E9BE0';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, barY + 3);
+  ctx.quadraticCurveTo(x + width / 2, barY + dip + 6, x + width - 8, barY + 3);
+  ctx.stroke();
+
+  // --- Frame bar with red safety pads ---
+  ctx.strokeStyle = '#2A2A2A';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, barY - 3, width, 6);
+  ctx.fillStyle = '#D94438';
+  ctx.fillRect(x, barY - 3, width, 6);
+  // Pad segment lines
+  ctx.strokeStyle = '#A42A1C';
+  ctx.lineWidth = 1;
+  for (let px = x + 12; px < x + width - 6; px += 12) {
+    ctx.beginPath();
+    ctx.moveTo(px, barY - 3);
+    ctx.lineTo(px, barY + 3);
+    ctx.stroke();
+  }
+}
+
+// One 32px bramble tile: crossing curved stems with thorn triangles and a
+// berry accent or two. Deterministic per-tile variation via seed — no
+// per-frame randomness (tiles must not shimmer).
+export function drawThorns(ctx, x, y, seed = 0) {
+  // Cheap deterministic hash → repeatable pseudo-randoms per tile
+  let h = (Math.floor(seed) * 2654435761) >>> 0;
+  const rand = () => {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return h / 4294967296;
+  };
+
+  // Stems root at staggered depths across the whole dirt-path band
+  // (GROUND_Y+16 → +36), same as the scenery flowers, so the brambles read
+  // as growing out of the path instead of hovering at its top edge.
+  const baseY = y + 30;
+  const stems = 2 + Math.floor(rand() * 2);
+
+  for (let s = 0; s < stems; s++) {
+    const x0 = x + 2 + rand() * 8;
+    const x1 = x + 22 + rand() * 8;
+    const peak = y + 4 + rand() * 8;
+    const cpX = x + 8 + rand() * 16;
+    const stemBase = baseY + s * 5 + rand() * 5;  // deeper with each stem
+
+    // Stem: low curved arc, alternating dark green / brown
+    ctx.strokeStyle = s % 2 === 0 ? '#4A5D23' : '#5C3A1E';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x0, stemBase);
+    ctx.quadraticCurveTo(cpX, peak, x1, stemBase);
+    ctx.stroke();
+
+    // Thorns along the stem: small pale-tipped triangles
+    const thornCount = 2 + Math.floor(rand() * 2);
+    for (let t = 0; t < thornCount; t++) {
+      const u = 0.2 + t * (0.6 / thornCount) + rand() * 0.1;
+      // Point on the quadratic curve
+      const qx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * cpX + u * u * x1;
+      const qy = (1 - u) * (1 - u) * stemBase + 2 * (1 - u) * u * peak + u * u * stemBase;
+      const dir = rand() < 0.5 ? -1 : 1;
+      ctx.fillStyle = '#C7CBA0';
+      ctx.beginPath();
+      ctx.moveTo(qx - 2, qy);
+      ctx.lineTo(qx + 2, qy);
+      ctx.lineTo(qx + dir * 1.5, qy - 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Berry accents, scattered down into the dirt band with the roots
+  const berries = 1 + Math.floor(rand() * 2);
+  for (let b = 0; b < berries; b++) {
+    ctx.fillStyle = '#D94438';
+    ctx.beginPath();
+    ctx.arc(x + 4 + rand() * 24, y + 12 + rand() * 24, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 // Dispatch a single obstacle to its draw function, honoring the chase skin
 // (acorns) and giant mode (chocolate bars become edible hot dogs).
 export function drawObstacle(ctx, state, o) {
   if (o.type === 'golden') {
     drawGoldenHotDog(ctx, o.x, o.y, state.frameCount);
+    return;
+  }
+  if (o.type === 'trampoline') {
+    drawTrampoline(ctx, o.x, o.y, o.width, state.frameCount, performance.now() < (o.squashUntil ?? 0));
+    return;
+  }
+  if (o.type === 'thorns') {
+    drawThorns(ctx, o.x, o.y, o.seed ?? 0);
     return;
   }
   const useChaseSkin = (o.skin ?? (state.chaseActive ? 'chase' : 'normal')) === 'chase';

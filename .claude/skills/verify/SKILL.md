@@ -24,7 +24,7 @@ const browser = await chromium.launch({
 
 - Start/restart a run: `page.keyboard.press('Space')` or click the `#game` canvas.
 - To force collisions, just never jump — the dog hits the first obstacle in ~5s.
-- Debug keys (running state): P slow-mo, C chase, B boss, G golden hot dog, R rain.
+- Debug keys (running state): P slow-mo, C chase, B boss, T trampoline scene, G golden hot dog, R rain.
 - Collect `pageerror` / console errors — CLAUDE.md says asset/Firebase init errors show there.
 
 ## Reading game state (it's all canvas — no DOM text)
