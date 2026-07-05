@@ -18,7 +18,7 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 npm test                         # or: node --test tests/*.test.js
 ```
 
-There is no lint or build tooling. Verify gameplay changes by running the tests and playing the game in a browser (check the DevTools console for errors, especially around asset loading and Firebase init).
+There is no lint or build tooling. Verify gameplay changes by running the tests and playing the game in a browser (check the DevTools console for errors, especially around asset loading and Firebase init). For headless verification, `.claude/skills/verify/SKILL.md` documents a working playwright-core recipe (driving the game, reading canvas state, DOM signals).
 
 ## Architecture
 
@@ -30,7 +30,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 - **`core/`** — `state.js` (the single mutable state object: `createState()`, `resetRun()`; field names match the pre-refactor globals), `timeOfDay.js` (score-driven day/night cycle), `color.js` (lerpColor).
 - **`systems/`** — pure-ish gameplay logic operating on `(state, …, services)`:
   - `update.js` — per-frame orchestrator (physics, scrolling, scoring, weather) that calls the others
-  - `control.js` (jump/duck + run reset), `spawning.js`, `collision.js` (hitbox math + resolution), `giant.js`, `chase.js`, `boss.js`, `death.js`, `weather.js`
+  - `control.js` (jump/duck + run reset), `spawning.js`, `collision.js` (hitbox math + resolution, incl. heart spend/i-frames), `giant.js`, `chase.js`, `boss.js`, `death.js`, `weather.js`
   - `services` = `{ sfx, music, globalScores, showNameEntryOverlay }`; randomness and clock are injectable (`rng`, `now`) for deterministic tests.
 - **`render/`** — canvas drawing only, all functions take `(ctx, state, …)`: `draw.js` (frame orchestrator), `view.js` (world→canvas mapping: desktop 2x fixed canvas vs. app-mode full-bleed sizing, extended sky, safe-area insets), `background.js`, `obstacles.js` (incl. the per-type/skin dispatch in `drawObstacle`), `actors.js` (dog/squirrel sprites + cosmetic overlays), `effects.js`, `hud.js`, `primitives.js`.
 - **`audio/`** — `sfx.js` (Web Audio-synthesized effects behind a `createSfx()` interface; `createSilentSfx()` for tests) and `music.js` (normal + giant-mode EDM tracks, autoplay unlock, `createSilentMusic()` for tests).
@@ -49,6 +49,7 @@ The code is layered so that game logic never touches the DOM, canvas, or Web Aud
 - The dachshund/squirrel are PNG sprite sequences (`png/…`); every other obstacle is drawn with canvas primitives.
 - Encounters (squirrel chase, boss, giant mode) are mutually exclusive; each is its own module under `systems/`.
 - Music requires a user interaction to start (browser autoplay policy) — see `music.attachAutoplayUnlock()`.
+- **Hearts (lives)**: runs start with `STARTING_HEARTS` (2). A non-fatal hit in `checkCollision` spends a heart, knocks the obstacle away with the giant-mode bonk effect, and grants `HEART_HIT_INVULN` ms of i-frames (`state.invulnUntil`; the dog flickers in `draw.js`). A hit on the last heart kills. The HUD hearts (`drawHearts` in `render/hud.js`, pixel-art bitmap) sit top-left below the speaker/giant-timer slot; boss catches bypass hearts and kill directly.
 - **App mode** (installable web app): launched from a phone home screen (`display-mode: standalone`, or forced with `?app=1` for testing), the canvas fills the whole viewport in landscape — the world keeps its 800-unit width, the ground pins to the bottom, and extra height becomes sky above world y=0 (`extraTop` in `render/view.js`; systems see it as `state.skyTop ≤ 0`). Portrait shows a rotate prompt plus the leaderboard. Desktop and plain mobile-browser views keep the classic fixed 1600×500 canvas. `manifest.json` + `icons/` provide the home-screen install metadata.
 
 ### Extending the game
