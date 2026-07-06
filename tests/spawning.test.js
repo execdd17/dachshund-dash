@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { spawnObstacle } from '../js/systems/spawning.js';
+import { spawnObstacle, SPAWN_PATTERNS } from '../js/systems/spawning.js';
 import { createState } from '../js/core/state.js';
 import {
   W, GROUND_Y, SQUIRREL_OFFSET, GIANT_FIRST_AT, MIN_OBSTACLE_GAP,
+  BIRD_HIGH_Y, BIRD_LOW_Y, BIRD_TRI_DX, BIRD_TRI_ROW2_DX,
+  BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
+  PATTERN_CHANCE,
 } from '../js/config.js';
 import { createSequenceRng } from './helpers.js';
 
@@ -20,18 +23,18 @@ test('early game spawns only hotdogs regardless of roll', () => {
 test('stack spawns past score 150 on a low roll', () => {
   const state = createState(() => 0.5);
   state.score = 200;
-  spawnObstacle(state, createSequenceRng([0.1]));
+  spawnObstacle(state, createSequenceRng([0.99, 0.1]));
   assert.equal(state.obstacles[0].type, 'stack');
 });
 
 test('frisbee roll past score 80 spawns bird or stacked frisbee pair', () => {
-  // Second rng value 0.4 (< 0.5) → bird
+  // Third rng value 0.4 (< 0.5) → bird
   let state = createState(() => 0.5);
   state.score = 100;
   spawnObstacle(state, createSequenceRng([0.3, 0.4]));
   assert.deepEqual(state.obstacles.map(o => o.type), ['bird']);
 
-  // Second rng value 0.9 (>= 0.5) → two stacked frisbees
+  // Third rng value 0.9 (>= 0.5) → two stacked frisbees
   state = createState(() => 0.5);
   state.score = 100;
   spawnObstacle(state, createSequenceRng([0.3, 0.9]));
@@ -91,4 +94,62 @@ test('spawned ground obstacles sit at ground level', () => {
   const state = createState(() => 0.5);
   spawnObstacle(state, createSequenceRng([0.99]));
   assert.equal(state.obstacles[0].y, GROUND_Y + 4);
+});
+
+test('bird stack spawns two vertically aligned birds past BIRD_WALL_FIRST_AT', () => {
+  const state = createState(() => 0.5);
+  state.score = BIRD_WALL_FIRST_AT;
+  spawnObstacle(state, createSequenceRng([0.99, 0.2, 0.1]));
+  assert.equal(state.obstacles.length, 2);
+  assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall));
+  assert.deepEqual(state.obstacles.map(o => o.y), [BIRD_HIGH_Y, BIRD_LOW_Y]);
+});
+
+test('bird triangle: low pair, mid pair, lowered high pair', () => {
+  const state = createState(() => 0.5);
+  state.score = BIRD_WALL_FIRST_AT;
+  const spawnX = W + 10;
+  spawnObstacle(state, createSequenceRng([0.99, 0.2, 0.5]));
+  assert.equal(state.obstacles.length, 6);
+  assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall));
+  assert.deepEqual(state.obstacles.map(o => o.wallRow), [
+    'low', 'low', 'mid', 'mid', 'high', 'high',
+  ]);
+  assert.deepEqual(state.obstacles.map(o => o.y), [
+    BIRD_LOW_Y, BIRD_LOW_Y,
+    BIRD_WALL_MID_Y, BIRD_WALL_MID_Y,
+    BIRD_WALL_HIGH_Y, BIRD_WALL_HIGH_Y,
+  ]);
+  assert.equal(state.obstacles[0].x, spawnX - BIRD_TRI_DX);
+  assert.equal(state.obstacles[1].x, spawnX + BIRD_TRI_DX);
+  assert.equal(state.obstacles[2].x, spawnX - BIRD_TRI_ROW2_DX);
+  assert.equal(state.obstacles[3].x, spawnX + BIRD_TRI_ROW2_DX);
+  assert.equal(state.obstacles[4].x, spawnX - BIRD_TRI_ROW2_DX);
+  assert.equal(state.obstacles[5].x, spawnX + BIRD_TRI_ROW2_DX);
+});
+
+test('spawn pattern arms on a low roll and sets close gap between beats', () => {
+  const state = createState(() => 0.5);
+  state.score = 200;
+  state.lastObstacleType = 'hotdog';
+  spawnObstacle(state, createSequenceRng([PATTERN_CHANCE - 0.01, 0.0]));
+  assert.ok(state.activeSpawnPattern);
+  assert.equal(state.obstacles.length, 2); // frisbeeHotdog opens with a pair
+  assert.equal(state.nextObstacleIn, PATTERN_CLOSE_GAP);
+});
+
+test('pattern second beat spawns on the next call', () => {
+  const state = createState(() => 0.5);
+  state.score = 200;
+  state.activeSpawnPattern = { ...SPAWN_PATTERNS[0], index: 0 };
+  spawnObstacle(state, createSequenceRng([0.99]));
+  assert.equal(state.obstacles.length, 2);
+  assert.equal(state.obstacles[0].type, 'frisbee');
+  assert.equal(state.nextObstacleIn, PATTERN_CLOSE_GAP);
+
+  state.nextObstacleIn = 0;
+  spawnObstacle(state, createSequenceRng([0.99]));
+  assert.equal(state.obstacles.length, 3);
+  assert.equal(state.obstacles[2].type, 'hotdog');
+  assert.equal(state.activeSpawnPattern, null);
 });

@@ -1,17 +1,17 @@
 // HTML global-leaderboard table: difficulty tabs, search, pagination,
 // rendering. Browser-only (touches the DOM); list slicing/filtering itself
-// is the pure getScoresForDifficulty()/getFilteredScores() in global.js.
+// is the pure getFilteredScores() in global.js.
 
-import { GLOBAL_PAGE_SIZE, DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX } from '../config.js';
-import { getFilteredScores, getScoresForDifficulty } from './global.js';
+import { GLOBAL_PAGE_SIZE, DIFFICULTY_LEVELS } from '../config.js';
+import { getFilteredScores } from './global.js';
 
 export function createLeaderboardUi(globalScores) {
   let page = 0;
   let searchTerm = '';
-  let difficulty = DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label;
+  let difficulty = null;
 
   function currentBoard() {
-    return getFilteredScores(getScoresForDifficulty(globalScores.scores, difficulty), searchTerm);
+    return getFilteredScores(globalScores.scores, searchTerm);
   }
 
   function renderTabs() {
@@ -29,6 +29,14 @@ export function createLeaderboardUi(globalScores) {
     const nextBtn = document.getElementById('lbNext');
     if (!body) return;
     renderTabs();
+
+    if (!difficulty) {
+      body.innerHTML = '<tr><td colspan="3" class="lb-status">Start the game to load the leaderboard</td></tr>';
+      pageInfo.textContent = '';
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
 
     if (!globalScores.loaded && !globalScores.error) {
       body.innerHTML = '<tr><td colspan="3" class="lb-status">Loading...</td></tr>';
@@ -54,7 +62,7 @@ export function createLeaderboardUi(globalScores) {
     const start = page * GLOBAL_PAGE_SIZE;
     const pageScores = filtered.slice(start, start + GLOBAL_PAGE_SIZE);
 
-    if (filtered.length === 0) {
+    if (pageScores.length === 0) {
       body.innerHTML = searchTerm
         ? '<tr><td colspan="3" class="lb-empty">No matching scores</td></tr>'
         : `<tr><td colspan="3" class="lb-empty">No ${difficulty} scores yet — be the first!</td></tr>`;
@@ -75,13 +83,24 @@ export function createLeaderboardUi(globalScores) {
     nextBtn.disabled = page >= totalPages - 1;
   }
 
-  // Switch the visible board (also called when the player picks a difficulty
-  // on the start overlay, so they land on their own board).
+  // Called when the player picks a difficulty on the start overlay — sets the
+  // session board and the visible tab together.
+  function setSessionDifficulty(label) {
+    if (!DIFFICULTY_LEVELS.some(l => l.label === label)) return;
+    difficulty = label;
+    page = 0;
+    searchTerm = '';
+    const searchInput = document.getElementById('lbSearch');
+    if (searchInput) searchInput.value = '';
+    globalScores.setSessionDifficulty(label);
+  }
+
+  // User clicked a different difficulty tab in the HTML leaderboard.
   function setDifficulty(label) {
     if (!DIFFICULTY_LEVELS.some(l => l.label === label) || label === difficulty) return;
     difficulty = label;
     page = 0;
-    render();
+    globalScores.loadView(label);
   }
 
   function wireControls() {
@@ -108,5 +127,5 @@ export function createLeaderboardUi(globalScores) {
     });
   }
 
-  return { render, wireControls, setDifficulty };
+  return { render, wireControls, setSessionDifficulty, setDifficulty };
 }

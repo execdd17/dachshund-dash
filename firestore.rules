@@ -3,6 +3,11 @@
 // console (Firestore -> Rules) and must be updated there by hand. Keep this
 // file in sync with the console, and keep the field list in sync with the
 // document shape submitted by js/leaderboard/global.js submit().
+//
+// Composite index also required for paginated leaderboard queries (Firestore
+// -> Indexes, or follow the console link on the first query error):
+//   collection: scores
+//   fields: difficulty ASC, score DESC, timestamp ASC
 
 rules_version = '2';
 

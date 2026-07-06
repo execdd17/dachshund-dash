@@ -3,6 +3,7 @@
 
 import {
   GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
+  ACORN_W, ACORN_H, CHASE_ACORN_Y,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect } from './giant.js';
 
@@ -33,6 +34,24 @@ export function getDogHitbox(dog, giantActive) {
 }
 
 export function getObstacleHitbox(obs) {
+  if (obs.skin === 'chase' && (obs.type === 'frisbee' || obs.type === 'bird')) {
+    if (obs.aerialWall) {
+      const drawY = obs.wallRow === 'low' ? CHASE_ACORN_Y : obs.y;
+      return {
+        x: obs.x + 12,
+        y: drawY + 8,
+        w: ACORN_W - 24,
+        h: ACORN_H - 10,
+      };
+    }
+    // Solo chase aerials pin to duck-under height.
+    return {
+      x: obs.x + 12,
+      y: CHASE_ACORN_Y + 8,
+      w: ACORN_W - 24,
+      h: ACORN_H - 10,
+    };
+  }
   if (obs.type === 'frisbee' || obs.type === 'bird') {
     return { x: obs.x + 6, y: obs.y + 2, w: obs.width - 12, h: obs.height - 4 };
   }

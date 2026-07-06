@@ -227,6 +227,8 @@ test('killDog stores the global placement for the game-over banner', () => {
       placement: (score, difficulty) => { asked = { score, difficulty }; return 4; },
       submit: async () => {},
       maybeRefresh: () => {},
+      setSessionDifficulty: async () => {},
+      loadView: async () => {},
     },
   });
   killDog(state, services);

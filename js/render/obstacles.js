@@ -2,7 +2,7 @@
 // drawObstacle() dispatches on obstacle type/skin; individual draw functions
 // take (ctx, x, y, ...) so they stay independently testable/reusable.
 
-import { GROUND_Y } from '../config.js';
+import { GROUND_Y, ACORN_W, ACORN_H, CHASE_ACORN_Y } from '../config.js';
 import { roundRect, drawSparkle } from './primitives.js';
 
 export function drawHotDog(ctx, x, y) {
@@ -571,8 +571,8 @@ export function drawBird(ctx, ox, oy, frameCount) {
 export function drawAcorn(ctx, x, y, rotation) {
   // Teardrop acorn: brown nut, tan cap. Fits ~36x22 like hot dog.
   // rotation: optional radians for spinning (e.g. duck-under acorn)
-  const hw = 36;
-  const hh = 22;
+  const hw = ACORN_W;
+  const hh = ACORN_H;
 
   if (rotation !== undefined) {
     const cx = x + hw / 2;
@@ -823,8 +823,12 @@ export function drawObstacle(ctx, state, o) {
   }
   const useChaseSkin = (o.skin ?? (state.chaseActive ? 'chase' : 'normal')) === 'chase';
   if (useChaseSkin) {
-    if (o.type === 'frisbee' || o.type === 'bird') drawAcorn(ctx, o.x, o.y - 8, state.frameCount * 0.15);
-    else if (o.type === 'stack') drawAcornPile(ctx, o.x, o.y);
+    if (o.type === 'frisbee' || o.type === 'bird') {
+      const y = o.aerialWall
+        ? (o.wallRow === 'low' ? CHASE_ACORN_Y : o.y)
+        : CHASE_ACORN_Y;
+      drawAcorn(ctx, o.x, y, state.frameCount * 0.15);
+    } else if (o.type === 'stack') drawAcornPile(ctx, o.x, o.y);
     else drawAcorn(ctx, o.x, o.y);
   } else if (o.type === 'bird') {
     drawBird(ctx, o.x, o.y, state.frameCount);

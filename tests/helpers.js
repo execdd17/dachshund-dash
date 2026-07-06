@@ -30,6 +30,8 @@ export function createTestServices(overrides = {}) {
       placement: () => null,
       submit: async () => {},
       maybeRefresh: () => {},
+      setSessionDifficulty: async () => {},
+      loadView: async () => {},
     },
     recordScore: () => {},
     ...overrides,

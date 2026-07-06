@@ -91,9 +91,9 @@ export function update(state, dt, services, rng = Math.random, now = performance
 
   state.obstacles.forEach(o => o.x -= effectiveSpeed * scale);
 
-  // Detect jumping over a bird (dog is airborne and bird has passed under)
+  // Detect jumping over a solo bird (walls are meant to be ducked/jumped through, not bonused).
   state.obstacles.forEach(o => {
-    if (o.type === 'bird' && !o.jumped && dog.jumping && o.x + o.width < dog.x + 23) {
+    if (o.type === 'bird' && !o.aerialWall && !o.jumped && dog.jumping && o.x + o.width < dog.x + 23) {
       o.jumped = true;
       state.score += BIRD_JUMP_BONUS;
       state.birdJumpEffects.push({ x: o.x + o.width / 2, y: o.y, startTime: now });

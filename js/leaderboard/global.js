@@ -1,56 +1,99 @@
 // Global high scores backed by a Firebase Firestore `scores` collection.
-// Every submission carries the session difficulty label, and the leaderboard
-// is per-difficulty: the store holds one mixed fetched list, and the pure
-// helpers below slice out a capped, ranked board for a single difficulty.
+// Fetches up to GLOBAL_MAX_SCORES rows for one difficulty at a time. The
+// player's session difficulty is loaded after setup and drives qualifies,
+// placement, and the default tab; browsing another tab fetches that board.
 // Legacy docs without a difficulty field are ignored entirely.
-// The store holds fetched data + status flags; a render callback (injected)
-// is invoked whenever data changes so the UI layer stays decoupled.
 
-import { GLOBAL_MAX_SCORES, GLOBAL_FETCH_INTERVAL, DIFFICULTY_LEVELS } from '../config.js';
+import { GLOBAL_MAX_SCORES, GLOBAL_FETCH_INTERVAL } from '../config.js';
 import { computeScoreChecksum } from './checksum.js';
 
 export function createGlobalScores({ db, ready }) {
   const store = {
-    scores: [],
+    scores: [],              // board for the difficulty tab currently shown
+    viewDifficulty: null,
+    sessionDifficulty: null, // player's chosen difficulty (after setup)
+    sessionLoaded: false,
     loaded: false,
     error: false,
-    onChange: () => {},   // set by the UI layer
+    onChange: () => {},
   };
-  let cached = [];
-  let lastFetchTime = 0;
 
-  async function fetch() {
+  const cache = new Map();     // difficulty label → score rows
+  let lastFetchTime = 0;
+  let fetchToken = 0;
+
+  function scoresQuery(difficulty) {
+    return db.collection('scores')
+      .where('difficulty', '==', difficulty)
+      .orderBy('score', 'desc')
+      .orderBy('timestamp', 'asc');
+  }
+
+  function docsToScores(snapshot) {
+    return snapshot.docs.map(doc => {
+      const d = doc.data();
+      return { name: d.name, score: d.score, difficulty: d.difficulty };
+    });
+  }
+
+  async function fetchBoard(difficulty) {
+    const token = ++fetchToken;
     if (!ready || !db) {
       store.error = true;
+      store.loaded = false;
       store.onChange();
       return;
     }
+    store.loaded = false;
+    store.onChange();
     try {
-      // One query for all difficulties (avoids needing a composite index per
-      // where-clause); the per-difficulty cap is applied client-side.
-      const snapshot = await db.collection('scores')
-        .orderBy('score', 'desc')
-        .orderBy('timestamp', 'asc')
-        .limit(GLOBAL_MAX_SCORES * DIFFICULTY_LEVELS.length)
+      const snapshot = await scoresQuery(difficulty)
+        .limit(GLOBAL_MAX_SCORES)
         .get();
-      store.scores = snapshot.docs
-        .map(doc => {
-          const d = doc.data();
-          return { name: d.name, score: d.score, difficulty: d.difficulty };
-        })
-        .filter(e => typeof e.difficulty === 'string');
-      cached = [...store.scores];
+      if (token !== fetchToken) return;
+      const scores = docsToScores(snapshot);
+      cache.set(difficulty, scores);
+      if (difficulty === store.viewDifficulty) store.scores = scores;
+      if (difficulty === store.sessionDifficulty) {
+        store.sessionLoaded = true;
+      }
       store.loaded = true;
       store.error = false;
+      lastFetchTime = Date.now();
     } catch (e) {
+      if (token !== fetchToken) return;
       console.warn('Failed to fetch global scores:', e);
       store.error = true;
-      if (cached.length > 0) {
-        store.scores = [...cached];
+      const cached = cache.get(difficulty);
+      if (cached?.length) {
+        if (difficulty === store.viewDifficulty) store.scores = [...cached];
         store.loaded = true;
       }
     }
     store.onChange();
+  }
+
+  // Player picked a difficulty on the start overlay — load their board and
+  // show that tab by default.
+  function setSessionDifficulty(difficulty) {
+    store.sessionDifficulty = difficulty;
+    store.viewDifficulty = difficulty;
+    store.scores = cache.get(difficulty) ?? [];
+    return fetchBoard(difficulty);
+  }
+
+  // User switched the HTML leaderboard tab (may differ from session difficulty).
+  function loadView(difficulty) {
+    store.viewDifficulty = difficulty;
+    if (cache.has(difficulty)) {
+      store.scores = cache.get(difficulty);
+      store.loaded = true;
+      store.error = false;
+      store.onChange();
+      return Promise.resolve();
+    }
+    store.scores = [];
+    return fetchBoard(difficulty);
   }
 
   async function submit(name, scoreVal, difficulty) {
@@ -63,39 +106,51 @@ export function createGlobalScores({ db, ready }) {
         score: scoreVal,
         difficulty: difficulty,
         timestamp: timestamp,
-        checksum: checksum
+        checksum: checksum,
       });
-      await fetch();
+      cache.delete(difficulty);
+      await fetchBoard(difficulty);
+      if (difficulty !== store.viewDifficulty) {
+        await fetchBoard(store.viewDifficulty);
+      }
     } catch (e) {
       console.warn('Failed to submit global score:', e);
     }
   }
 
-  // Called from the idle screen each frame; throttles to one fetch per interval.
   function maybeRefresh(now = Date.now()) {
+    if (!store.sessionDifficulty) return;
     if (now - lastFetchTime > GLOBAL_FETCH_INTERVAL) {
-      lastFetchTime = now;
-      fetch();
+      cache.delete(store.sessionDifficulty);
+      if (store.viewDifficulty === store.sessionDifficulty) {
+        cache.delete(store.viewDifficulty);
+      }
+      void fetchBoard(store.sessionDifficulty);
+      if (store.viewDifficulty && store.viewDifficulty !== store.sessionDifficulty) {
+        void fetchBoard(store.viewDifficulty);
+      }
     }
   }
 
-  // Whether a score would make the global leaderboard for its difficulty.
+  function sessionBoard() {
+    if (!store.sessionLoaded || !store.sessionDifficulty) return [];
+    return cache.get(store.sessionDifficulty) ?? [];
+  }
+
   function qualifies(score, difficulty) {
-    if (!store.loaded) return false;
-    const board = getScoresForDifficulty(store.scores, difficulty);
+    if (difficulty !== store.sessionDifficulty || !store.sessionLoaded) return false;
+    const board = sessionBoard();
     return board.length < GLOBAL_MAX_SCORES
       || score > (board[GLOBAL_MAX_SCORES - 1]?.score ?? 0);
   }
 
-  // 1-based rank this score takes on its difficulty's board, or null if the
-  // board isn't loaded or the score doesn't make it. Judged against the last
-  // fetch, so a submission racing in at the same moment isn't counted.
   function placement(score, difficulty) {
-    if (!store.loaded) return null;
-    return getGlobalPlacement(store.scores, difficulty, score);
+    if (difficulty !== store.sessionDifficulty || !store.sessionLoaded) return null;
+    return getGlobalPlacement(sessionBoard(), difficulty, score);
   }
 
-  store.fetch = fetch;
+  store.setSessionDifficulty = setSessionDifficulty;
+  store.loadView = loadView;
   store.submit = submit;
   store.maybeRefresh = maybeRefresh;
   store.qualifies = qualifies;

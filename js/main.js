@@ -69,8 +69,8 @@ globalScores.onChange = leaderboardUi.render;
 const nameEntry = createNameEntry(state, {
   storage: localStorage,
   globalScores,
-  // Land the leaderboard on the board the player is actually competing on.
-  onDifficultyChosen: label => leaderboardUi.setDifficulty(label),
+  // Load the leaderboard for the board the player is actually competing on.
+  onDifficultyChosen: label => leaderboardUi.setSessionDifficulty(label),
 });
 const cosmeticsMenu = createCosmeticsMenu(cosmetics, sprites, state);
 
@@ -106,7 +106,6 @@ function gameLoop(now) {
 
 // --- Start ---
 leaderboardUi.render();
-globalScores.fetch();
 // Ask for name + difficulty once per page load, before the first run.
 nameEntry.show();
 gameLoop();

@@ -221,6 +221,7 @@ test('a jump onto the island carries the dog across the whole patch unharmed', (
   const heartsBefore = state.hearts;
   let jumped = false;
   for (let i = 0; i < 5000; i++) {
+    state.speed = 3.5;  // pin — score drift during update() must not retime the jump
     const tramp = state.obstacles.find(o => o.type === 'trampoline');
     // Single jump timed so the ~42-frame arc lands just past the island
     // center — the latest line that never stands in the entry thorns first

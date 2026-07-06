@@ -82,6 +82,7 @@ export function createState(rng = Math.random) {
     obstacles: [],
     nextObstacleIn: 100,
     lastObstacleType: 'hotdog',
+    activeSpawnPattern: null,  // { id, beats, index } — multi-beat close-gap sequence
 
     // --- Chase mode ---
     chaseActive: false,
@@ -148,6 +149,7 @@ export function resetRun(state) {
   state.landingParticles = [];
   state.nextObstacleIn = 60;
   state.lastObstacleType = 'hotdog';
+  state.activeSpawnPattern = null;
 
   state.hearts = state.startingHearts;
   state.invulnUntil = 0;

@@ -7,7 +7,7 @@ import {
 import { createState, createDog } from '../js/core/state.js';
 import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
 import {
-  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN,
+  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -37,6 +37,43 @@ test('obstacle hitboxes are inset per type', () => {
   assert.deepEqual(stack, { x: 8, y: 4, w: 20, h: 36 });
   const hotdog = getObstacleHitbox({ type: 'hotdog', x: 0, y: 0, width: 36, height: 22 });
   assert.deepEqual(hotdog, { x: 12, y: 8, w: 12, h: 12 });
+});
+
+test('aerial chase acorns pin to duck-under height: standing hits, ducking clears', () => {
+  const bird = getObstacleHitbox({
+    type: 'bird', skin: 'chase', x: 60, y: GROUND_Y - 49, width: 66, height: 51,
+  });
+  const frisbee = getObstacleHitbox({
+    type: 'frisbee', skin: 'chase', x: 60, y: GROUND_Y - 12, width: 44, height: 14,
+  });
+  const pinned = { x: 72, y: CHASE_ACORN_Y + 8, w: 12, h: 12 };
+  assert.deepEqual(bird, pinned);
+  assert.deepEqual(frisbee, pinned);
+
+  const dog = createDog();
+  dog.x = 60;
+  for (const box of [bird, frisbee]) {
+    assert.equal(rectsOverlap(getDogHitbox(dog, false), box), true, 'standing dog is hit');
+  }
+  dog.ducking = true;
+  for (const box of [bird, frisbee]) {
+    assert.equal(rectsOverlap(getDogHitbox(dog, false), box), false, 'ducking clears the acorn');
+  }
+});
+
+test('chase bird walls: low row ducks, high row keeps aerial height', () => {
+  const pinned = { x: 72, y: CHASE_ACORN_Y + 8, w: 12, h: 12 };
+  const low = getObstacleHitbox({
+    type: 'bird', skin: 'chase', aerialWall: true, wallRow: 'low',
+    x: 60, y: GROUND_Y - 49, width: 66, height: 51,
+  });
+  const high = getObstacleHitbox({
+    type: 'bird', skin: 'chase', aerialWall: true, wallRow: 'high',
+    x: 88, y: 48, width: 66, height: 51,
+  });
+  assert.deepEqual(low, pinned);
+  assert.deepEqual(high, { x: 100, y: 56, w: 12, h: 12 });
+  assert.notDeepEqual(low, high);
 });
 
 test('rectsOverlap detects overlap and separation', () => {

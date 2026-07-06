@@ -14,10 +14,34 @@ export const GRAVITY = 0.5;
 export const JUMP_FORCE = -11;
 export const DOUBLE_JUMP_FORCE = -7;
 export const INITIAL_SPEED = 3.0;
-export const MAX_SPEED = 7;
-export const SPEED_INCREMENT = 0.001;
+export const MAX_SPEED = 6.5;
+export const SPEED_INCREMENT = 0.0005;
 export const MIN_OBSTACLE_GAP = 300;
 export const MAX_OBSTACLE_GAP = 500;
+
+// --- Bird obstacles (1.5× frisbee-tier sizing) ---
+export const BIRD_W = 66;
+export const BIRD_H = 51;
+export const BIRD_LOW_Y = GROUND_Y - 49;   // single-bird / triangle base row
+export const BIRD_HIGH_Y = 48;             // stack top / triangle apex (blocks jump arc)
+export const BIRD_TRI_DX = 28;             // triangle bottom birds ± from center
+export const BIRD_TRI_ROW2_DX = 14;        // mid/high rows staggered ± from center
+export const BIRD_WALL_MID_Y = GROUND_Y - 62;   // triangle middle row (fills jump lane)
+export const BIRD_WALL_HIGH_Y = GROUND_Y - 102; // triangle top row (lower than BIRD_HIGH_Y)
+
+// Chase acorn footprint (drawObstacle renders bird/frisbee obstacles as acorns).
+// Solo chase aerials pin to CHASE_ACORN_Y so one acorn forces a duck. Wall
+// low-row birds use the same duck height in chase (draw + hitbox); mid/high
+// rows use BIRD_WALL_MID_Y / BIRD_WALL_HIGH_Y with acorn-sized hitboxes.
+export const ACORN_W = 36;
+export const ACORN_H = 22;
+export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standing dog, duck clears it
+
+// --- Spawn patterns (close-gap sequences that punish jump-only play) ---
+export const PATTERN_FIRST_AT = 120;         // score before patterns can arm
+export const PATTERN_CHANCE = 0.22;          // per spawn cycle when eligible
+export const PATTERN_CLOSE_GAP = 185;        // px between beats (~0.6s at mid speed)
+export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle solo spawns
 
 // The game was tuned at 120Hz-equivalent dt units; update() scales by dt/DT_BASELINE.
 export const DT_BASELINE = 1000 / 120;

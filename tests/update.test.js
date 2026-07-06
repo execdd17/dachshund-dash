@@ -105,6 +105,19 @@ test('jumping over a bird awards the bonus once', () => {
   assert.ok(state.score < after + BIRD_JUMP_BONUS, 'bonus not granted twice');
 });
 
+test('jumping over a bird wall does not award the solo-bird bonus', () => {
+  const state = runningState();
+  const services = createTestServices();
+  state.dog.jumping = true;
+  state.dog.y = 100;
+  state.obstacles = [{
+    x: 0, y: GROUND_Y - 49, width: 66, height: 51, type: 'bird', aerialWall: true,
+  }];
+  update(state, DT, services, () => 0.99, 0);
+  assert.equal(state.obstacles[0].jumped, undefined);
+  assert.equal(state.birdJumpEffects.length, 0);
+});
+
 test('milestone chime fires every 100 points', () => {
   const state = runningState();
   let chimes = 0;
