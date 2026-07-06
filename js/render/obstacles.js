@@ -691,9 +691,11 @@ export function drawTrampoline(ctx, x, y, width, frameCount, squashed) {
   }
 }
 
-// One 32px bramble tile: crossing curved stems with thorn triangles and a
-// berry accent or two. Deterministic per-tile variation via seed — no
-// per-frame randomness (tiles must not shimmer).
+// One 32px bramble tile, modeled on the classic platformer bramble look:
+// fat coiling vine canes (dark edge + green body + pale highlight stripe)
+// with big ivory spikes jutting off them, plus a berry accent. Deterministic
+// per-tile variation via seed — no per-frame randomness (tiles must not
+// shimmer).
 export function drawThorns(ctx, x, y, seed = 0) {
   // Cheap deterministic hash → repeatable pseudo-randoms per tile
   let h = (Math.floor(seed) * 2654435761) >>> 0;
@@ -702,54 +704,106 @@ export function drawThorns(ctx, x, y, seed = 0) {
     return h / 4294967296;
   };
 
-  // Stems root at staggered depths across the whole dirt-path band
+  // Three-pass thick stroke so the cane reads as a fat vine, not a wire:
+  // dark silhouette, green body, thin pale highlight down the middle.
+  const strokeVine = (buildPath, w) => {
+    ctx.lineCap = 'round';
+    const passes = [['#1E3A12', w], ['#3E6B22', w - 2.6], ['#6E9E3C', 1.7]];
+    for (const [color, width] of passes) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      buildPath();
+      ctx.stroke();
+    }
+  };
+
+  // Spikes are queued and drawn last so they sit on top of every cane.
+  const spikes = [];
+
+  // Canes root at staggered depths across the whole dirt-path band
   // (GROUND_Y+16 → +36), same as the scenery flowers, so the brambles read
   // as growing out of the path instead of hovering at its top edge.
   const baseY = y + 30;
-  const stems = 2 + Math.floor(rand() * 2);
 
-  for (let s = 0; s < stems; s++) {
-    const x0 = x + 2 + rand() * 8;
-    const x1 = x + 22 + rand() * 8;
-    const peak = y + 4 + rand() * 8;
+  // --- Arching canes ---
+  for (let s = 0; s < 2; s++) {
+    const x0 = x - 2 + rand() * 8;
+    const x1 = x + 24 + rand() * 10;
+    const peak = y + 1 + rand() * 6;
     const cpX = x + 8 + rand() * 16;
-    const stemBase = baseY + s * 5 + rand() * 5;  // deeper with each stem
+    const stemBase = baseY + s * 4 + rand() * 5;  // deeper with each cane
 
-    // Stem: low curved arc, alternating dark green / brown
-    ctx.strokeStyle = s % 2 === 0 ? '#4A5D23' : '#5C3A1E';
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x0, stemBase);
-    ctx.quadraticCurveTo(cpX, peak, x1, stemBase);
-    ctx.stroke();
+    strokeVine(() => {
+      ctx.moveTo(x0, stemBase);
+      ctx.quadraticCurveTo(cpX, peak, x1, stemBase);
+    }, 6.5);
 
-    // Thorns along the stem: small pale-tipped triangles
-    const thornCount = 2 + Math.floor(rand() * 2);
-    for (let t = 0; t < thornCount; t++) {
-      const u = 0.2 + t * (0.6 / thornCount) + rand() * 0.1;
-      // Point on the quadratic curve
+    // Spikes along the arc, oriented outward along the curve normal
+    for (let t = 0; t < 3; t++) {
+      const u = 0.15 + t * 0.3 + rand() * 0.12;
       const qx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * cpX + u * u * x1;
       const qy = (1 - u) * (1 - u) * stemBase + 2 * (1 - u) * u * peak + u * u * stemBase;
-      const dir = rand() < 0.5 ? -1 : 1;
-      ctx.fillStyle = '#C7CBA0';
-      ctx.beginPath();
-      ctx.moveTo(qx - 2, qy);
-      ctx.lineTo(qx + 2, qy);
-      ctx.lineTo(qx + dir * 1.5, qy - 5);
-      ctx.closePath();
-      ctx.fill();
+      const tx = 2 * (1 - u) * (cpX - x0) + 2 * u * (x1 - cpX);
+      const ty = 2 * (1 - u) * (peak - stemBase) + 2 * u * (stemBase - peak);
+      let normal = Math.atan2(ty, tx) - Math.PI / 2;
+      // Bias upward/outward so spikes don't bury into the dirt
+      if (Math.sin(normal) > 0.25) normal += Math.PI;
+      spikes.push([qx + Math.cos(normal) * 2, qy + Math.sin(normal) * 2, normal, 6 + rand() * 2]);
     }
   }
 
-  // Berry accents, scattered down into the dirt band with the roots
+  // --- Coiled loops: the signature bramble spirals ---
+  const coils = 1 + Math.floor(rand() * 2);
+  for (let l = 0; l < coils; l++) {
+    const lx = x + 9 + rand() * 14;
+    const ly = y + 10 + rand() * 9;
+    const r = 5 + rand() * 2.5;
+
+    strokeVine(() => ctx.arc(lx, ly, r, 0, Math.PI * 2), 5.5);
+    // Inner curl so the loop reads as a spiral, not a donut
+    ctx.strokeStyle = '#1E3A12';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(lx + r * 0.15, ly, r * 0.4, Math.PI * 0.3, Math.PI * 1.5);
+    ctx.stroke();
+
+    // Spikes radiating outward from the coil rim
+    const spikeCount = 3 + Math.floor(rand() * 2);
+    const a0 = rand() * Math.PI * 2;
+    for (let t = 0; t < spikeCount; t++) {
+      const a = a0 + t * (Math.PI * 2 / spikeCount) + rand() * 0.5;
+      spikes.push([lx + Math.cos(a) * r, ly + Math.sin(a) * r, a, 5.5 + rand() * 2]);
+    }
+  }
+
+  // --- Spikes: chunky ivory triangles with a dark edge ---
+  for (const [px, py, angle, len] of spikes) {
+    const bw = len * 0.42;
+    const bx = Math.cos(angle + Math.PI / 2) * bw;
+    const by = Math.sin(angle + Math.PI / 2) * bw;
+    ctx.beginPath();
+    ctx.moveTo(px - bx, py - by);
+    ctx.lineTo(px + bx, py + by);
+    ctx.lineTo(px + Math.cos(angle) * len, py + Math.sin(angle) * len);
+    ctx.closePath();
+    ctx.fillStyle = '#EDE6C4';
+    ctx.fill();
+    ctx.strokeStyle = '#1E3A12';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Berry accents tucked into the tangle
   const berries = 1 + Math.floor(rand() * 2);
   for (let b = 0; b < berries; b++) {
-    ctx.fillStyle = '#D94438';
+    ctx.fillStyle = '#C9312B';
     ctx.beginPath();
-    ctx.arc(x + 4 + rand() * 24, y + 12 + rand() * 24, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + 5 + rand() * 22, y + 8 + rand() * 20, 2, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  ctx.lineCap = 'butt';
 }
 
 // Dispatch a single obstacle to its draw function, honoring the chase skin
