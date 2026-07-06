@@ -215,6 +215,25 @@ test('killDog: qualifying score is recorded immediately, no name prompt', () => 
   assert.equal(recordedScore, 999);
 });
 
+test('killDog stores the global placement for the game-over banner', () => {
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  state.score = 300;
+  state.difficulty = 'NORMAL';
+  let asked = null;
+  const services = createTestServices({
+    globalScores: {
+      qualifies: () => false,
+      placement: (score, difficulty) => { asked = { score, difficulty }; return 4; },
+      submit: async () => {},
+      maybeRefresh: () => {},
+    },
+  });
+  killDog(state, services);
+  assert.equal(state.globalPlacement, 4);
+  assert.deepEqual(asked, { score: 300, difficulty: 'NORMAL' });
+});
+
 test('killDog clears all encounter modes', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';

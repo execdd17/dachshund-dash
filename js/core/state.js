@@ -57,6 +57,7 @@ export function createState(rng = Math.random) {
     frameCount: 0,
     lastMilestone: 0,
     deathTime: 0,
+    globalPlacement: null,  // 1-based global-board rank set at death (null = didn't place / board unknown)
     slowMode: false,
     playerName: null,  // chosen once on the start overlay; reused for every score submit
     touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
@@ -141,6 +142,7 @@ export function createState(rng = Math.random) {
 export function resetRun(state) {
   state.score = 0;
   state.lastMilestone = 0;
+  state.globalPlacement = null;
   state.speed = INITIAL_SPEED;
   state.obstacles = [];
   state.landingParticles = [];

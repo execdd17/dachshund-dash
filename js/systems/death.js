@@ -27,6 +27,9 @@ export function killDog(state, services) {
 
   const qualifies = qualifiesLocally(state.highScores, state.score)
     || services.globalScores.qualifies(state.score, state.difficulty);
+  // Placement banner on the game-over screen. Computed before the submit
+  // below so it ranks against the board the player was actually competing on.
+  state.globalPlacement = services.globalScores.placement(state.score, state.difficulty);
   state.gameState = 'dead';
   if (qualifies) {
     services.recordScore(state.score);

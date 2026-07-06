@@ -6,6 +6,7 @@ import {
   HEART_LOSS_FLASH,
 } from '../config.js';
 import { roundRect } from './primitives.js';
+import { formatOrdinal } from '../leaderboard/global.js';
 
 // In app mode the HUD hugs the visible top edge (above world y=0, inside the
 // device safe areas) instead of the world's top — see view.js.
@@ -144,6 +145,19 @@ export function drawIdleScreen(ctx, state) {
 }
 
 export function drawGameOverScreen(ctx, state) {
+  // Global-placement banner above the GAME OVER box (only when the run
+  // actually placed on the loaded global board — see killDog).
+  if (state.globalPlacement) {
+    const msg = `You got ${formatOrdinal(state.globalPlacement)} place on the global leaderboard!`;
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    const bannerW = ctx.measureText(msg).width + 28;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    roundRect(ctx, W / 2 - bannerW / 2, 4, bannerW, 26, 8);
+    ctx.fillStyle = '#FFD700';
+    ctx.fillText(msg, W / 2, 22);
+  }
+
   // Text background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
   roundRect(ctx, W / 2 - 150, 38, 300, 70, 8);

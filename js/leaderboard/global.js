@@ -87,10 +87,19 @@ export function createGlobalScores({ db, ready }) {
       || score > (board[GLOBAL_MAX_SCORES - 1]?.score ?? 0);
   }
 
+  // 1-based rank this score takes on its difficulty's board, or null if the
+  // board isn't loaded or the score doesn't make it. Judged against the last
+  // fetch, so a submission racing in at the same moment isn't counted.
+  function placement(score, difficulty) {
+    if (!store.loaded) return null;
+    return getGlobalPlacement(store.scores, difficulty, score);
+  }
+
   store.fetch = fetch;
   store.submit = submit;
   store.maybeRefresh = maybeRefresh;
   store.qualifies = qualifies;
+  store.placement = placement;
   return store;
 }
 
@@ -98,6 +107,23 @@ export function createGlobalScores({ db, ready }) {
 // (score desc, timestamp asc).
 export function getScoresForDifficulty(scores, difficulty) {
   return scores.filter(e => e.difficulty === difficulty).slice(0, GLOBAL_MAX_SCORES);
+}
+
+// Pure: the 1-based rank a score would take on one difficulty's board, or
+// null if it wouldn't make the capped board. Ties rank below the existing
+// entries (the board is ordered score desc, timestamp asc, so an equal score
+// already on the board got there first).
+export function getGlobalPlacement(scores, difficulty, score) {
+  const board = getScoresForDifficulty(scores, difficulty);
+  const rank = board.filter(e => e.score >= score).length + 1;
+  return rank <= GLOBAL_MAX_SCORES ? rank : null;
+}
+
+// Pure: 1 → '1st', 2 → '2nd', 3 → '3rd', 11–13 → 'th', 21 → '21st', …
+export function formatOrdinal(n) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return n + 'th';
+  return n + ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] ?? 'th');
 }
 
 // Pure: rank + optional name filter, used by the HTML leaderboard.

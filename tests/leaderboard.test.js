@@ -7,6 +7,7 @@ import {
 } from '../js/leaderboard/local.js';
 import {
   createGlobalScores, getFilteredScores, getScoresForDifficulty,
+  getGlobalPlacement, formatOrdinal,
 } from '../js/leaderboard/global.js';
 import { HIGH_SCORES_KEY, MAX_HIGH_SCORES, GLOBAL_MAX_SCORES } from '../js/config.js';
 import { createFakeStorage } from './helpers.js';
@@ -112,6 +113,52 @@ test('getScoresForDifficulty slices one difficulty and caps the board', () => {
   const many = Array.from({ length: GLOBAL_MAX_SCORES + 5 },
     (_, i) => ({ name: 'P' + i, score: 1000 - i, difficulty: 'EASY' }));
   assert.equal(getScoresForDifficulty(many, 'EASY').length, GLOBAL_MAX_SCORES);
+});
+
+test('getGlobalPlacement ranks per difficulty, ties below existing entries', () => {
+  const scores = [
+    { name: 'A', score: 300, difficulty: 'NORMAL' },
+    { name: 'B', score: 250, difficulty: 'HARD' },
+    { name: 'C', score: 200, difficulty: 'NORMAL' },
+  ];
+  assert.equal(getGlobalPlacement(scores, 'NORMAL', 400), 1);
+  assert.equal(getGlobalPlacement(scores, 'NORMAL', 250), 2);   // between A and C
+  assert.equal(getGlobalPlacement(scores, 'NORMAL', 200), 3);   // tie ranks below C
+  assert.equal(getGlobalPlacement(scores, 'NORMAL', 10), 3);
+  assert.equal(getGlobalPlacement(scores, 'HARD', 10), 2);      // other boards don't count
+  assert.equal(getGlobalPlacement(scores, 'VERY HARD', 1), 1);  // empty board
+
+  // A full board: only scores that make the cut place.
+  const full = Array.from({ length: GLOBAL_MAX_SCORES },
+    (_, i) => ({ name: 'P' + i, score: 5000 - i, difficulty: 'EASY' }));
+  assert.equal(getGlobalPlacement(full, 'EASY', 1), null);
+  assert.equal(getGlobalPlacement(full, 'EASY', 6000), 1);
+});
+
+test('formatOrdinal handles st/nd/rd/th including the teens', () => {
+  assert.equal(formatOrdinal(1), '1st');
+  assert.equal(formatOrdinal(2), '2nd');
+  assert.equal(formatOrdinal(3), '3rd');
+  assert.equal(formatOrdinal(4), '4th');
+  assert.equal(formatOrdinal(11), '11th');
+  assert.equal(formatOrdinal(12), '12th');
+  assert.equal(formatOrdinal(13), '13th');
+  assert.equal(formatOrdinal(21), '21st');
+  assert.equal(formatOrdinal(22), '22nd');
+  assert.equal(formatOrdinal(23), '23rd');
+  assert.equal(formatOrdinal(100), '100th');
+});
+
+test('placement on the store is null until loaded, then ranks the score', async () => {
+  const db = createFakeDb([
+    { name: 'A', score: 300, timestamp: 1, difficulty: 'NORMAL' },
+    { name: 'C', score: 200, timestamp: 2, difficulty: 'NORMAL' },
+  ]);
+  const store = createGlobalScores({ db, ready: true });
+  assert.equal(store.placement(250, 'NORMAL'), null);  // not fetched yet
+  await store.fetch();
+  assert.equal(store.placement(250, 'NORMAL'), 2);
+  assert.equal(store.placement(50, 'NORMAL'), 3);
 });
 
 test('fetch keeps only scores that carry a difficulty (legacy docs hidden)', async () => {
