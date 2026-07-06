@@ -259,31 +259,57 @@
   }
 
   /* --- Customize button (idle & game-over screens) --- */
+  /* Sits where the local high-scores panel used to be: centered, just below
+     the start/game-over text. The canvas maps 800 logical units across the
+     full viewport width with the ground pinned to the bottom edge, so
+     logical y=118 is (250-118)/800 of the width up from the bottom. */
   #customizeBtn {
     display: none;
     position: absolute;
-    top: 60px;
+    top: calc(100% - 16.5vw);
     left: 50%;
     transform: translateX(-50%);
+    align-items: center;
+    gap: 9px;
     font-family: 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 16px;
     font-weight: bold;
-    letter-spacing: 1px;
-    padding: 6px 16px;
-    background: rgba(255,255,255,0.85);
-    color: #4a8f3f;
-    border: 2px solid #4a8f3f;
-    border-radius: 4px;
+    letter-spacing: 2px;
+    padding: 10px 26px;
+    background: #4a8f3f;
+    color: #fff;
+    border: 3px solid #fff;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
     cursor: pointer;
     z-index: 5;
+    animation: customize-pulse 1.6s ease-in-out infinite;
   }
-  #customizeBtn.visible { display: block; }
-  #customizeBtn:hover { background: #fff; }
-  /* On touch devices the canvas shrinks but absolute offsets don't, so a
-     mid-canvas button would cover the start/game-over text. Reserve a strip
-     above the canvas and pin the button there instead. */
-  .touch-device .game-wrapper { padding-top: 36px; }
-  .touch-device #customizeBtn { top: 2px; }
+  #customizeBtn.visible { display: inline-flex; }
+  /* The hat PNG carries transparent padding; clip to just the hat pixels. */
+  #customizeBtn .btn-icon {
+    position: relative;
+    width: 24px;
+    height: 17px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #customizeBtn .btn-icon img {
+    position: absolute;
+    width: 31px;
+    left: -3px;
+    top: -8px;
+    image-rendering: pixelated;
+  }
+  #customizeBtn:hover {
+    background: #5aa34e;
+    animation: none;
+    transform: translateX(-50%) scale(1.06);
+  }
+  @keyframes customize-pulse {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.06); }
+  }
 
   /* --- Cosmetics menu overlay --- */
   #cosmeticsMenu {
@@ -417,11 +443,6 @@
     display: block;
     touch-action: none;
   }
-  .app-mode #customizeBtn,
-  .touch-device.app-mode #customizeBtn {
-    top: calc(env(safe-area-inset-top, 0px) + 10px);
-  }
-
   /* Desktop (no touch): a laptop can't rotate, so the page scrolls — the
      full-viewport game sits up top, hints + leaderboard below the fold. */
   body.app-mode:not(.touch-device) { padding: 0; }

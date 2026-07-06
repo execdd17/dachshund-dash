@@ -24,7 +24,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 - Squirrel chases and a boss encounter
 - Giant mode — grab a golden hot dog and become unstoppable
 - Trampoline scenes — thorn patches where a super-bounce off a trampoline island is the only way through
-- Local and global high score leaderboards
+- Global high score leaderboard (plus a local best shown as `HI` in the HUD)
 
 ## Run It Locally
 

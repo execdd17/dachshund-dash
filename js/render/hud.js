@@ -1,5 +1,5 @@
-// HUD: score readout, giant-mode timer, hearts, local leaderboard panel,
-// music icon, idle/game-over text.
+// HUD: score readout, giant-mode timer, hearts, music icon,
+// idle/game-over text.
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
@@ -95,37 +95,6 @@ export function drawHearts(ctx, state, view, now = performance.now()) {
   }
 }
 
-export function drawLocalLeaderboard(ctx, state, baseY) {
-  const highScores = state.highScores;
-  const panelW = 280;
-  const panelH = highScores.length === 0 ? 44 : 28 + highScores.length * 18;
-  const px = W / 2 - panelW / 2;
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  roundRect(ctx, px, baseY, panelW, panelH, 8);
-
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 16px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('HIGH SCORES', W / 2, baseY + 20);
-
-  if (highScores.length === 0) {
-    ctx.font = '14px Courier New';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.fillText('(no scores yet)', W / 2, baseY + 38);
-  } else {
-    ctx.font = '16px Courier New';
-    highScores.forEach((entry, i) => {
-      const lineY = baseY + 38 + i * 18;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#fff';
-      ctx.fillText(`${i + 1}. ${entry.name.padEnd(10)}`, px + 16, lineY);
-      ctx.textAlign = 'right';
-      ctx.fillText(String(Math.floor(entry.score)).padStart(5, '0'), px + panelW - 16, lineY);
-    });
-  }
-}
-
 export function drawMusicIcon(ctx, musicOn, view) {
   const hud = hudOrigin(view);
   const ix = hud.left, iy = hud.top + 16;
@@ -172,7 +141,6 @@ export function drawIdleScreen(ctx, state) {
   ctx.font = 'bold 20px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText(state.touchDevice ? 'Tap to start!' : 'Press SPACE to start!', W / 2, 84);
-  drawLocalLeaderboard(ctx, state, 108);
 }
 
 export function drawGameOverScreen(ctx, state) {
@@ -196,5 +164,4 @@ export function drawGameOverScreen(ctx, state) {
   ctx.font = 'bold 7px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText('X', dog.x + 82, dog.y - 3);
-  drawLocalLeaderboard(ctx, state, 118);
 }
