@@ -8,7 +8,7 @@ import {
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
 } from '../config.js';
 import { killDog } from './death.js';
-import { giantBusy, chaseBusy, trampBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
+import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
 
 export function updateBoss(state, scale, services, now = 0) {
   if (state.bossChasing) {
@@ -71,12 +71,11 @@ export function updateBoss(state, scale, services, now = 0) {
     }
   } else if (state.bossPending) {
     // Giant mode won the race (a golden eaten after we armed): stand down so
-    // giant mode keeps its normal edible field. Return the consumed milestone
-    // so the boss re-arms right after the shrink ends (the giantBusy check in
-    // bossCanStart below keeps the refund from double-arming mid-transition).
+    // giant mode keeps its normal edible field. The queued turn is kept — we
+    // go back to the queue head and re-arm right after the shrink ends.
     if (giantBusy(state)) {
       state.bossPending = false;
-      state.lastBossMilestone--;
+      requeueSceneFront(state, 'boss');
     } else if (state.obstacles.length === 0) {
       state.bossPending = false;
       state.bossChasing = true;
@@ -84,17 +83,17 @@ export function updateBoss(state, scale, services, now = 0) {
       state.bossChaseFrames = 0;
     }
   } else {
-    // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with
-    // chase). A blocked check doesn't consume the milestone — the boss arms as
-    // soon as the field/gap conditions allow.
+    // Boss trigger: request a turn at 1000, 2000, 3000... The request sits in
+    // the scene queue until it's the boss's turn, so a blocked milestone is
+    // never lost (and crossing another milestone while queued doesn't stack a
+    // second boss — one queued request per scene).
     const currentMilestone = Math.floor(state.score / BOSS_MILESTONE);
-    const bossCanStart = !giantBusy(state) && !chaseBusy(state) && !trampBusy(state)
-      && !goldenOnField(state) && sceneGapElapsed(state, now)
-      && currentMilestone > state.lastBossMilestone;
-    if (bossCanStart) {
-      state.bossPending = true;
+    if (currentMilestone > state.lastBossMilestone) {
       state.lastBossMilestone = currentMilestone;
-      state.chasePending = false;  // cancel any pending chase
+      requestScene(state, 'boss');
+    }
+    if (tryStartScene(state, 'boss', now)) {
+      state.bossPending = true;
     }
   }
 }

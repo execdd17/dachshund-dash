@@ -48,7 +48,7 @@ npm test          # or: node --test tests/*.test.js
 
 - `index.html` — thin HTML shell
 - `css/style.css` — all styles
-- `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, chase/boss/giant modes), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
+- `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, giant mode, and the chase/boss/trampoline scenes, which take turns via a fair scene queue), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
 - `tests/` — unit tests for the game logic
 
 ## Controls

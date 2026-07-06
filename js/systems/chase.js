@@ -4,7 +4,7 @@
 import {
   W, CHASE_FIRST_AT, CHASE_COOLDOWN, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
 } from '../config.js';
-import { giantBusy, bossBusy, trampBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
+import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
 
 export function updateChase(state, scale, now = 0) {
   if (state.chaseActive) {
@@ -35,9 +35,11 @@ export function updateChase(state, scale, now = 0) {
   } else if (state.chasePending) {
     // Giant mode won the race (a golden eaten after we armed): stand down so
     // giant mode keeps its hot-dog field instead of acorn-skinned chase
-    // spawns. The score condition still holds, so we re-arm right after.
+    // spawns. The queued turn is kept — we go back to the queue head and
+    // re-arm right after the giant ends.
     if (giantBusy(state)) {
       state.chasePending = false;
+      requeueSceneFront(state, 'chase');
     } else if (state.obstacles.length === 0) {
       state.chasePending = false;
       state.chaseEntering = true;
@@ -45,11 +47,10 @@ export function updateChase(state, scale, now = 0) {
       state.squirrelEnterSpeed = 1.5;
     }
   } else {
-    const canStart = !giantBusy(state) && !bossBusy(state) && !trampBusy(state)
-      && !goldenOnField(state) && sceneGapElapsed(state, now)
-      && ((state.lastChaseEndScore === 0 && state.score >= CHASE_FIRST_AT) ||
-      (state.lastChaseEndScore > 0 && state.score >= state.lastChaseEndScore + CHASE_COOLDOWN));
-    if (canStart) {
+    const wantsTurn = (state.lastChaseEndScore === 0 && state.score >= CHASE_FIRST_AT)
+      || (state.lastChaseEndScore > 0 && state.score >= state.lastChaseEndScore + CHASE_COOLDOWN);
+    if (wantsTurn) requestScene(state, 'chase');
+    if (tryStartScene(state, 'chase', now)) {
       state.chasePending = true;
     }
   }

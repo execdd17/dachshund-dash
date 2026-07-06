@@ -114,25 +114,28 @@ test('chase and boss do not arm behind a golden pickup, and stand down if giant 
   bossState.score = BOSS_MILESTONE + 5;
   bossState.obstacles = [golden];
   updateBoss(bossState, 1, createTestServices());
-  assert.equal(bossState.bossPending, false, 'milestone not consumed either');
-  assert.equal(bossState.lastBossMilestone, 0);
+  assert.equal(bossState.bossPending, false);
+  assert.deepEqual(bossState.sceneQueue, ['boss'], 'milestone turn queued, not lost');
 
-  // Giant activating while pending: both stand down; boss refunds its milestone
+  // Giant activating while pending: both stand down but keep their turn at
+  // the head of the queue, so they re-arm right after the giant ends
   const chasePend = createState(() => 0.5);
   chasePend.chasePending = true;
   chasePend.giantActive = true;
   updateChase(chasePend, 1);
   assert.equal(chasePend.chasePending, false);
   assert.equal(chasePend.chaseEntering, false);
+  assert.deepEqual(chasePend.sceneQueue, ['chase'], 'turn kept at queue head');
 
   const bossPend = createState(() => 0.5);
   bossPend.bossPending = true;
   bossPend.lastBossMilestone = 1;
+  bossPend.sceneQueue = ['tramp'];
   bossPend.giantActive = true;
   updateBoss(bossPend, 1, createTestServices());
   assert.equal(bossPend.bossPending, false);
   assert.equal(bossPend.bossChasing, false);
-  assert.equal(bossPend.lastBossMilestone, 0, 'milestone refunded for re-arm after giant');
+  assert.deepEqual(bossPend.sceneQueue, ['boss', 'tramp'], 'boss requeued ahead of waiting scenes');
 });
 
 // --- Cross-scene minimum gap ---
@@ -150,13 +153,13 @@ test('no scene arms until SCENE_MIN_GAP has elapsed since the last scene ended',
   updateChase(chaseState, 1, endedAt + SCENE_MIN_GAP);
   assert.equal(chaseState.chasePending, true, 'chase arms after the gap');
 
-  // Boss: blocked check must not consume the milestone
+  // Boss: a blocked milestone stays queued rather than being lost
   const bossState = createState(() => 0.5);
   bossState.score = BOSS_MILESTONE + 5;
   markSceneEnd(bossState, endedAt);
   updateBoss(bossState, 1, services, endedAt + SCENE_MIN_GAP - 1);
   assert.equal(bossState.bossPending, false, 'boss blocked inside the gap');
-  assert.equal(bossState.lastBossMilestone, 0, 'milestone not consumed while blocked');
+  assert.deepEqual(bossState.sceneQueue, ['boss'], 'milestone turn queued while blocked');
   updateBoss(bossState, 1, services, endedAt + SCENE_MIN_GAP);
   assert.equal(bossState.bossPending, true, 'boss arms after the gap');
 
@@ -181,17 +184,57 @@ test('a chase escape completing stamps lastSceneEndAt', () => {
 
 // --- Boss state machine ---
 
-test('boss arms at each BOSS_MILESTONE and cancels pending chase', () => {
+test('boss queues at each BOSS_MILESTONE and waits out a pending chase', () => {
   const state = createState(() => 0.5);
   state.score = BOSS_MILESTONE + 5;
   state.chasePending = true;
   updateBoss(state, 1, createTestServices());
-  assert.equal(state.bossPending, false, 'chasePending blocks boss trigger');
+  assert.equal(state.bossPending, false, 'chasePending blocks boss start');
 
   state.chasePending = false;
   updateBoss(state, 1, createTestServices());
   assert.equal(state.bossPending, true);
   assert.equal(state.lastBossMilestone, 1);
+});
+
+// --- Scene queue fairness ---
+
+test('a scene that requested first gets the next turn, regardless of update order', () => {
+  // Regression: chase's short score cooldown used to let it win every tie
+  // against the trampoline scene (update() runs chase first), starving the
+  // trampoline for entire runs. The queue grants turns in request order.
+  const services = createTestServices();
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  state.score = TRAMP_FIRST_AT + 10;
+  state.chaseActive = true;  // tramp requests its turn mid-chase
+  updateTrampoline(state, 1, services, 0);
+  assert.deepEqual(state.sceneQueue, ['tramp']);
+  assert.equal(state.trampPending, false, 'blocked while the chase runs');
+
+  // Chase ends; on the next checks both scenes want a turn (chase cooldown
+  // long elapsed), but chase runs first in update() — it must still yield.
+  state.chaseActive = false;
+  state.lastChaseEndScore = 1;  // makes chase instantly re-eligible
+  updateChase(state, 1, 0);
+  assert.equal(state.chasePending, false, 'chase waits behind the queued tramp');
+  assert.deepEqual(state.sceneQueue, ['tramp', 'chase']);
+  updateTrampoline(state, 1, services, 0);
+  assert.equal(state.trampPending, true, 'tramp takes its queued turn');
+  assert.deepEqual(state.sceneQueue, ['chase'], 'chase is next in line');
+});
+
+test('a queued scene holds only one turn even if its condition re-fires', () => {
+  const services = createTestServices();
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  state.chaseActive = true;  // block starts so requests pile up
+  state.score = BOSS_MILESTONE + 5;
+  updateBoss(state, 1, services, 0);
+  state.score = BOSS_MILESTONE * 2 + 5;  // second milestone while still queued
+  updateBoss(state, 1, services, 0);
+  assert.deepEqual(state.sceneQueue, ['boss'], 'no duplicate boss entry');
+  assert.equal(state.lastBossMilestone, 2);
 });
 
 test('boss waits for clear field, chases, then squirrel retreats', () => {

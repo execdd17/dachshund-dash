@@ -8,6 +8,7 @@ export function killDog(state, services) {
   state.deathTime = Date.now();
   services.sfx.playDeath();
 
+  state.sceneQueue = [];
   state.chaseActive = false;
   state.chasePending = false;
   state.chaseEntering = false;

@@ -8,7 +8,7 @@ import {
   TRAMP_REPS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
-import { giantBusy, chaseBusy, bossBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
+import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
 
 export function getTrampLayout(rep, speed) {
   const spec = TRAMP_REPS[rep];
@@ -106,9 +106,11 @@ export function updateTrampoline(state, scale, services, now) {
   } else if (state.trampPending) {
     // Giant mode won the race (e.g. a golden eaten via debug G after we
     // armed): stand down so giant mode keeps its normal field of edible
-    // obstacles. The score condition still holds, so we re-arm right after.
+    // obstacles. The queued turn is kept — we go back to the queue head and
+    // re-arm right after the giant ends.
     if (giantBusy(state)) {
       state.trampPending = false;
+      requeueSceneFront(state, 'tramp');
     } else if (state.obstacles.length === 0) {
       state.trampPending = false;
       state.trampActive = true;
@@ -116,11 +118,10 @@ export function updateTrampoline(state, scale, services, now) {
       state.trampBreatherFrames = TRAMP_BREATHER;
     }
   } else {
-    const canStart = !giantBusy(state) && !chaseBusy(state) && !bossBusy(state)
-      && !goldenOnField(state) && sceneGapElapsed(state, now)
-      && ((state.lastTrampEndScore === 0 && state.score >= TRAMP_FIRST_AT)
-        || (state.lastTrampEndScore > 0 && state.score >= state.lastTrampEndScore + TRAMP_COOLDOWN));
-    if (canStart) {
+    const wantsTurn = (state.lastTrampEndScore === 0 && state.score >= TRAMP_FIRST_AT)
+      || (state.lastTrampEndScore > 0 && state.score >= state.lastTrampEndScore + TRAMP_COOLDOWN);
+    if (wantsTurn) requestScene(state, 'tramp');
+    if (tryStartScene(state, 'tramp', now)) {
       state.trampPending = true;
     }
   }

@@ -32,7 +32,7 @@ export function goldenOnField(state) {
 
 // Scenes (chase, boss, trampoline) additionally guarantee SCENE_MIN_GAP ms of
 // normal gameplay between one another: each scene stamps state.lastSceneEndAt
-// when its final transition phase finishes, and every scene's arming check
+// when its final transition phase finishes, and every scene's start check
 // requires the gap to have elapsed. Per-scene score cooldowns still apply on
 // top. Giant mode is a reward power-up, not a scene, so it doesn't stamp.
 export function sceneGapElapsed(state, now) {
@@ -41,4 +41,38 @@ export function sceneGapElapsed(state, now) {
 
 export function markSceneEnd(state, now) {
   state.lastSceneEndAt = now;
+}
+
+// --- Scene queue (fairness between scenes) ---
+// Scenes used to arm independently, with update()'s fixed call order (chase,
+// boss, trampoline) deciding ties. Chase's short score cooldown meant it was
+// almost always re-eligible by the time the field unblocked, so it won every
+// tie and the trampoline scene could starve for an entire run. Instead, a
+// scene *requests* a turn once its own score condition is met — at most one
+// outstanding request per scene — and turns are granted strictly in request
+// order once the shared field rules allow a scene to start.
+
+function anySceneBusy(state) {
+  return chaseBusy(state) || bossBusy(state) || trampBusy(state);
+}
+
+export function requestScene(state, id) {
+  if (!state.sceneQueue.includes(id)) state.sceneQueue.push(id);
+}
+
+// A dispatched scene that stood down (giant mode won the race while it was
+// pending) goes back to the head of the queue: it keeps its turn for after
+// the giant ends instead of rejoining behind everyone else.
+export function requeueSceneFront(state, id) {
+  if (!state.sceneQueue.includes(id)) state.sceneQueue.unshift(id);
+}
+
+// True — consuming the queued turn — only when this scene is at the head of
+// the queue and the field allows any scene to start right now.
+export function tryStartScene(state, id, now) {
+  if (state.sceneQueue[0] !== id) return false;
+  if (giantBusy(state) || anySceneBusy(state) || goldenOnField(state)) return false;
+  if (!sceneGapElapsed(state, now)) return false;
+  state.sceneQueue.shift();
+  return true;
 }

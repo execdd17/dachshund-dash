@@ -86,6 +86,7 @@ export function createState(rng = Math.random) {
 
     // --- Scenes (shared) ---
     lastSceneEndAt: -Infinity,  // ms timestamp when the last scene (chase/boss/tramp) fully ended; -Infinity = none yet
+    sceneQueue: [],  // scene ids ('chase'|'boss'|'tramp') waiting for a turn, FIFO, one entry per scene
 
     // --- Chase mode ---
     chaseActive: false,
@@ -166,6 +167,7 @@ export function resetRun(state) {
   state.dog.ducking = false;
 
   state.lastSceneEndAt = -Infinity;
+  state.sceneQueue = [];
 
   state.chaseActive = false;
   state.chasePending = false;

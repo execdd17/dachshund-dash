@@ -55,7 +55,7 @@ export const SCENE_MIN_GAP = 15000;  // ms
 
 // --- Chase mode ---
 export const CHASE_FIRST_AT = 200;
-export const CHASE_COOLDOWN = 300;
+export const CHASE_COOLDOWN = 700;
 export const CHASE_DURATION_FRAMES = 16 * 60;  // 16 seconds at 60fps
 export const SQUIRREL_OFFSET = 580;
 
@@ -91,7 +91,7 @@ export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping 
 // leading-edge assertion in tests/trampoline.test.js). Don't lower it below
 // (3.35 - INITIAL_SPEED) / SPEED_INCREMENT without re-checking that band.
 export const TRAMP_FIRST_AT = 800;        // score before the first scene can arm
-export const TRAMP_COOLDOWN = 800;        // score between scenes (from lastTrampEndScore)
+export const TRAMP_COOLDOWN = 600;        // score between scenes (from lastTrampEndScore)
 export const TRAMP_BOUNCES = 3;           // reps per scene
 export const TRAMP_BOUNCE_VY = -14;       // super-bounce launch velocity (see physics table)
 export const TRAMP_BOUNCE_BONUS = 50;     // points per clean bounce
