@@ -46,6 +46,13 @@ export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle
 // The game was tuned at 120Hz-equivalent dt units; update() scales by dt/DT_BASELINE.
 export const DT_BASELINE = 1000 / 120;
 
+// --- Scenes (chase, boss, trampoline) ---
+// Minimum real time of normal gameplay between scenes, measured from one
+// scene fully ending (last transition phase done) to the next one arming.
+// Applies across scene types — each one's own score cooldown gates repeats
+// of the same scene, this gates back-to-back scenes of any kind.
+export const SCENE_MIN_GAP = 15000;  // ms
+
 // --- Chase mode ---
 export const CHASE_FIRST_AT = 200;
 export const CHASE_COOLDOWN = 300;
@@ -79,8 +86,12 @@ export const GIANT_END_INVULN = 1500;               // ms of invulnerability aft
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
 // --- Trampoline scene ---
-export const TRAMP_FIRST_AT = 350;        // score before the first scene can arm
-export const TRAMP_COOLDOWN = 400;        // score between scenes (from lastTrampEndScore)
+// First scene at 800 → speed 3.4, inside the s >= 3.35 band where the layout
+// invariant guarantees the bounce alone clears the exit thorns (see the
+// leading-edge assertion in tests/trampoline.test.js). Don't lower it below
+// (3.35 - INITIAL_SPEED) / SPEED_INCREMENT without re-checking that band.
+export const TRAMP_FIRST_AT = 800;        // score before the first scene can arm
+export const TRAMP_COOLDOWN = 800;        // score between scenes (from lastTrampEndScore)
 export const TRAMP_BOUNCES = 3;           // reps per scene
 export const TRAMP_BOUNCE_VY = -14;       // super-bounce launch velocity (see physics table)
 export const TRAMP_BOUNCE_BONUS = 50;     // points per clean bounce

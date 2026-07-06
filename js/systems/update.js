@@ -141,10 +141,10 @@ export function update(state, dt, services, rng = Math.random, now = performance
   state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < 800);
 
   // Chase mode
-  updateChase(state, scale);
+  updateChase(state, scale, now);
 
   // Boss chase state machine (may kill the dog)
-  updateBoss(state, scale, services);
+  updateBoss(state, scale, services, now);
 
   // Trampoline scene (bounce before collision resolves thorns on the same frame)
   updateTrampoline(state, scale, services, now);

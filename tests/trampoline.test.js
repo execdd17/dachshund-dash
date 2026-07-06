@@ -9,7 +9,7 @@ import { update } from '../js/systems/update.js';
 import {
   updateTrampoline, getTrampLayout, spawnTrampRep,
 } from '../js/systems/trampoline.js';
-import { checkCollision } from '../js/systems/collision.js';
+import { checkCollision, getDogHitbox } from '../js/systems/collision.js';
 import { updateChase } from '../js/systems/chase.js';
 import { updateBoss } from '../js/systems/boss.js';
 import { spawnObstacle } from '../js/systems/spawning.js';
@@ -19,6 +19,7 @@ import {
   TRAMP_FIRST_AT, TRAMP_COOLDOWN, TRAMP_BOUNCES, TRAMP_BOUNCE_VY,
   TRAMP_BOUNCE_BONUS, TRAMP_BREATHER, TRAMP_REPS, TRAMP_TILE_W,
   CHASE_FIRST_AT, BOSS_MILESTONE, GIANT_FIRST_AT,
+  INITIAL_SPEED, SPEED_INCREMENT,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -211,22 +212,32 @@ test('descending onto the trampoline launches, resets double jump, scores, and b
 test('a jump onto the island carries the dog across the whole patch unharmed', () => {
   const state = runningState();
   const services = createTestServices();
-  state.score = 500;  // speed = 3.0 + 0.5 = 3.5
+  // Score chosen so the actual speed (recomputed from score inside update())
+  // is 3.5 — inside the s >= 3.35 band where the layout invariant guarantees
+  // the bounce alone clears the exit. Below that band the post-bounce double
+  // jump is required, which this single-jump script doesn't model.
+  state.score = (3.5 - INITIAL_SPEED) / SPEED_INCREMENT;
+  state.lastBossMilestone = 99;  // keep the boss milestone check out of this scene
+  const speed = INITIAL_SPEED + state.score * SPEED_INCREMENT;
 
   state.trampActive = true;
-  state.speed = 3.5;
+  state.speed = speed;
   spawnTrampRep(state);          // rep 0 at x = W + 10
   state.trampRep = TRAMP_BOUNCES;  // no further reps; scene ends when field clears
 
   const heartsBefore = state.hearts;
   let jumped = false;
   for (let i = 0; i < 5000; i++) {
-    state.speed = 3.5;  // pin — score drift during update() must not retime the jump
-    const tramp = state.obstacles.find(o => o.type === 'trampoline');
-    // Single jump timed so the ~42-frame arc lands just past the island
-    // center — the latest line that never stands in the entry thorns first
-    if (!jumped && tramp && !state.dog.jumping
-      && (tramp.x + tramp.width / 2) - (state.dog.x + 48) <= 48 * state.speed) {
+    state.speed = speed;  // pin — score drift during update() must not retime the jump
+    const thorns = state.obstacles.filter(o => o.type === 'thorns');
+    // Single jump at the last safe moment: two frames before the entry thorns
+    // reach the standing dog. The ~44-frame arc then lands on the island left
+    // of center, and the layout invariant (test 1) guarantees even a
+    // leading-edge bounce clears the exit thorns.
+    const thornFront = Math.min(...thorns.map(o => o.x));
+    const dogBox = getDogHitbox(state.dog, false);
+    if (!jumped && thorns.length && !state.dog.jumping
+      && thornFront <= dogBox.x + dogBox.w + 2 * speed) {
       jump(state, services);
       jumped = true;
     }
@@ -236,7 +247,7 @@ test('a jump onto the island carries the dog across the whole patch unharmed', (
   }
 
   assert.ok(jumped, 'the scripted jump fired');
-  assert.equal(state.trampBounceEffects.length >= 1 || state.score > 500 + TRAMP_BOUNCE_BONUS, true, 'the bounce happened');
+  assert.ok(state.trampBounceEffects.length >= 1, 'the bounce happened');
   assert.equal(state.hearts, heartsBefore, 'no thorn contact anywhere in the patch');
   assert.equal(state.gameState, 'running');
   assert.equal(state.dog.y, GROUND_Y, 'dog ended grounded past the patch');

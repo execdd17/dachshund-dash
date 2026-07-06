@@ -84,6 +84,9 @@ export function createState(rng = Math.random) {
     lastObstacleType: 'hotdog',
     activeSpawnPattern: null,  // { id, beats, index } — multi-beat close-gap sequence
 
+    // --- Scenes (shared) ---
+    lastSceneEndAt: -Infinity,  // ms timestamp when the last scene (chase/boss/tramp) fully ended; -Infinity = none yet
+
     // --- Chase mode ---
     chaseActive: false,
     chasePending: false,   // waiting for obstacles to clear before chase starts
@@ -161,6 +164,8 @@ export function resetRun(state) {
   state.dog.jumping = false;
   state.dog.doubleJumped = false;
   state.dog.ducking = false;
+
+  state.lastSceneEndAt = -Infinity;
 
   state.chaseActive = false;
   state.chasePending = false;

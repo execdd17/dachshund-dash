@@ -7,12 +7,15 @@ import {
 } from '../js/systems/giant.js';
 import { updateChase } from '../js/systems/chase.js';
 import { updateBoss } from '../js/systems/boss.js';
+import { updateTrampoline } from '../js/systems/trampoline.js';
+import { markSceneEnd } from '../js/systems/encounters.js';
 import { killDog } from '../js/systems/death.js';
 import { jump, duck } from '../js/systems/control.js';
 import {
   W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
   BOSS_MILESTONE, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
+  SCENE_MIN_GAP, TRAMP_FIRST_AT,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -130,6 +133,50 @@ test('chase and boss do not arm behind a golden pickup, and stand down if giant 
   assert.equal(bossPend.bossPending, false);
   assert.equal(bossPend.bossChasing, false);
   assert.equal(bossPend.lastBossMilestone, 0, 'milestone refunded for re-arm after giant');
+});
+
+// --- Cross-scene minimum gap ---
+
+test('no scene arms until SCENE_MIN_GAP has elapsed since the last scene ended', () => {
+  const services = createTestServices();
+  const endedAt = 50000;
+
+  // Chase: blocked one ms short of the gap, arms once it elapses
+  const chaseState = createState(() => 0.5);
+  chaseState.score = CHASE_FIRST_AT + 100;
+  markSceneEnd(chaseState, endedAt);
+  updateChase(chaseState, 1, endedAt + SCENE_MIN_GAP - 1);
+  assert.equal(chaseState.chasePending, false, 'chase blocked inside the gap');
+  updateChase(chaseState, 1, endedAt + SCENE_MIN_GAP);
+  assert.equal(chaseState.chasePending, true, 'chase arms after the gap');
+
+  // Boss: blocked check must not consume the milestone
+  const bossState = createState(() => 0.5);
+  bossState.score = BOSS_MILESTONE + 5;
+  markSceneEnd(bossState, endedAt);
+  updateBoss(bossState, 1, services, endedAt + SCENE_MIN_GAP - 1);
+  assert.equal(bossState.bossPending, false, 'boss blocked inside the gap');
+  assert.equal(bossState.lastBossMilestone, 0, 'milestone not consumed while blocked');
+  updateBoss(bossState, 1, services, endedAt + SCENE_MIN_GAP);
+  assert.equal(bossState.bossPending, true, 'boss arms after the gap');
+
+  // Trampoline likewise
+  const trampState = createState(() => 0.5);
+  trampState.score = TRAMP_FIRST_AT + 1;
+  markSceneEnd(trampState, endedAt);
+  updateTrampoline(trampState, 1, services, endedAt + SCENE_MIN_GAP - 1);
+  assert.equal(trampState.trampPending, false, 'tramp blocked inside the gap');
+  updateTrampoline(trampState, 1, services, endedAt + SCENE_MIN_GAP);
+  assert.equal(trampState.trampPending, true, 'tramp arms after the gap');
+});
+
+test('a chase escape completing stamps lastSceneEndAt', () => {
+  const state = createState(() => 0.5);
+  state.chaseEscaping = true;
+  state.squirrelEscapeX = W + 100;  // already past the exit threshold
+  updateChase(state, 1, 12345);
+  assert.equal(state.chaseEscaping, false);
+  assert.equal(state.lastSceneEndAt, 12345);
 });
 
 // --- Boss state machine ---

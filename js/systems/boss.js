@@ -8,9 +8,9 @@ import {
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
 } from '../config.js';
 import { killDog } from './death.js';
-import { giantBusy, chaseBusy, trampBusy, goldenOnField } from './encounters.js';
+import { giantBusy, chaseBusy, trampBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
 
-export function updateBoss(state, scale, services) {
+export function updateBoss(state, scale, services, now = 0) {
   if (state.bossChasing) {
     // Frame-based timer: encounter duration is constant regardless of game speed
     state.bossChaseFrames += scale;
@@ -67,6 +67,7 @@ export function updateBoss(state, scale, services) {
     // Boss ends only when dog is fully back AND squirrel has exited
     if (state.bossSquirrelX < BOSS_SQUIRREL_START_X - 60 && state.bossDogShift <= 0) {
       state.bossLosing = false;
+      markSceneEnd(state, now);
     }
   } else if (state.bossPending) {
     // Giant mode won the race (a golden eaten after we armed): stand down so
@@ -83,10 +84,12 @@ export function updateBoss(state, scale, services) {
       state.bossChaseFrames = 0;
     }
   } else {
-    // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with chase)
+    // Boss trigger check: fires at 1000, 2000, 3000... (mutual exclusion with
+    // chase). A blocked check doesn't consume the milestone — the boss arms as
+    // soon as the field/gap conditions allow.
     const currentMilestone = Math.floor(state.score / BOSS_MILESTONE);
     const bossCanStart = !giantBusy(state) && !chaseBusy(state) && !trampBusy(state)
-      && !goldenOnField(state)
+      && !goldenOnField(state) && sceneGapElapsed(state, now)
       && currentMilestone > state.lastBossMilestone;
     if (bossCanStart) {
       state.bossPending = true;

@@ -4,9 +4,9 @@
 import {
   W, CHASE_FIRST_AT, CHASE_COOLDOWN, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
 } from '../config.js';
-import { giantBusy, bossBusy, trampBusy, goldenOnField } from './encounters.js';
+import { giantBusy, bossBusy, trampBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
 
-export function updateChase(state, scale) {
+export function updateChase(state, scale, now = 0) {
   if (state.chaseActive) {
     if (state.frameCount - state.chaseStartedFrame >= CHASE_DURATION_FRAMES) {
       state.chaseActive = false;
@@ -20,6 +20,7 @@ export function updateChase(state, scale) {
     state.squirrelEscapeSpeed = Math.min(3.5, state.squirrelEscapeSpeed + 0.004 * scale);
     if (state.squirrelEscapeX > W + 80) {
       state.chaseEscaping = false;
+      markSceneEnd(state, now);
     }
   } else if (state.chaseEntering) {
     state.squirrelEnterX -= state.squirrelEnterSpeed * scale;
@@ -45,7 +46,7 @@ export function updateChase(state, scale) {
     }
   } else {
     const canStart = !giantBusy(state) && !bossBusy(state) && !trampBusy(state)
-      && !goldenOnField(state)
+      && !goldenOnField(state) && sceneGapElapsed(state, now)
       && ((state.lastChaseEndScore === 0 && state.score >= CHASE_FIRST_AT) ||
       (state.lastChaseEndScore > 0 && state.score >= state.lastChaseEndScore + CHASE_COOLDOWN));
     if (canStart) {

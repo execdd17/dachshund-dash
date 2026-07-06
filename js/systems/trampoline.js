@@ -8,7 +8,7 @@ import {
   TRAMP_REPS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
-import { giantBusy, chaseBusy, bossBusy, goldenOnField } from './encounters.js';
+import { giantBusy, chaseBusy, bossBusy, goldenOnField, sceneGapElapsed, markSceneEnd } from './encounters.js';
 
 export function getTrampLayout(rep, speed) {
   const spec = TRAMP_REPS[rep];
@@ -92,6 +92,7 @@ export function updateTrampoline(state, scale, services, now) {
       if (state.trampRep >= TRAMP_BOUNCES) {
         state.trampActive = false;
         state.lastTrampEndScore = state.score;
+        markSceneEnd(state, now);
         state.nextObstacleIn = MIN_OBSTACLE_GAP;
       } else {
         state.trampBreatherFrames -= scale;
@@ -116,7 +117,7 @@ export function updateTrampoline(state, scale, services, now) {
     }
   } else {
     const canStart = !giantBusy(state) && !chaseBusy(state) && !bossBusy(state)
-      && !goldenOnField(state)
+      && !goldenOnField(state) && sceneGapElapsed(state, now)
       && ((state.lastTrampEndScore === 0 && state.score >= TRAMP_FIRST_AT)
         || (state.lastTrampEndScore > 0 && state.score >= state.lastTrampEndScore + TRAMP_COOLDOWN));
     if (canStart) {

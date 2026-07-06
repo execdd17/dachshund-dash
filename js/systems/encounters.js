@@ -5,6 +5,8 @@
 // Centralizing the flag lists here means a new encounter (or a new phase on
 // an existing one) only has to be registered once.
 
+import { SCENE_MIN_GAP } from '../config.js';
+
 export function giantBusy(state) {
   return state.giantActive || state.giantGrowing || state.giantShrinking;
 }
@@ -26,4 +28,17 @@ export function trampBusy(state) {
 // field clears.
 export function goldenOnField(state) {
   return state.obstacles.some(o => o.type === 'golden');
+}
+
+// Scenes (chase, boss, trampoline) additionally guarantee SCENE_MIN_GAP ms of
+// normal gameplay between one another: each scene stamps state.lastSceneEndAt
+// when its final transition phase finishes, and every scene's arming check
+// requires the gap to have elapsed. Per-scene score cooldowns still apply on
+// top. Giant mode is a reward power-up, not a scene, so it doesn't stamp.
+export function sceneGapElapsed(state, now) {
+  return now - state.lastSceneEndAt >= SCENE_MIN_GAP;
+}
+
+export function markSceneEnd(state, now) {
+  state.lastSceneEndAt = now;
 }
