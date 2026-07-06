@@ -323,12 +323,18 @@
     z-index: 10;
   }
   #cosmeticsMenu.visible { display: flex; }
+  /* The panel caps itself to the overlay height; only the item grid
+     scrolls, so the DONE button always stays reachable on short screens. */
   #cosmeticsMenu .cosmetics-panel {
     background: #fdfdfd;
     border: 2px solid #4a8f3f;
     border-radius: 8px;
     width: 320px;
     padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100% - 16px);
+    overflow: hidden;
   }
   #cosmeticsMenu h2 {
     text-align: center;
@@ -376,6 +382,8 @@
     flex-wrap: wrap;
     justify-content: center;
     min-height: 70px;
+    align-content: flex-start;
+    overflow-y: auto;
   }
   .cosmetics-tile {
     width: 64px;
@@ -420,6 +428,22 @@
     cursor: pointer;
   }
   #cosmeticsDoneBtn:hover { background: #5a9f4f; }
+  /* Everything except the grid keeps its size when the panel is squeezed. */
+  #cosmeticsMenu h2,
+  #cosmeticsMenu .cosmetics-preview,
+  #cosmeticsMenu .cosmetics-tabs,
+  #cosmeticsDoneBtn { flex-shrink: 0; }
+  /* Short screens (phone landscape): go wide instead of tall — a compact
+     preview and a panel wide enough for ~8 tiles per row, so the grid only
+     scrolls once a slot has a lot of items. */
+  @media (max-height: 480px) {
+    #cosmeticsMenu .cosmetics-panel { width: min(620px, calc(100% - 24px)); }
+    #cosmeticsMenu h2 { margin-bottom: 6px; }
+    #cosmeticsMenu .cosmetics-preview { margin-bottom: 8px; }
+    #cosmeticsPreviewCanvas { width: 178px; height: 80px; }
+    .cosmetics-tabs { margin-bottom: 6px; }
+    #cosmeticsDoneBtn { margin-top: 8px; }
+  }
 
   /* --- App layout (main.js sets app-mode on every device) --- */
   #rotateOverlay { display: none; }
