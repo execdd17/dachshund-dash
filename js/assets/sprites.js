@@ -2,7 +2,7 @@
 // Image loading is browser-only; the frame-selection helpers
 // (getDogSpriteAnim, getDogJumpFrameIndex) are pure and unit-testable.
 
-import { GROUND_Y, DOG_SPRITE_FPS, SQUIRREL_SPRITE_FPS } from '../config.js';
+import { GROUND_Y, DOG_SPRITE_FPS, SQUIRREL_SPRITE_FPS, BIRD_SPRITE_FPS } from '../config.js';
 
 export function createSpriteStore() {
   return {
@@ -16,6 +16,11 @@ export function createSpriteStore() {
     squirrelSpritesReady: false,
     squirrelSpriteFrame: 0,
     squirrelSpriteLastAdvance: 0,
+
+    birdSprites: { fly: [] },
+    birdSpritesReady: false,
+    birdSpriteFrame: 0,
+    birdSpriteLastAdvance: 0,
   };
 }
 
@@ -72,6 +77,21 @@ export function loadSquirrelSprites(store) {
   });
 }
 
+export function loadBirdSprites(store) {
+  const flyPaths = [
+    'png/bird/bird_fly_00.png', 'png/bird/bird_fly_01.png', 'png/bird/bird_fly_02.png',
+    'png/bird/bird_fly_03.png', 'png/bird/bird_fly_04.png', 'png/bird/bird_fly_05.png',
+  ];
+  let pending = flyPaths.length;
+  const onLoad = () => { pending--; if (pending === 0) store.birdSpritesReady = true; };
+  flyPaths.forEach((path, i) => {
+    const img = new Image();
+    img.onload = img.onerror = onLoad;
+    img.src = path;
+    store.birdSprites.fly[i] = img;
+  });
+}
+
 // Which animation set the dog should be showing, given game state.
 // `now` is injected for testability (defaults to performance.now()).
 export function getDogSpriteAnim(state, now = performance.now()) {
@@ -108,6 +128,17 @@ export function advanceDogSpriteFrame(store, state, now = performance.now()) {
           store.dogSpriteFrame = (store.dogSpriteFrame + 1) % frames.length;  // loop
         }
       }
+    }
+  }
+}
+
+export function advanceBirdSpriteFrame(store, now = performance.now()) {
+  const frameDuration = 1000 / BIRD_SPRITE_FPS;
+  if (now - store.birdSpriteLastAdvance >= frameDuration) {
+    store.birdSpriteLastAdvance = now;
+    const frames = store.birdSprites.fly;
+    if (frames && frames.length > 0) {
+      store.birdSpriteFrame = (store.birdSpriteFrame + 1) % frames.length;
     }
   }
 }

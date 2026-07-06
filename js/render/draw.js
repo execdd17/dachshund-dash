@@ -16,7 +16,7 @@ import {
   drawLandingParticles,
 } from './effects.js';
 import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
-import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame } from '../assets/sprites.js';
+import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale } from '../systems/giant.js';
 
 // deps: { canvas, ctx, state, sprites, cosmetics, music, view, globalScores, onIdleFrame }
@@ -49,7 +49,8 @@ export function draw(deps) {
   drawRain(ctx, state);
 
   // Obstacles
-  state.obstacles.forEach(o => drawObstacle(ctx, state, o));
+  advanceBirdSpriteFrame(sprites);
+  state.obstacles.forEach(o => drawObstacle(ctx, state, o, sprites));
 
   // Boss squirrel (behind the dog, drawn first so it appears on left)
   // Comically oversized — scale around feet so it stays grounded
@@ -133,7 +134,7 @@ export function draw(deps) {
   ctx.restore();
 
   drawChompEffects(ctx, state);
-  drawBonkEffects(ctx, state);
+  drawBonkEffects(ctx, state, sprites);
   drawBirdJumpEffects(ctx, state);
   drawTrampBounceEffects(ctx, state);
   drawLandingParticles(ctx, state);

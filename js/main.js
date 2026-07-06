@@ -5,7 +5,7 @@
 import { createState } from './core/state.js';
 import { createSfx } from './audio/sfx.js';
 import { createMusic } from './audio/music.js';
-import { createSpriteStore, loadDogSprites, loadSquirrelSprites } from './assets/sprites.js';
+import { createSpriteStore, loadDogSprites, loadSquirrelSprites, loadBirdSprites } from './assets/sprites.js';
 import { createCosmetics } from './cosmetics/cosmetics.js';
 import { createCosmeticsMenu } from './cosmetics/menu.js';
 import { initFirebase } from './firebase.js';
@@ -58,6 +58,7 @@ music.attachAutoplayUnlock();
 const sprites = createSpriteStore();
 loadDogSprites(sprites);
 loadSquirrelSprites(sprites);
+loadBirdSprites(sprites);
 
 const cosmetics = createCosmetics(localStorage);
 cosmetics.loadImages();

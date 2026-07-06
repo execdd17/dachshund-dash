@@ -131,6 +131,11 @@ export const DOG_SPRITE_ANCHOR = 0.5;       // bottom-center: 0.5 = center X
 export const DOG_SPRITE_GROUND_OFFSET = 85; // sprite has padding below feet; shift down so feet land on ground
 export const COSMETICS_PREVIEW_SCALE = 2;   // preview dog size vs in-game (2 = golden-hot-dog giant size)
 
+// --- Bird sprite animation (PNG from png/bird, via tools/gen-bird-frames.sh) ---
+export const BIRD_SPRITE_FPS = 12;
+export const BIRD_SPRITE_W = 60;           // drawn width in logical px
+export const BIRD_SPRITE_FEET_FRAC = 0.738; // feet baseline as a fraction of frame height (from the generator crop)
+
 // --- Squirrel sprite animation (PNG from png/squirrel) ---
 export const SQUIRREL_SPRITE_FPS = 12;
 export const SQUIRREL_SPRITE_SCALE = 50 / 512;   // squirrel_run_* are 512x1024

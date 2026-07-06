@@ -3,7 +3,7 @@
 
 import { BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS } from '../config.js';
 import {
-  drawFrisbee, drawBird, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
+  drawFrisbee, drawBird, drawBirdSprite, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
 } from './obstacles.js';
 
 export function drawChompEffects(ctx, state, now = performance.now()) {
@@ -29,14 +29,15 @@ export function drawChompEffects(ctx, state, now = performance.now()) {
 }
 
 // The knocked-away obstacle keeps its original look, mirroring the skin/type
-// dispatch in drawObstacle (birds keep flapping via frameCount).
-function drawBonkedObstacle(ctx, e, frameCount) {
+// dispatch in drawObstacle (birds keep flapping: sprite frames keep advancing
+// via the shared store, with the procedural bird as the loading fallback).
+function drawBonkedObstacle(ctx, e, frameCount, sprites) {
   if (e.skin === 'chase') {
     if (e.type === 'frisbee' || e.type === 'bird') drawAcorn(ctx, e.x, e.y - 8, frameCount * 0.15);
     else if (e.type === 'stack') drawAcornPile(ctx, e.x, e.y);
     else drawAcorn(ctx, e.x, e.y);
   } else if (e.type === 'bird') {
-    drawBird(ctx, e.x, e.y, frameCount);
+    if (!drawBirdSprite(ctx, sprites, e)) drawBird(ctx, e.x, e.y, frameCount);
   } else if (e.type === 'stack') {
     drawChocolateStack(ctx, e.x, e.y, frameCount);
   } else if (e.type === 'hotdog') {
@@ -46,7 +47,7 @@ function drawBonkedObstacle(ctx, e, frameCount) {
   }
 }
 
-export function drawBonkEffects(ctx, state, now = performance.now()) {
+export function drawBonkEffects(ctx, state, sprites, now = performance.now()) {
   state.giantBonkEffects.forEach(e => {
     const age = (now - e.startTime) / 1500;
     if (age > 1) return;
@@ -57,7 +58,7 @@ export function drawBonkEffects(ctx, state, now = performance.now()) {
     ctx.translate(cx, cy);
     ctx.rotate(e.rotation);
     ctx.translate(-cx, -cy);
-    drawBonkedObstacle(ctx, e, state.frameCount);
+    drawBonkedObstacle(ctx, e, state.frameCount, sprites);
     ctx.restore();
     if (age < 0.4) {
       ctx.save();

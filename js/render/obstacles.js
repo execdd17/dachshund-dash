@@ -2,7 +2,10 @@
 // drawObstacle() dispatches on obstacle type/skin; individual draw functions
 // take (ctx, x, y, ...) so they stay independently testable/reusable.
 
-import { GROUND_Y, ACORN_W, ACORN_H, CHASE_ACORN_Y } from '../config.js';
+import {
+  GROUND_Y, ACORN_W, ACORN_H, CHASE_ACORN_Y,
+  BIRD_SPRITE_W, BIRD_SPRITE_FEET_FRAC,
+} from '../config.js';
 import { roundRect, drawSparkle } from './primitives.js';
 
 export function drawHotDog(ctx, x, y) {
@@ -419,15 +422,38 @@ export function drawFrisbee(ctx, x, y, frameCount) {
   ctx.restore();
 }
 
+function drawBirdShadow(ctx, cx) {
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(cx, GROUND_Y + 26, 24, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// PNG bird (png/bird/bird_fly_*.png, via tools/gen-bird-frames.sh): frames
+// share one registration (feet baseline at BIRD_SPRITE_FEET_FRAC of the
+// height), drawn wider than the hitbox so the wings overhang it. Returns
+// false while frames are still loading so the caller can fall back.
+export function drawBirdSprite(ctx, sprites, o) {
+  const frames = sprites?.birdSprites?.fly;
+  const img = frames && frames[sprites.birdSpriteFrame % frames.length];
+  if (!sprites?.birdSpritesReady || !img || !img.complete || !img.naturalWidth) return false;
+
+  const dw = BIRD_SPRITE_W;
+  const dh = dw * img.naturalHeight / img.naturalWidth;
+  const dx = o.x + o.width / 2 - dw / 2;
+  // Feet baseline sits just under the hitbox bottom.
+  const dy = o.y + o.height + 2 - dh * BIRD_SPRITE_FEET_FRAC;
+  drawBirdShadow(ctx, o.x + o.width / 2);
+  ctx.drawImage(img, dx, dy, dw, dh);
+  return true;
+}
+
 export function drawBird(ctx, ox, oy, frameCount) {
   const bw = 44, bh = 34;
   const sc = 1.5;
 
   // --- Ground shadow (world coordinates, before transform) ---
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  ctx.beginPath();
-  ctx.ellipse(ox + bw * sc / 2, GROUND_Y + 26, 16 * sc, 4 * sc, 0, 0, Math.PI * 2);
-  ctx.fill();
+  drawBirdShadow(ctx, ox + bw * sc / 2);
 
   // Scale up from bottom edge so the base height stays the same
   ctx.save();
@@ -808,7 +834,9 @@ export function drawThorns(ctx, x, y, seed = 0) {
 
 // Dispatch a single obstacle to its draw function, honoring the chase skin
 // (acorns) and giant mode (chocolate bars become edible hot dogs).
-export function drawObstacle(ctx, state, o) {
+// `sprites` is optional (render-only); birds fall back to the procedural
+// drawing while the PNG frames load.
+export function drawObstacle(ctx, state, o, sprites) {
   if (o.type === 'golden') {
     drawGoldenHotDog(ctx, o.x, o.y, state.frameCount);
     return;
@@ -831,7 +859,7 @@ export function drawObstacle(ctx, state, o) {
     } else if (o.type === 'stack') drawAcornPile(ctx, o.x, o.y);
     else drawAcorn(ctx, o.x, o.y);
   } else if (o.type === 'bird') {
-    drawBird(ctx, o.x, o.y, state.frameCount);
+    if (!drawBirdSprite(ctx, sprites, o)) drawBird(ctx, o.x, o.y, state.frameCount);
   } else if (o.type === 'frisbee') {
     drawFrisbee(ctx, o.x, o.y, state.frameCount);
   } else if (state.giantActive || state.giantGrowing) {
