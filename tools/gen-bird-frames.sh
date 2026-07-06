@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Derive the in-game bird frames from png/bird_spritesheet.jpg (3000x2000,
+# Derive the in-game bird frames from png/bird/bird_spritesheet.jpg (3000x2000,
 # six 1000x1000 cells, top-left -> bottom-right, bird facing right on a
 # near-white background). Requires ImageMagick 7.
 #
@@ -19,8 +19,8 @@
 # Usage: tools/gen-bird-frames.sh   (from the repo root)
 set -euo pipefail
 
-SRC=png/bird_spritesheet.jpg
 OUT=png/bird
+SRC="$OUT/bird_spritesheet.jpg"
 mkdir -p "$OUT"
 
 for i in 0 1 2 3 4 5; do
