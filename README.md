@@ -44,12 +44,74 @@ The game logic has a unit test suite that runs on Node's built-in test runner (N
 npm test          # or: node --test tests/*.test.js
 ```
 
+## Firebase — One-Time Setup
+
+The global leaderboard uses Firestore (`scores` collection). Rules, indexes, and bulk data ops are managed locally from this repo — not by hand in the Firebase console.
+
+Install dev dependencies and log in to Firebase CLI (once per machine):
+
+```bash
+npm install
+npx firebase login
+```
+
+**Deploy rules and indexes** (`firestore.rules`, `firestore.indexes.json`):
+
+```bash
+npm run firebase:deploy          # rules + indexes
+npm run firebase:deploy:rules    # rules only
+npm run firebase:deploy:indexes  # indexes only
+```
+
+If indexes already exist in the console and you need to sync them into the repo first:
+
+```bash
+npx firebase firestore:indexes > firestore.indexes.json
+# review the file, then:
+npm run firebase:deploy:indexes
+```
+
+**Admin SDK credentials** (for data scripts below): Firebase console → Project settings → Service accounts → Generate new private key. Save as `firebase/service-account.json` (git-ignored). Or set `GOOGLE_APPLICATION_CREDENTIALS` to the key path.
+
+The `scores` collection is created automatically on the first submitted score — nothing else to provision.
+
+More detail: [`firebase/README.md`](firebase/README.md).
+
+## Firebase — Admin SDK
+
+Data scripts use the [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup) with the service account key above. They bypass client security rules (the game only allows creates, not deletes).
+
+**Delete all scores for one difficulty:**
+
+```bash
+# Preview count
+node firebase/delete-scores-by-difficulty.mjs NORMAL --dry-run
+
+# Delete
+node firebase/delete-scores-by-difficulty.mjs NORMAL
+node firebase/delete-scores-by-difficulty.mjs "VERY HARD"
+```
+
+Valid difficulty labels: `VERY EASY`, `EASY`, `NORMAL`, `HARD`, `VERY HARD`.
+
+**Delete all scores for the default test name** (empty setup input → stored as `PLAYER`):
+
+```bash
+node firebase/delete-scores-by-name.mjs --dry-run
+node firebase/delete-scores-by-name.mjs
+```
+
+Pass a name to target something else: `node firebase/delete-scores-by-name.mjs TESTER`
+
+**Add new admin scripts:** use `getAdminDb()` from `firebase/lib/init.mjs` (same credentials, batch writes/deletes in chunks of 500). See [`firebase/README.md`](firebase/README.md).
+
 ## Code Layout
 
 - `index.html` — thin HTML shell
 - `css/style.css` — all styles
 - `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, giant mode, and the chase/boss/trampoline scenes, which take turns via a fair scene queue), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
 - `tests/` — unit tests for the game logic
+- `firebase/` — Firestore admin scripts (Admin SDK); rules/indexes at repo root
 
 ## Controls
 

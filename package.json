@@ -6,6 +6,13 @@
   "description": "Pixel-art endless runner starring a dachshund. Static site — no build step; package.json exists only to run the unit tests.",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "serve": "python3 -m http.server 8000"
+    "serve": "python3 -m http.server 8000",
+    "firebase:deploy": "firebase deploy --only firestore",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules",
+    "firebase:deploy:indexes": "firebase deploy --only firestore:indexes"
+  },
+  "devDependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-tools": "^14.9.0"
   }
 }

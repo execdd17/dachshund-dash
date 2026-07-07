@@ -1,13 +1,8 @@
-// Reference copy of the Firestore security rules for the global leaderboard.
-// NOT deployed from this repo — the live rules are edited in the Firebase
-// console (Firestore -> Rules) and must be updated there by hand. Keep this
-// file in sync with the console, and keep the field list in sync with the
-// document shape submitted by js/leaderboard/global.js submit().
+// Firestore security rules for the global leaderboard. Source of truth in this
+// repo — deploy with `npm run firebase:deploy:rules` (see firebase/README.md).
+// Keep the field list in sync with js/leaderboard/global.js submit().
 //
-// Composite index also required for paginated leaderboard queries (Firestore
-// -> Indexes, or follow the console link on the first query error):
-//   collection: scores
-//   fields: difficulty ASC, score DESC, timestamp ASC
+// Composite index: firestore.indexes.json (deploy with firebase:deploy:indexes).
 
 rules_version = '2';
 
