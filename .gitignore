@@ -1,3 +1,4 @@
 .superpowers/
 .firebase/
 firebase/service-account.json
+node_modules/
