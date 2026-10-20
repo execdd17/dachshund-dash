@@ -5,24 +5,22 @@ description: Headless browser verification recipe for Dachshund Dash gameplay ch
 
 # Verifying Dachshund Dash in a headless browser
 
-Serve the repo and drive it with playwright-core against the system Playwright
-Chromium (no npm install in the repo needed):
+Start with the scripted checks (see CLAUDE.md, Common Commands):
 
 ```bash
-python3 -m http.server 8123 &          # ES modules need HTTP, not file://
-cd <scratchpad> && npm init -y && npm install playwright-core
+npm run verify:smoke                    # end-to-end run; screenshots in $TMPDIR/dachshund-smoke
+npm run verify:lockstep -- main         # behavior-preserving changes: update() frame by frame
+npm run verify:render -- main           # behavior-preserving changes: full-frame pixels
 ```
 
-```js
-const { chromium } = require('playwright-core');
-const browser = await chromium.launch({
-  executablePath: process.env.HOME + '/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome',
-});
-```
+For anything they don't cover, write a playwright-core script (it's a
+devDependency) reusing `tools/verify/lib.mjs`: `serve(dir)` for an ephemeral
+static server, `launchBrowser()` for the Playwright Chromium, and
+`newPage(browser)`, which already blocks Firestore.
 
 ## Driving the game
 
-- **Block the production leaderboard first**: `await page.route(/firestore\.googleapis\.com/, r => r.abort())` before `goto`. A headless death otherwise posts a real score to the global board (and with the route blocked, the game-over banner shows "1st place" because the board looks empty — expected).
+- **Block the production leaderboard first** (`newPage` does): `await page.route(/firestore\.googleapis\.com/, r => r.abort())` before `goto`. A headless death otherwise posts a real score to the global board (and with the route blocked, the game-over banner shows "1st place" because the board looks empty — expected).
 - Get past the start overlay: fill `#nameInput`, optionally set `#difficultySlider` (0 = VERY EASY, 6 hearts — good for unattended runs; 4 = VERY HARD, 1 heart — quick deaths) and dispatch `input`, then click `#nameSubmitBtn`.
 - Start/restart a run: `page.keyboard.press('Space')` or click the `#game` canvas.
 - To force collisions, just never jump — the dog hits the first obstacle in ~5s.
@@ -41,4 +39,4 @@ const browser = await chromium.launch({
   `Space` activates the button instead of restarting — click the canvas or blur first.
 - `#customizeBtn` has an idle animation, so Playwright never sees it as stable — click it with `{ force: true }`.
 - Screenshot the page and Read the PNG to eyeball rendering; pixel probes for assertions.
-- On the Beelink, port 8000 is taken — serve on 8123 (see CLAUDE.md).
+- On the Beelink, port 8000 is taken — serve by hand on 8123 (see CLAUDE.md); the tools pick a free port.

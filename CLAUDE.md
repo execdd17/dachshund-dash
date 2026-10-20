@@ -17,11 +17,16 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 # Unit tests (Node 18+ built-in test runner, zero dependencies)
 npm test                         # or: node --test tests/*.test.js
 
+# Browser verification (headless Chromium via playwright-core; Firestore blocked)
+npm run verify:smoke                     # end-to-end run: sounds, menu, every encounter, death; [url] to check a deployment
+npm run verify:lockstep -- [ref=main]    # update() vs a baseline ref, frame by frame on seeded runs
+npm run verify:render -- [ref=main]      # full-frame pixel diff vs a baseline ref; [--save] keeps every frame
+
 # Firestore rules + indexes (Firebase CLI; see firebase/README.md)
 npm run firebase:deploy
 ```
 
-No lint or build tooling. Verify gameplay changes with the tests plus a real browser (check the console, especially asset loading and Firebase init). `.claude/skills/verify/SKILL.md` has a headless playwright-core recipe for driving the game and reading canvas state.
+No lint or build tooling. Verify gameplay changes with the tests plus `verify:smoke`. For a refactor (or anything meant not to change behavior), `verify:lockstep` and `verify:render` compare against a git ref and name the first divergent field or frame; an intended change shows up there too, so read the diff rather than chasing zero. The tools (`tools/verify/`) serve the tree themselves on an ephemeral port and find Playwright's Chromium (`$CHROMIUM` overrides). `.claude/skills/verify/SKILL.md` covers driving the game by hand.
 
 ### Chrome DevTools MCP (interactive browser access)
 
