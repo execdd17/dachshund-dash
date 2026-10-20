@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { spawnObstacle, SPAWN_PATTERNS } from '../js/systems/spawning.js';
+import { spawnObstacle, SPAWN_PATTERNS, patternChance } from '../js/systems/spawning.js';
+import { towerSize } from '../js/systems/obstacleTypes.js';
 import { createState } from '../js/core/state.js';
 import {
   W, GROUND_Y, SQUIRREL_OFFSET, GIANT_FIRST_AT, MIN_OBSTACLE_GAP,
   BIRD_HIGH_Y, BIRD_LOW_Y, BIRD_TRI_DX, BIRD_TRI_ROW2_DX,
   BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
-  PATTERN_CHANCE,
+  PATTERN_CHANCE, PATTERN_FIRST_AT, TOWER_BARS, TOWER_TALL_FROM_SPEED,
 } from '../js/config.js';
 import { setScenePhase } from '../js/systems/scenes.js';
 import { createSequenceRng } from './helpers.js';
@@ -104,7 +105,7 @@ test('spawned ground obstacles sit at ground level', () => {
 test('bird stack spawns two vertically aligned birds past BIRD_WALL_FIRST_AT', () => {
   const state = createState(() => 0.5);
   state.score = BIRD_WALL_FIRST_AT;
-  spawnObstacle(state, createSequenceRng([0.99, 0.2, 0.1]));
+  spawnObstacle(state, createSequenceRng([0.2, 0.1]));  // below PATTERN_FIRST_AT: no pattern roll
   assert.equal(state.obstacles.length, 2);
   assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall));
   assert.deepEqual(state.obstacles.map(o => o.y), [BIRD_HIGH_Y, BIRD_LOW_Y]);
@@ -114,7 +115,7 @@ test('bird triangle: low pair, mid pair, lowered high pair', () => {
   const state = createState(() => 0.5);
   state.score = BIRD_WALL_FIRST_AT;
   const spawnX = W + 10;
-  spawnObstacle(state, createSequenceRng([0.99, 0.2, 0.5]));
+  spawnObstacle(state, createSequenceRng([0.2, 0.5]));  // below PATTERN_FIRST_AT: no pattern roll
   assert.equal(state.obstacles.length, 6);
   assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall));
   assert.deepEqual(state.obstacles.map(o => o.wallRow), [
@@ -135,12 +136,33 @@ test('bird triangle: low pair, mid pair, lowered high pair', () => {
 
 test('spawn pattern arms on a low roll and sets close gap between beats', () => {
   const state = createState(() => 0.5);
-  state.score = 200;
+  state.score = PATTERN_FIRST_AT;  // below GIANT_FIRST_AT, so no golden roll comes first
   state.lastObstacleType = 'hotdog';
-  spawnObstacle(state, createSequenceRng([PATTERN_CHANCE - 0.01, 0.0]));
+  spawnObstacle(state, createSequenceRng([PATTERN_CHANCE.start - 0.01, 0.0]));
   assert.ok(state.activeSpawnPattern);
   assert.equal(state.obstacles.length, 2); // frisbeeHotdog opens with a pair
   assert.equal(state.nextObstacleIn, PATTERN_CLOSE_GAP);
+});
+
+test('pattern chance eases in: none before PATTERN_FIRST_AT, ramping to full', () => {
+  assert.equal(patternChance(PATTERN_FIRST_AT - 1), 0);
+  assert.equal(patternChance(PATTERN_FIRST_AT), PATTERN_CHANCE.start);
+  const mid = patternChance((PATTERN_FIRST_AT + PATTERN_CHANCE.fullAt) / 2);
+  assert.ok(Math.abs(mid - (PATTERN_CHANCE.start + PATTERN_CHANCE.full) / 2) < 1e-9);
+  assert.ok(Math.abs(patternChance(PATTERN_CHANCE.fullAt) - PATTERN_CHANCE.full) < 1e-9);
+  assert.ok(Math.abs(patternChance(PATTERN_CHANCE.fullAt * 3) - PATTERN_CHANCE.full) < 1e-9);
+});
+
+test('tower grows with speed: short early, tall from TOWER_TALL_FROM_SPEED', () => {
+  const spawnTower = speed => {
+    const state = createState(() => 0.5);
+    state.score = 450;
+    state.speed = speed;
+    spawnObstacle(state, createSequenceRng([0.99, 0.1]));
+    return state.obstacles[0];
+  };
+  assert.equal(spawnTower(TOWER_TALL_FROM_SPEED - 0.01).height, towerSize(TOWER_BARS.short).height);
+  assert.equal(spawnTower(TOWER_TALL_FROM_SPEED).height, towerSize(TOWER_BARS.tall).height);
 });
 
 test('pattern second beat spawns on the next call', () => {

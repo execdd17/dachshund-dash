@@ -11,7 +11,7 @@ import {
 } from '../config.js';
 import { giantBusy, anySceneBusy } from './encounters.js';
 import { isChaseActive } from './chase.js';
-import { makeObstacle } from './obstacleTypes.js';
+import { makeObstacle, towerSizeFor } from './obstacleTypes.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
 // (or jump the ground beat, then duck the aerial one). Gaps are short enough
@@ -74,7 +74,7 @@ const WALL = { aerialWall: true };
 // Spawn kinds: what one spawn (or pattern beat) puts on the field.
 const SPAWN_KINDS = {
   hotdog: (x, skin) => [makeObstacle('hotdog', x, { skin })],
-  tower: (x, skin) => [makeObstacle('tower', x, { skin })],
+  tower: (x, skin, speed) => [makeObstacle('tower', x, { skin, ...towerSizeFor(speed) })],
   // Two frisbees, one above the other.
   frisbeePair: (x, skin) => {
     const low = makeObstacle('frisbee', x, { skin });
@@ -95,15 +95,21 @@ const SPAWN_KINDS = {
 };
 
 function spawnKind(state, spawnX, skin, kind) {
-  state.obstacles.push(...(SPAWN_KINDS[kind] ?? SPAWN_KINDS.hotdog)(spawnX, skin));
+  state.obstacles.push(...(SPAWN_KINDS[kind] ?? SPAWN_KINDS.hotdog)(spawnX, skin, state.speed));
 }
 
 function patternEligible(state) {
   return !state.activeSpawnPattern && !anySceneBusy(state) && state.score >= PATTERN_FIRST_AT;
 }
 
+export function patternChance(score) {
+  const { start, full, fullAt } = PATTERN_CHANCE;
+  if (score < PATTERN_FIRST_AT) return 0;
+  return start + (full - start) * Math.min(1, (score - PATTERN_FIRST_AT) / (fullAt - PATTERN_FIRST_AT));
+}
+
 function tryStartPattern(state, rng) {
-  if (!patternEligible(state) || rng() >= PATTERN_CHANCE) return null;
+  if (!patternEligible(state) || rng() >= patternChance(state.score)) return null;
   const eligible = SPAWN_PATTERNS.filter(p => state.score >= p.minScore);
   if (!eligible.length) return null;
   return eligible[Math.floor(rng() * eligible.length)];

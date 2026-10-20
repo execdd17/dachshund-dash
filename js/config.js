@@ -50,16 +50,19 @@ export const ACORN_H = 22;
 export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standing dog, duck clears it
 
 // Tower: a pile of bars too tall for one jump, so it takes a double jump.
-// Measured by sweeping press timings: 6 bars needs a double jump at every
-// speed (a 17ms single-jump fluke at MAX_SPEED), with a 130-230ms window from
-// slowest to fastest. 5 bars only holds at the starting speed (a single jump
-// clears it from speed 3.2), so it's the tutorial's gentler version.
-export const TOWER_BARS = 6;
-export const TUTORIAL_TOWER_BARS = 5;
+// It grows with speed (measured by sweeping press timings): below
+// TOWER_TALL_FROM_SPEED, 5 bars forgives an early or late second press
+// (110-250ms windows) while a single jump only flukes it (16-42ms); 6 bars
+// there demands a second press near the apex. From that speed on, 6 bars has
+// the tolerance and a single jump can't clear it (17ms at MAX_SPEED).
+export const TOWER_BARS = { short: 5, tall: 6 };
+export const TOWER_TALL_FROM_SPEED = 4.0;   // score ~2000
 
 // --- Spawn patterns (close-gap sequences that punish jump-only play) ---
-export const PATTERN_FIRST_AT = 120;         // score before patterns can arm
-export const PATTERN_CHANCE = 0.22;          // per spawn cycle when eligible
+export const PATTERN_FIRST_AT = 300;         // score before patterns can arm
+// Per spawn cycle when eligible: ramps linearly from `start` at
+// PATTERN_FIRST_AT to `full` at score `fullAt`, so the early game eases in.
+export const PATTERN_CHANCE = { start: 0.05, full: 0.22, fullAt: 1500 };
 export const PATTERN_CLOSE_GAP = 185;        // px between beats (~0.6s at mid speed)
 export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle solo spawns
 

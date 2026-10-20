@@ -12,7 +12,7 @@
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
 
 import {
-  GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W, TOWER_BARS,
+  GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W, TOWER_BARS, TOWER_TALL_FROM_SPEED,
 } from '../config.js';
 
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
@@ -23,7 +23,12 @@ export function towerSize(bars) {
   const height = 22 + 20 * (bars - 1);
   return { height, y: GROUND_Y + 26 - height };
 }
-const TOWER = towerSize(TOWER_BARS);
+
+// The tower's size at a game speed: taller once speed makes a short one jumpable.
+export function towerSizeFor(speed) {
+  return towerSize(speed < TOWER_TALL_FROM_SPEED ? TOWER_BARS.short : TOWER_BARS.tall);
+}
+const TOWER = towerSize(TOWER_BARS.tall);
 
 export const OBSTACLE_TYPES = {
   // Drawn as a chocolate bar normally and as a hot dog in giant mode.
@@ -38,7 +43,7 @@ export const OBSTACLE_TYPES = {
   // neighboring tile.
   thorns: { width: TRAMP_TILE_W, height: 30, y: GROUND_Y - 14, inset: { dx: 4, dy: 14, dw: 8, dh: 14 }, contact: 'terrain' },
   trampoline: { height: 12, y: GROUND_Y - 12, inset: DEFAULT_INSET, contact: 'none' },
-  // Too tall for one jump: the double-jump obstacle.
+  // Too tall for one jump: the double-jump obstacle. Spawned at towerSizeFor(speed).
   tower: { width: 36, ...TOWER, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
 };
 
