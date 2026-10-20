@@ -16,6 +16,7 @@ import {
   drawLandingParticles,
 } from './effects.js';
 import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
+import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale } from '../systems/giant.js';
 
@@ -60,9 +61,7 @@ export function draw(deps) {
     const pivotX = state.bossSquirrelX + 10;
     const pivotY = GROUND_Y + 24;
     ctx.save();
-    ctx.translate(pivotX, pivotY);
-    ctx.scale(bossScale, bossScale);
-    ctx.translate(-pivotX, -pivotY);
+    scaleAbout(ctx, pivotX, pivotY, bossScale);
     if (state.bossChasing) {
       drawSquirrel(ctx, state, sprites, state.bossSquirrelX, GROUND_Y + 4, false, false);
     } else {
@@ -109,9 +108,7 @@ export function draw(deps) {
       const glowPulse = 0.85 + 0.15 * Math.sin(performance.now() * 0.004);
       const glowScale = giantScale * (1 + 0.06 * glowPulse);
       ctx.save();
-      ctx.translate(pivotX, pivotY);
-      ctx.scale(glowScale, glowScale);
-      ctx.translate(-pivotX, -pivotY);
+      scaleAbout(ctx, pivotX, pivotY, glowScale);
       ctx.globalAlpha = 0.45 * glowAlpha * flash * glowPulse;
       ctx.shadowColor = '#FFD700';
       ctx.shadowBlur = 28;
@@ -123,9 +120,7 @@ export function draw(deps) {
 
     // Draw the actual giant dog on top
     ctx.save();
-    ctx.translate(pivotX, pivotY);
-    ctx.scale(giantScale, giantScale);
-    ctx.translate(-pivotX, -pivotY);
+    scaleAbout(ctx, pivotX, pivotY, giantScale);
     drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y);
     ctx.restore();
   } else {

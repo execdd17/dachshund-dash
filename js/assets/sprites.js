@@ -2,7 +2,7 @@
 // Image loading is browser-only; the frame-selection helpers
 // (getDogSpriteAnim, getDogJumpFrameIndex) are pure and unit-testable.
 
-import { GROUND_Y, DOG_SPRITE_FPS, SQUIRREL_SPRITE_FPS, BIRD_SPRITE_FPS } from '../config.js';
+import { GROUND_Y, DOG_SPRITE_FPS, SQUIRREL_SPRITE_FPS, BIRD_SPRITE_FPS, BITE_ANIM_MS } from '../config.js';
 import { DOG_SPRITE_DIR, DOG_BITE_SHEET, DOG_BITE_FRAMES, DOG_FRAME_FILES } from './dogFrames.js';
 import { loadImages } from './images.js';
 
@@ -53,7 +53,7 @@ export function loadBirdSprites(store) {
 export function getDogSpriteAnim(state, now = performance.now()) {
   if (state.gameState === 'dead') return 'dead';
   if (state.giantActive && state.giantChompEffects.length > 0
-    && now - state.giantChompEffects[state.giantChompEffects.length - 1].startTime < 250) return 'bite';
+    && now - state.giantChompEffects[state.giantChompEffects.length - 1].startTime < BITE_ANIM_MS) return 'bite';
   if (state.dog.ducking) return 'slide';
   if (state.dog.jumping) return state.dog.doubleJumped ? 'doublejump' : 'jump';
   if (state.gameState === 'idle' || state.gameState === 'setup') return 'idle';

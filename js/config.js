@@ -85,6 +85,13 @@ export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee 
 export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
+// --- Effect lifetimes (ms) ---
+export const CHOMP_EFFECT_MS = 500;
+export const BITE_ANIM_MS = 250;        // dog bite pose after a chomp
+export const BONK_EFFECT_MS = 1500;     // knocked-away obstacle tumbling off
+export const BONK_TEXT_MS = 600;        // BONK! label (first part of the tumble)
+export const SCORE_POPUP_MS = 800;      // bird-jump / trampoline bonus text
+
 // --- Trampoline scene ---
 // First scene at 800 → speed 3.4, inside the s >= 3.35 band where the layout
 // invariant guarantees the bounce alone clears the exit thorns (see the

@@ -9,7 +9,7 @@ import {
   INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, BOSS_OBSTACLE_GAP_MULTIPLIER,
-  GIANT_DURATION, BIRD_JUMP_BONUS,
+  GIANT_DURATION, BIRD_JUMP_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS,
 } from '../config.js';
 import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
@@ -129,16 +129,16 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   }
   // Update chomp/bonk visual effects
-  state.giantChompEffects = state.giantChompEffects.filter(e => now - e.startTime < 500);
+  state.giantChompEffects = state.giantChompEffects.filter(e => now - e.startTime < CHOMP_EFFECT_MS);
   state.giantBonkEffects = state.giantBonkEffects.filter(e => {
     e.x += e.vx * scale;
     e.y += e.vy * scale;
     e.vy += 0.3 * scale;
     e.rotation += e.rotSpeed * scale;
-    return now - e.startTime < 1500;
+    return now - e.startTime < BONK_EFFECT_MS;
   });
-  state.birdJumpEffects = state.birdJumpEffects.filter(e => now - e.startTime < 800);
-  state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < 800);
+  state.birdJumpEffects = state.birdJumpEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
+  state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
 
   // Chase mode
   updateChase(state, scale, now);

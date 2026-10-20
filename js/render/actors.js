@@ -9,6 +9,7 @@ import {
 import { getDogSpriteAnim, getDogJumpFrameIndex } from '../assets/sprites.js';
 import { DOG_BITE_FRAMES, DOG_FRAME_W, DOG_FRAME_H, resolveDogFrame } from '../assets/dogFrames.js';
 import { isImageReady } from '../assets/images.js';
+import { scaleAbout } from './primitives.js';
 import { COSMETIC_DRAW_ORDER, getItemAnchorOffset, getHeadAnchor, getOverlayFrame } from '../cosmetics/cosmetics.js';
 
 export function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, groundOffset) {
@@ -107,32 +108,21 @@ function drawSquirrelSprite(ctx, sprites, x, y, flipHorizontal) {
   const anchorX = 10;  // center of procedural squirrel (spans x-12 to x+32)
   const dx = x + anchorX - dw / 2;
   const dy = y - dh + SQUIRREL_SPRITE_GROUND_OFFSET;
-  if (flipHorizontal) {
-    ctx.save();
-    ctx.translate(dx + dw / 2, 0);
-    ctx.scale(-1, 1);
-    ctx.translate(-(dx + dw / 2), 0);
-    ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
-    ctx.restore();
-  } else {
-    ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
-  }
+  ctx.save();
+  if (flipHorizontal) scaleAbout(ctx, dx + dw / 2, 0, -1, 1);
+  ctx.drawImage(img, 0, 0, sw, sh, dx, dy, dw, dh);
+  ctx.restore();
   return true;
 }
 
 export function drawSquirrel(ctx, state, sprites, x, y, escaping, flipHorizontal) {
-  if (sprites.squirrelSpritesReady && drawSquirrelSprite(ctx, sprites, x, y, flipHorizontal || false)) return;
+  if (sprites.squirrelSpritesReady && drawSquirrelSprite(ctx, sprites, x, y, flipHorizontal)) return;
 
   // Pixel-art squirrel inspired by Elthen/OpenGameArt: bushy tail, compact body, pointy ears.
   // escaping=true: horizontal running pose, tail streaming back.
   const frameCount = state.frameCount;
-  const flip = flipHorizontal || false;
-  if (flip) {
-    ctx.save();
-    ctx.translate(x + 10, 0);
-    ctx.scale(-1, 1);
-    ctx.translate(-(x + 10), 0);
-  }
+  ctx.save();
+  if (flipHorizontal) scaleAbout(ctx, x + 10, 0, -1, 1);
   const runCycle = escaping ? frameCount * 0.4 : frameCount * 0.25;
   const bounce = escaping ? 0 : Math.sin(runCycle) * 2;
   const sy = y - bounce;
@@ -239,5 +229,5 @@ export function drawSquirrel(ctx, state, sprites, x, y, escaping, flipHorizontal
   ctx.beginPath();
   ctx.arc(x + (escaping ? 26 : 28), sy + (escaping ? 9 : 7), 2.5, 0, Math.PI * 2);
   ctx.fill();
-  if (flip) ctx.restore();
+  ctx.restore();
 }

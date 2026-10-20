@@ -1,21 +1,21 @@
 // Transient visual effects: CHOMP!/BONK! popups, bird-jump bonus text,
 // landing dust particles.
 
-import { BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS } from '../config.js';
+import {
+  BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, BONK_TEXT_MS, SCORE_POPUP_MS,
+} from '../config.js';
+import { drawPopupText } from './primitives.js';
 import {
   drawFrisbee, drawBird, drawBirdSprite, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
 } from './obstacles.js';
 
 export function drawChompEffects(ctx, state, now = performance.now()) {
   state.giantChompEffects.forEach(e => {
-    const age = (now - e.startTime) / 500;
+    const age = (now - e.startTime) / CHOMP_EFFECT_MS;
     if (age > 1) return;
     ctx.save();
     ctx.globalAlpha = 1 - age;
-    ctx.fillStyle = '#FFD700';
-    ctx.font = `bold ${14 + age * 8}px Courier New`;
-    ctx.textAlign = 'center';
-    ctx.fillText('CHOMP!', e.x + 18, e.y - 10 - age * 20);
+    drawPopupText(ctx, 'CHOMP!', e.x + 18, e.y - 10 - age * 20, { color: '#FFD700', size: 14 + age * 8, alpha: 1 - age });
     for (let i = 0; i < 5; i++) {
       const angle = (i / 5) * Math.PI * 2 + age * 2;
       const dist = age * 20;
@@ -49,7 +49,7 @@ function drawBonkedObstacle(ctx, e, frameCount, sprites) {
 
 export function drawBonkEffects(ctx, state, sprites, now = performance.now()) {
   state.giantBonkEffects.forEach(e => {
-    const age = (now - e.startTime) / 1500;
+    const age = (now - e.startTime) / BONK_EFFECT_MS;
     if (age > 1) return;
     const cx = e.x + e.width / 2;
     const cy = e.y + e.height / 2;
@@ -60,44 +60,27 @@ export function drawBonkEffects(ctx, state, sprites, now = performance.now()) {
     ctx.translate(-cx, -cy);
     drawBonkedObstacle(ctx, e, state.frameCount, sprites);
     ctx.restore();
-    if (age < 0.4) {
-      ctx.save();
-      ctx.globalAlpha = 1 - age / 0.4;
-      ctx.fillStyle = '#FF69B4';
-      ctx.font = `bold ${12 + age * 15}px Courier New`;
-      ctx.textAlign = 'center';
-      ctx.fillText('BONK!', cx, e.y - 15 - age * 30);
-      ctx.restore();
+    const textAge = (now - e.startTime) / BONK_TEXT_MS;
+    if (textAge < 1) {
+      drawPopupText(ctx, 'BONK!', cx, e.y - 15 - age * 30, { color: '#FF69B4', size: 12 + age * 15, alpha: 1 - textAge });
     }
   });
 }
 
-export function drawBirdJumpEffects(ctx, state, now = performance.now()) {
-  state.birdJumpEffects.forEach(e => {
-    const age = (now - e.startTime) / 800;
+function drawScorePopups(ctx, effects, text, color, now) {
+  effects.forEach(e => {
+    const age = (now - e.startTime) / SCORE_POPUP_MS;
     if (age > 1) return;
-    ctx.save();
-    ctx.globalAlpha = 1 - age;
-    ctx.fillStyle = '#3B7DD8';
-    ctx.font = `bold ${12 + age * 6}px Courier New`;
-    ctx.textAlign = 'center';
-    ctx.fillText('NICE! +' + BIRD_JUMP_BONUS, e.x, e.y - 5 - age * 30);
-    ctx.restore();
+    drawPopupText(ctx, text, e.x, e.y - 5 - age * 30, { color, size: 12 + age * 6, alpha: 1 - age });
   });
 }
 
+export function drawBirdJumpEffects(ctx, state, now = performance.now()) {
+  drawScorePopups(ctx, state.birdJumpEffects, 'NICE! +' + BIRD_JUMP_BONUS, '#3B7DD8', now);
+}
+
 export function drawTrampBounceEffects(ctx, state, now = performance.now()) {
-  state.trampBounceEffects.forEach(e => {
-    const age = (now - e.startTime) / 800;
-    if (age > 1) return;
-    ctx.save();
-    ctx.globalAlpha = 1 - age;
-    ctx.fillStyle = '#7A4FBF';
-    ctx.font = `bold ${12 + age * 6}px Courier New`;
-    ctx.textAlign = 'center';
-    ctx.fillText('BOING! +' + TRAMP_BOUNCE_BONUS, e.x, e.y - 5 - age * 30);
-    ctx.restore();
-  });
+  drawScorePopups(ctx, state.trampBounceEffects, 'BOING! +' + TRAMP_BOUNCE_BONUS, '#7A4FBF', now);
 }
 
 export function drawLandingParticles(ctx, state) {

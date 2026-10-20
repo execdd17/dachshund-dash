@@ -9,18 +9,32 @@ import {
 import { roundRect, drawSparkle } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 
-export function drawHotDog(ctx, x, y) {
-  const hw = 36;
-  const hh = 22;
+const HOTDOG_W = 36;
+const HOTDOG_H = 22;
+
+const HOTDOG_PALETTE = {
+  outline: '#5C3A1E', bunBottom: '#D4951A', bunShadow: '#B8800F',
+  sausage: '#D94438', sausageHi: '#EF6B5E', sausageEnds: '#A42A1C', sausageEndHi: '#D94438',
+  bunTop: '#DBA328', crustHi: '#EDBE45', seam: '#8B6914',
+};
+
+const GOLDEN_PALETTE = {
+  outline: '#8B6914', bunBottom: '#FFC107',
+  sausage: '#FFB300', sausageHi: '#FFD54F', sausageEnds: '#FF8F00',
+  bunTop: '#FFD700', crustHi: '#FFEA70', seam: '#B8860B',
+};
+
+// Bun, sausage, and seam shared by the regular and golden hot dogs.
+// bunShadow / sausageEndHi are optional detail layers.
+function drawHotDogBody(ctx, x, y, p) {
+  const hw = HOTDOG_W;
+  const hh = HOTDOG_H;
   const mid = hh / 2;
 
-  // --- Dark outline (drawn first, slightly larger) ---
-  ctx.strokeStyle = '#5C3A1E';
+  ctx.strokeStyle = p.outline;
   ctx.lineWidth = 2;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-
-  // Outline: full bun silhouette
   ctx.beginPath();
   ctx.moveTo(x + 10, y + 1);
   ctx.quadraticCurveTo(x + hw / 2, y - 1, x + hw - 10, y + 1);
@@ -33,8 +47,8 @@ export function drawHotDog(ctx, x, y) {
   ctx.quadraticCurveTo(x + 4, y + 1, x + 10, y + 1);
   ctx.stroke();
 
-  // --- Bun bottom half ---
-  ctx.fillStyle = '#D4951A';
+  // Bun bottom half
+  ctx.fillStyle = p.bunBottom;
   ctx.beginPath();
   ctx.moveTo(x + 5, y + mid + 1);
   ctx.lineTo(x + hw - 5, y + mid + 1);
@@ -45,46 +59,43 @@ export function drawHotDog(ctx, x, y) {
   ctx.quadraticCurveTo(x, y + mid + 1, x + 5, y + mid + 1);
   ctx.fill();
 
-  // Bottom bun shadow
-  ctx.fillStyle = '#B8800F';
-  ctx.beginPath();
-  ctx.moveTo(x + 7, y + hh - 3);
-  ctx.quadraticCurveTo(x + hw / 2, y + hh, x + hw - 7, y + hh - 3);
-  ctx.lineTo(x + hw - 7, y + hh);
-  ctx.quadraticCurveTo(x + hw / 2, y + hh + 1, x + 7, y + hh);
-  ctx.closePath();
-  ctx.fill();
+  if (p.bunShadow) {
+    ctx.fillStyle = p.bunShadow;
+    ctx.beginPath();
+    ctx.moveTo(x + 7, y + hh - 3);
+    ctx.quadraticCurveTo(x + hw / 2, y + hh, x + hw - 7, y + hh - 3);
+    ctx.lineTo(x + hw - 7, y + hh);
+    ctx.quadraticCurveTo(x + hw / 2, y + hh + 1, x + 7, y + hh);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  // --- Sausage (pokes out both ends!) ---
-  ctx.fillStyle = '#D94438';
+  // Sausage, poking out both ends, with a shiny top and dark ends
+  ctx.fillStyle = p.sausage;
   roundRect(ctx, x - 4, y + 6, hw + 8, 12, 6);
-
-  // Sausage highlight (shiny top)
-  ctx.fillStyle = '#EF6B5E';
+  ctx.fillStyle = p.sausageHi;
   ctx.beginPath();
   ctx.ellipse(x + hw / 2, y + 9, hw / 2 - 2, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
-
-  // Sausage dark ends
-  ctx.fillStyle = '#A42A1C';
+  ctx.fillStyle = p.sausageEnds;
   ctx.beginPath();
   ctx.arc(x - 2, y + 12, 5, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
   ctx.arc(x + hw + 2, y + 12, 5, 0, Math.PI * 2);
   ctx.fill();
+  if (p.sausageEndHi) {
+    ctx.fillStyle = p.sausageEndHi;
+    ctx.beginPath();
+    ctx.arc(x - 1, y + 11, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + hw + 3, y + 11, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  // Sausage end highlights
-  ctx.fillStyle = '#D94438';
-  ctx.beginPath();
-  ctx.arc(x - 1, y + 11, 2.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + hw + 3, y + 11, 2.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // --- Bun top half ---
-  ctx.fillStyle = '#DBA328';
+  // Bun top half and its crust highlight
+  ctx.fillStyle = p.bunTop;
   ctx.beginPath();
   ctx.moveTo(x + 5, y + mid + 1);
   ctx.lineTo(x + hw - 5, y + mid + 1);
@@ -94,9 +105,7 @@ export function drawHotDog(ctx, x, y) {
   ctx.quadraticCurveTo(x + 5, y + 1, x + 3, y + 5);
   ctx.quadraticCurveTo(x + 2, y + mid, x + 5, y + mid + 1);
   ctx.fill();
-
-  // Bun top crust highlight
-  ctx.fillStyle = '#EDBE45';
+  ctx.fillStyle = p.crustHi;
   ctx.beginPath();
   ctx.moveTo(x + 11, y + 3);
   ctx.quadraticCurveTo(x + hw / 2, y, x + hw - 11, y + 3);
@@ -105,15 +114,21 @@ export function drawHotDog(ctx, x, y) {
   ctx.closePath();
   ctx.fill();
 
-  // --- Bun seam (dark line where bun splits open) ---
-  ctx.strokeStyle = '#8B6914';
+  // Seam where the bun splits open
+  ctx.strokeStyle = p.seam;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(x + 3, y + mid);
   ctx.quadraticCurveTo(x + hw / 2, y + mid - 1, x + hw - 3, y + mid);
   ctx.stroke();
+}
 
-  // --- Sesame seeds on top ---
+export function drawHotDog(ctx, x, y) {
+  const hw = HOTDOG_W;
+  const mid = HOTDOG_H / 2;
+  drawHotDogBody(ctx, x, y, HOTDOG_PALETTE);
+
+  // Sesame seeds
   ctx.fillStyle = '#FFF5D6';
   const seeds = [[x + 9, y + 4], [x + 16, y + 2.5], [x + 24, y + 3.5], [x + hw - 9, y + 4.5]];
   seeds.forEach(([sx, sy]) => {
@@ -122,7 +137,7 @@ export function drawHotDog(ctx, x, y) {
     ctx.fill();
   });
 
-  // --- Mustard zigzag ---
+  // Mustard zigzag
   ctx.strokeStyle = '#F5D000';
   ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
@@ -134,7 +149,7 @@ export function drawHotDog(ctx, x, y) {
   }
   ctx.stroke();
 
-  // --- Ketchup drizzle ---
+  // Ketchup drizzle
   ctx.strokeStyle = '#E8392E';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -148,98 +163,22 @@ export function drawHotDog(ctx, x, y) {
 }
 
 export function drawGoldenHotDog(ctx, x, y, frameCount) {
-  const hw = 36;
-  const hh = 22;
-  const mid = hh / 2;
+  const hw = HOTDOG_W;
+  const hh = HOTDOG_H;
   const shimmer = 0.5 + 0.5 * Math.sin(frameCount * 0.1);
 
-  // Outer glow
   ctx.save();
   ctx.globalAlpha = 0.3 + shimmer * 0.3;
   ctx.shadowColor = '#FFD700';
   ctx.shadowBlur = 8 + shimmer * 6;
+  drawHotDogBody(ctx, x, y, GOLDEN_PALETTE);
+  ctx.restore();
 
-  // --- Dark outline ---
-  ctx.strokeStyle = '#8B6914';
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(x + 10, y + 1);
-  ctx.quadraticCurveTo(x + hw / 2, y - 1, x + hw - 10, y + 1);
-  ctx.quadraticCurveTo(x + hw - 4, y + 1, x + hw - 2, y + 5);
-  ctx.quadraticCurveTo(x + hw + 1, y + mid, x + hw + 1, y + mid + 4);
-  ctx.quadraticCurveTo(x + hw + 1, y + hh + 1, x + hw - 7, y + hh + 1);
-  ctx.lineTo(x + 7, y + hh + 1);
-  ctx.quadraticCurveTo(x - 1, y + hh + 1, x - 1, y + mid + 4);
-  ctx.quadraticCurveTo(x - 1, y + mid, x + 2, y + 5);
-  ctx.quadraticCurveTo(x + 4, y + 1, x + 10, y + 1);
-  ctx.stroke();
-
-  // --- Bun bottom (golden) ---
-  ctx.fillStyle = '#FFC107';
-  ctx.beginPath();
-  ctx.moveTo(x + 5, y + mid + 1);
-  ctx.lineTo(x + hw - 5, y + mid + 1);
-  ctx.quadraticCurveTo(x + hw, y + mid + 1, x + hw, y + mid + 4);
-  ctx.quadraticCurveTo(x + hw, y + hh, x + hw - 7, y + hh);
-  ctx.lineTo(x + 7, y + hh);
-  ctx.quadraticCurveTo(x, y + hh, x, y + mid + 4);
-  ctx.quadraticCurveTo(x, y + mid + 1, x + 5, y + mid + 1);
-  ctx.fill();
-
-  // --- Sausage (golden amber) ---
-  ctx.fillStyle = '#FFB300';
-  roundRect(ctx, x - 4, y + 6, hw + 8, 12, 6);
-  ctx.fillStyle = '#FFD54F';
-  ctx.beginPath();
-  ctx.ellipse(x + hw / 2, y + 9, hw / 2 - 2, 2.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#FF8F00';
-  ctx.beginPath();
-  ctx.arc(x - 2, y + 12, 5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + hw + 2, y + 12, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // --- Bun top (golden) ---
-  ctx.fillStyle = '#FFD700';
-  ctx.beginPath();
-  ctx.moveTo(x + 5, y + mid + 1);
-  ctx.lineTo(x + hw - 5, y + mid + 1);
-  ctx.quadraticCurveTo(x + hw - 2, y + mid, x + hw - 3, y + 5);
-  ctx.quadraticCurveTo(x + hw - 5, y + 1, x + hw - 9, y + 1);
-  ctx.lineTo(x + 9, y + 1);
-  ctx.quadraticCurveTo(x + 5, y + 1, x + 3, y + 5);
-  ctx.quadraticCurveTo(x + 2, y + mid, x + 5, y + mid + 1);
-  ctx.fill();
-
-  // Bun highlight
-  ctx.fillStyle = '#FFEA70';
-  ctx.beginPath();
-  ctx.moveTo(x + 11, y + 3);
-  ctx.quadraticCurveTo(x + hw / 2, y, x + hw - 11, y + 3);
-  ctx.lineTo(x + hw - 11, y + 6);
-  ctx.quadraticCurveTo(x + hw / 2, y + 3, x + 11, y + 6);
-  ctx.closePath();
-  ctx.fill();
-
-  // Seam
-  ctx.strokeStyle = '#B8860B';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(x + 3, y + mid);
-  ctx.quadraticCurveTo(x + hw / 2, y + mid - 1, x + hw - 3, y + mid);
-  ctx.stroke();
-
-  ctx.restore(); // restore glow state
-
-  // --- Sparkle particles orbiting ---
+  // Sparkles orbiting the bun
   for (let i = 0; i < 3; i++) {
     const angle = frameCount * 0.05 + i * (Math.PI * 2 / 3);
     const sparkX = x + hw / 2 + Math.cos(angle) * (hw / 2 + 8);
-    const sparkY = y + mid + Math.sin(angle) * (hh / 2 + 6);
+    const sparkY = y + hh / 2 + Math.sin(angle) * (hh / 2 + 6);
     ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + shimmer * 0.5})`;
     drawSparkle(ctx, sparkX, sparkY, 3 + shimmer * 2);
   }
@@ -248,21 +187,19 @@ export function drawGoldenHotDog(ctx, x, y, frameCount) {
   ctx.lineJoin = 'miter';
 }
 
-export function drawHotDogStack(ctx, x, y, frameCount) {
-  // Two hot dogs stacked on the ground — wobbly pile look
-  const offsets = [
-    { dx: 2, dy: 20 },
-    { dx: -2, dy: 0 },
-  ];
-  for (const off of offsets) {
-    drawHotDog(ctx, x + off.dx, y + off.dy);
-  }
-  // Exclamation mark warning above the stack
+// Two items piled on the ground with a wobbling "!" warning above.
+function drawPile(ctx, x, y, frameCount, drawItem) {
+  drawItem(ctx, x + 2, y + 20);
+  drawItem(ctx, x - 2, y);
   const wobble = Math.sin(frameCount * 0.15) * 2;
   ctx.fillStyle = '#FF1493';
   ctx.font = 'bold 14px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText('!', x + 18, y - 8 + wobble);
+}
+
+export function drawHotDogStack(ctx, x, y, frameCount) {
+  drawPile(ctx, x, y, frameCount, drawHotDog);
 }
 
 // ============ Chocolate: Classic Segmented Bar ============
@@ -354,13 +291,7 @@ export function drawChocolateBar(ctx, x, y) {
 }
 
 export function drawChocolateStack(ctx, x, y, frameCount) {
-  const offsets = [{ dx: 2, dy: 20 }, { dx: -2, dy: 0 }];
-  offsets.forEach(o => drawChocolateBar(ctx, x + o.dx, y + o.dy));
-  const wobble = Math.sin(frameCount * 0.15) * 2;
-  ctx.fillStyle = '#FF1493';
-  ctx.font = 'bold 14px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('!', x + 18, y - 8 + wobble);
+  drawPile(ctx, x, y, frameCount, drawChocolateBar);
 }
 
 export function drawFrisbee(ctx, x, y, frameCount) {
