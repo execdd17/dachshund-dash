@@ -4,6 +4,29 @@
 // createSfx() returns a plain object of play* methods so gameplay systems
 // depend on that interface, not on the Web Audio API — tests pass a stub.
 
+// Each effect is a list of tones. A tone starts `at` seconds in, sweeps
+// exponentially from `from` Hz to `to` Hz over `sweep` seconds (no sweep when
+// `to` is omitted), and decays from `gain` to silence over `dur` seconds.
+const TONES = {
+  playJump: [{ type: 'sine', from: 280, to: 560, sweep: 0.1, gain: 0.15, dur: 0.15 }],
+  playDoubleJump: [{ type: 'sine', from: 440, to: 880, sweep: 0.08, gain: 0.13, dur: 0.12 }],
+  playDuck: [{ type: 'sine', from: 400, to: 150, sweep: 0.08, gain: 0.1, dur: 0.1 }],
+  playDeath: [{ type: 'square', from: 400, to: 120, sweep: 0.4, gain: 0.1, dur: 0.4 }],
+  playScore: [520, 680].map((from, i) => ({ type: 'sine', from, gain: 0.12, dur: 0.2, at: i * 0.1 })),
+  playBonk: [
+    { type: 'triangle', from: 800, to: 200, sweep: 0.15, gain: 0.18, dur: 0.2 },
+    { type: 'sine', from: 1200, to: 400, sweep: 0.1, gain: 0.08, dur: 0.12 },
+  ],
+  playBoing: [
+    { type: 'sine', from: 150, to: 600, sweep: 0.25, gain: 0.2, dur: 0.3 },
+    { type: 'triangle', from: 300, to: 1200, sweep: 0.2, gain: 0.08, dur: 0.22 },
+  ],
+  playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
+  playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),
+};
+
+export const SFX_NAMES = [...Object.keys(TONES), 'playCrunch'];
+
 export function createSfx() {
   let audioCtx = null;
   function getAudioCtx() {
@@ -11,212 +34,51 @@ export function createSfx() {
     return audioCtx;
   }
 
-  // Preload chomp.mp3 as an AudioBuffer
+  function playTone(ctx, { type, from, to, sweep, gain, dur, at = 0 }) {
+    const start = ctx.currentTime + at;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.connect(amp);
+    amp.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, start);
+    if (to) osc.frequency.exponentialRampToValueAtTime(to, start + sweep);
+    amp.gain.setValueAtTime(gain, start);
+    amp.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    osc.start(start);
+    osc.stop(start + dur);
+  }
+
   let chompBuffer = null;
   fetch('sound/chomp.mp3')
     .then(r => r.arrayBuffer())
-    .then(buf => {
-      const a = getAudioCtx();
-      return a.decodeAudioData(buf);
-    })
+    .then(buf => getAudioCtx().decodeAudioData(buf))
     .then(decoded => { chompBuffer = decoded; })
     .catch(() => {});
 
-  function playJump() {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    // Quick upward pitch sweep — a little "boing"
-    osc.frequency.setValueAtTime(280, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(560, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.15);
-  }
-
-  function playScore() {
-    const ctx = getAudioCtx();
-    // Two-note chime
-    [520, 680].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.1);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.2);
-      osc.start(ctx.currentTime + i * 0.1);
-      osc.stop(ctx.currentTime + i * 0.1 + 0.2);
-    });
-  }
-
-  function playDeath() {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'square';
-    // Descending sad tone
-    osc.frequency.setValueAtTime(400, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.4);
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
-  }
-
-  function playDoubleJump() {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    // Higher pitched boing
-    osc.frequency.setValueAtTime(440, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.13, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.12);
-  }
-
-  function playDuck() {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    // Quick downward "whoosh"
-    osc.frequency.setValueAtTime(400, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.1);
-  }
-
   function playCrunch() {
     if (!chompBuffer) return;
-    const a = getAudioCtx();
-    const source = a.createBufferSource();
+    const ctx = getAudioCtx();
+    const source = ctx.createBufferSource();
     source.buffer = chompBuffer;
-    const gain = a.createGain();
+    const gain = ctx.createGain();
     gain.gain.value = 0.4;
     source.connect(gain);
-    gain.connect(a.destination);
-    source.start(a.currentTime);
-  }
-
-  function playBonk() {
-    const a = getAudioCtx();
-    // Hollow metallic "bonk"
-    const osc = a.createOscillator();
-    const gain = a.createGain();
-    osc.connect(gain);
-    gain.connect(a.destination);
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(800, a.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(200, a.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.18, a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.2);
-    osc.start(a.currentTime);
-    osc.stop(a.currentTime + 0.2);
-    // Secondary harmonic
-    const osc2 = a.createOscillator();
-    const gain2 = a.createGain();
-    osc2.connect(gain2);
-    gain2.connect(a.destination);
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1200, a.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(400, a.currentTime + 0.1);
-    gain2.gain.setValueAtTime(0.08, a.currentTime);
-    gain2.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.12);
-    osc2.start(a.currentTime);
-    osc2.stop(a.currentTime + 0.12);
-  }
-
-  function playBoing() {
-    const ctx = getAudioCtx();
-    // Bouncy rising sweep — bigger and springier than the jump sound
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(150, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.25);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.3);
-    // Springy overtone
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(300, ctx.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
-    gain2.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
-    osc2.start(ctx.currentTime);
-    osc2.stop(ctx.currentTime + 0.22);
+    source.start(ctx.currentTime);
   }
 
-  function playGiantActivate() {
-    const a = getAudioCtx();
-    // Ascending power-up fanfare
-    [330, 440, 660].forEach((freq, i) => {
-      const osc = a.createOscillator();
-      const gain = a.createGain();
-      osc.connect(gain);
-      gain.connect(a.destination);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(freq, a.currentTime + i * 0.08);
-      gain.gain.setValueAtTime(0.1, a.currentTime + i * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + i * 0.08 + 0.15);
-      osc.start(a.currentTime + i * 0.08);
-      osc.stop(a.currentTime + i * 0.08 + 0.15);
-    });
+  const sfx = { playCrunch };
+  for (const [name, tones] of Object.entries(TONES)) {
+    sfx[name] = () => {
+      const ctx = getAudioCtx();
+      tones.forEach(tone => playTone(ctx, tone));
+    };
   }
-
-  function playGiantDeactivate() {
-    const a = getAudioCtx();
-    // Descending three tones
-    [660, 440, 330].forEach((freq, i) => {
-      const osc = a.createOscillator();
-      const gain = a.createGain();
-      osc.connect(gain);
-      gain.connect(a.destination);
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(freq, a.currentTime + i * 0.08);
-      gain.gain.setValueAtTime(0.08, a.currentTime + i * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + i * 0.08 + 0.12);
-      osc.start(a.currentTime + i * 0.08);
-      osc.stop(a.currentTime + i * 0.08 + 0.12);
-    });
-  }
-
-  return {
-    playJump, playScore, playDeath, playDoubleJump, playDuck,
-    playCrunch, playBonk, playGiantActivate, playGiantDeactivate, playBoing,
-  };
+  return sfx;
 }
 
 // No-op implementation of the same interface, for tests.
 export function createSilentSfx() {
-  const noop = () => {};
-  return {
-    playJump: noop, playScore: noop, playDeath: noop, playDoubleJump: noop,
-    playDuck: noop, playCrunch: noop, playBonk: noop, playBoing: noop,
-    playGiantActivate: noop, playGiantDeactivate: noop,
-  };
+  return Object.fromEntries(SFX_NAMES.map(name => [name, () => {}]));
 }
