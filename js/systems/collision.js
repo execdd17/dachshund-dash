@@ -1,12 +1,14 @@
-// Collision: pure hitbox math + the effectful resolution pass (eat/bonk in
-// giant mode, golden pickup, or death).
+// Collision: dog hitbox math + the effectful resolution pass (eat/bonk in
+// giant mode, golden pickup, heart loss, or death).
 
 import {
   GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
   DOG_HITBOX_STAND, DOG_HITBOX_DUCK,
-  ACORN_W, ACORN_H, CHASE_ACORN_Y,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect } from './giant.js';
+import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
+
+export { getObstacleHitbox };
 
 // Ducking lowers the profile (frisbees pass over); giant mode expands it.
 export function getDogHitbox(dog, giantActive) {
@@ -26,108 +28,57 @@ export function getDogHitbox(dog, giantActive) {
   return { x: dx, y: dy, w: dw, h: dh };
 }
 
-export function getObstacleHitbox(obs) {
-  if (obs.skin === 'chase' && (obs.type === 'frisbee' || obs.type === 'bird')) {
-    if (obs.aerialWall) {
-      const drawY = obs.wallRow === 'low' ? CHASE_ACORN_Y : obs.y;
-      return {
-        x: obs.x + 12,
-        y: drawY + 8,
-        w: ACORN_W - 24,
-        h: ACORN_H - 10,
-      };
-    }
-    // Solo chase aerials pin to duck-under height.
-    return {
-      x: obs.x + 12,
-      y: CHASE_ACORN_Y + 8,
-      w: ACORN_W - 24,
-      h: ACORN_H - 10,
-    };
-  }
-  if (obs.type === 'frisbee' || obs.type === 'bird') {
-    return { x: obs.x + 6, y: obs.y + 2, w: obs.width - 12, h: obs.height - 4 };
-  }
-  if (obs.type === 'stack') {
-    return { x: obs.x + 8, y: obs.y + 4, w: obs.width - 16, h: obs.height - 6 };
-  }
-  if (obs.type === 'thorns') {
-    // Top inset (+14) puts the hitbox top exactly at ground level, which is
-    // also the trampoline bounce-trigger height: on any frame where thorns
-    // could hurt a descending dog, a bounce in range has already fired
-    // (updateTrampoline runs first), so island-edge landings never clip the
-    // neighboring tile. Grounded contact is unchanged.
-    return { x: obs.x + 4, y: obs.y + 14, w: obs.width - 8, h: obs.height - 14 };
-  }
-  return { x: obs.x + 12, y: obs.y + 8, w: obs.width - 24, h: obs.height - 10 };
-}
-
 export function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// Walk obstacles, resolving overlaps. Returns true if the dog died.
+// Spends a heart and starts the post-hit i-frames. False when it was the last one.
+function spendHeart(state, services, now) {
+  state.hearts--;
+  if (state.hearts <= 0) return false;
+  state.heartLostAt = now;
+  state.invulnUntil = now + HEART_HIT_INVULN;
+  services.sfx.playBonk();
+  return true;
+}
+
+// Walk obstacles, resolving overlaps by each type's contact rule
+// (OBSTACLE_TYPES). Returns true if the dog died.
 export function checkCollision(state, services, now = performance.now()) {
   const dogBox = getDogHitbox(state.dog, state.giantActive);
 
   for (let i = state.obstacles.length - 1; i >= 0; i--) {
     const obs = state.obstacles[i];
-    if (rectsOverlap(dogBox, getObstacleHitbox(obs))) {
-      // Golden hot dog: activate giant mode
-      if (obs.type === 'golden') {
-        activateGiantMode(state, services);
-        state.obstacles.splice(i, 1);
-        continue;
-      }
+    if (!rectsOverlap(dogBox, getObstacleHitbox(obs))) continue;
+    const def = OBSTACLE_TYPES[obs.type];
 
-      if (obs.type === 'trampoline') continue;
-
-      if (obs.type === 'thorns') {
-        // Terrain: a rising dog (fresh jump or trampoline bounce) is leaving
-        // the brambles — the bounce must win over a same-frame overlap at the
-        // island edge, and a grazing upward arc shouldn't count either.
-        if (state.dog.vy < 0) continue;
-        if (now < state.invulnUntil) continue;
-        state.hearts--;
-        if (state.hearts > 0) {
-          state.heartLostAt = now;
-          state.invulnUntil = now + HEART_HIT_INVULN;
-          services.sfx.playBonk();
-          continue;
-        }
-        return true;
-      }
-
-      // Giant mode: eat or bonk
+    if (def.contact === 'pickup') {
+      activateGiantMode(state, services, now);
+      state.obstacles.splice(i, 1);
+    } else if (def.contact === 'terrain') {
+      // A rising dog (fresh jump or trampoline bounce) is leaving the
+      // terrain: the bounce must win over a same-frame overlap at the
+      // island edge, and a grazing upward arc shouldn't count either.
+      if (state.dog.vy < 0 || now < state.invulnUntil) continue;
+      if (!spendHeart(state, services, now)) return true;
+    } else if (def.contact === 'hazard') {
       if (state.giantActive) {
-        if (obs.type === 'frisbee' || obs.type === 'bird') {
-          triggerBonkEffect(state, obs);
+        if (def.giant === 'bonk') {
+          triggerBonkEffect(state, obs, now);
           services.sfx.playBonk();
           state.score += GIANT_BONK_BONUS;
         } else {
-          triggerChompEffect(state, obs);
+          triggerChompEffect(state, obs, now);
           services.sfx.playCrunch();
           state.score += GIANT_EAT_BONUS;
         }
         state.obstacles.splice(i, 1);
         continue;
       }
-
-      // Post-hit invulnerability: pass through unharmed
       if (now < state.invulnUntil) continue;
-
-      // Normal collision: spend a heart, knock the obstacle away, and keep
-      // running behind brief i-frames — until the last heart is gone.
-      state.hearts--;
-      if (state.hearts > 0) {
-        state.heartLostAt = now;
-        state.invulnUntil = now + HEART_HIT_INVULN;
-        triggerBonkEffect(state, obs, now);
-        services.sfx.playBonk();
-        state.obstacles.splice(i, 1);
-        continue;
-      }
-      return true;
+      if (!spendHeart(state, services, now)) return true;
+      triggerBonkEffect(state, obs, now);
+      state.obstacles.splice(i, 1);
     }
   }
   return false;

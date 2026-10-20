@@ -2,14 +2,15 @@
 // can drive spawn decisions deterministically.
 
 import {
-  W, GROUND_Y, SQUIRREL_OFFSET,
+  W, SQUIRREL_OFFSET,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   GIANT_FIRST_AT, GIANT_COOLDOWN, GIANT_SPAWN_CHANCE,
-  BIRD_W, BIRD_H, BIRD_LOW_Y, BIRD_HIGH_Y, BIRD_TRI_DX, BIRD_TRI_ROW2_DX,
+  BIRD_LOW_Y, BIRD_HIGH_Y, BIRD_TRI_DX, BIRD_TRI_ROW2_DX,
   BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y,
-  PATTERN_FIRST_AT, PATTERN_CHANCE, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
+  PATTERN_FIRST_AT, PATTERN_CHANCE, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT, SPAWN_MIX,
 } from '../config.js';
-import { giantBusy, chaseBusy, bossBusy, trampBusy } from './encounters.js';
+import { giantBusy, anySceneBusy } from './encounters.js';
+import { makeObstacle } from './obstacleTypes.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
 // (or jump the ground beat, then duck the aerial one). Gaps are short enough
@@ -64,104 +65,40 @@ function birdObs(x, y, skin, extra = {}) {
         : y === BIRD_LOW_Y ? 'low'
           : undefined
   );
-  return { x, y, width: BIRD_W, height: BIRD_H, type: 'bird', skin, wallRow, ...extra };
+  return makeObstacle('bird', x, { y, skin, wallRow, ...extra });
 }
 
-function pushHotdog(state, spawnX, skin) {
-  state.obstacles.push({
-    x: spawnX,
-    y: GROUND_Y + 4,
-    width: 36,
-    height: 22,
-    type: 'hotdog',
-    skin,
-  });
-}
+const WALL = { aerialWall: true };
 
-function pushStack(state, spawnX, skin) {
-  state.obstacles.push({
-    x: spawnX,
-    y: GROUND_Y + 4 - 20,
-    width: 36,
-    height: 42,
-    type: 'stack',
-    skin,
-  });
-}
+// Spawn kinds: what one spawn (or pattern beat) puts on the field.
+const SPAWN_KINDS = {
+  hotdog: (x, skin) => [makeObstacle('hotdog', x, { skin })],
+  stack: (x, skin) => [makeObstacle('stack', x, { skin })],
+  // Two frisbees, one above the other.
+  frisbeePair: (x, skin) => {
+    const low = makeObstacle('frisbee', x, { skin });
+    return [low, makeObstacle('frisbee', x, { skin, y: low.y - low.height - 6 })];
+  },
+  bird: (x, skin) => [birdObs(x, BIRD_LOW_Y, skin)],
+  // Two birds stacked with no vertical gap — blocks every jump timing.
+  birdStack: (x, skin) => [birdObs(x, BIRD_HIGH_Y, skin, WALL), birdObs(x, BIRD_LOW_Y, skin, WALL)],
+  // Low outer pair (duck) + mid/high staggered rows — no jump lane between tiers.
+  birdTriangle: (x, skin) => [
+    birdObs(x - BIRD_TRI_DX, BIRD_LOW_Y, skin, WALL),
+    birdObs(x + BIRD_TRI_DX, BIRD_LOW_Y, skin, WALL),
+    birdObs(x - BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, WALL),
+    birdObs(x + BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, WALL),
+    birdObs(x - BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, WALL),
+    birdObs(x + BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, WALL),
+  ],
+};
 
-function pushFrisbeePair(state, spawnX, skin) {
-  state.obstacles.push({
-    x: spawnX,
-    y: GROUND_Y - 12,
-    width: 44,
-    height: 14,
-    type: 'frisbee',
-    skin,
-  });
-  state.obstacles.push({
-    x: spawnX,
-    y: GROUND_Y - 12 - 14 - 6,
-    width: 44,
-    height: 14,
-    type: 'frisbee',
-    skin,
-  });
-}
-
-function pushBird(state, spawnX, skin) {
-  state.obstacles.push(birdObs(spawnX, BIRD_LOW_Y, skin));
-}
-
-// Two birds stacked with no vertical gap — blocks every jump timing.
-function pushBirdStack(state, spawnX, skin) {
-  const tag = { aerialWall: true };
-  state.obstacles.push(birdObs(spawnX, BIRD_HIGH_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX, BIRD_LOW_Y, skin, tag));
-}
-
-// Low outer pair (duck) + mid/high staggered rows — no jump lane between tiers.
-function pushBirdTriangle(state, spawnX, skin) {
-  const tag = { aerialWall: true };
-  state.obstacles.push(birdObs(spawnX - BIRD_TRI_DX, BIRD_LOW_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX + BIRD_TRI_DX, BIRD_LOW_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX - BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX + BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX - BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, tag));
-  state.obstacles.push(birdObs(spawnX + BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, tag));
-}
-
-function spawnKind(state, spawnX, skin, kind, rng) {
-  switch (kind) {
-    case 'hotdog':
-      pushHotdog(state, spawnX, skin);
-      break;
-    case 'stack':
-      pushStack(state, spawnX, skin);
-      break;
-    case 'frisbeePair':
-      pushFrisbeePair(state, spawnX, skin);
-      break;
-    case 'bird':
-      pushBird(state, spawnX, skin);
-      break;
-    case 'birdStack':
-      pushBirdStack(state, spawnX, skin);
-      break;
-    case 'birdTriangle':
-      pushBirdTriangle(state, spawnX, skin);
-      break;
-    default:
-      pushHotdog(state, spawnX, skin);
-  }
+function spawnKind(state, spawnX, skin, kind) {
+  state.obstacles.push(...(SPAWN_KINDS[kind] ?? SPAWN_KINDS.hotdog)(spawnX, skin));
 }
 
 function patternEligible(state) {
-  return !state.activeSpawnPattern
-    && !state.chaseActive
-    && !chaseBusy(state)
-    && !bossBusy(state)
-    && !trampBusy(state)
-    && state.score >= PATTERN_FIRST_AT;
+  return !state.activeSpawnPattern && !anySceneBusy(state) && state.score >= PATTERN_FIRST_AT;
 }
 
 function tryStartPattern(state, rng) {
@@ -174,7 +111,7 @@ function tryStartPattern(state, rng) {
 function spawnPatternBeat(state, spawnX, skin, rng) {
   const ap = state.activeSpawnPattern;
   const beat = ap.beats[ap.index];
-  spawnKind(state, spawnX, skin, beat.kind, rng);
+  spawnKind(state, spawnX, skin, beat.kind);
   state.lastObstacleType = beat.kind;
 
   const hasMore = ap.index + 1 < ap.beats.length;
@@ -189,51 +126,43 @@ function spawnPatternBeat(state, spawnX, skin, rng) {
 
 function spawnSingleton(state, spawnX, skin, rng) {
   const prevType = state.lastObstacleType;
+  const { stack, aerial, aerialSplit, frisbee } = SPAWN_MIX;
   let type = 'hotdog';
   const r = rng();
-  if (state.score > 150 && r < 0.15) {
+  if (state.score > stack.after && r < stack.below) {
     type = 'stack';
-  } else if (state.score >= BIRD_WALL_FIRST_AT && r < 0.48) {
-    // Aerial band: bird walls, single bird, or frisbee pair.
+  } else if (state.score >= BIRD_WALL_FIRST_AT && r < aerial.below) {
     const r2 = rng();
-    if (r2 < 0.34) type = 'birdStack';
-    else if (r2 < 0.67) type = 'birdTriangle';
-    else if (!state.chaseActive && r2 < 0.82) type = 'bird';
+    if (r2 < aerialSplit.birdStack) type = 'birdStack';
+    else if (r2 < aerialSplit.birdTriangle) type = 'birdTriangle';
+    else if (!state.chaseActive && r2 < aerialSplit.bird) type = 'bird';
     else type = 'frisbee';
-  } else if (state.score > 80 && r < 0.40) {
+  } else if (state.score > frisbee.after && r < frisbee.below) {
     type = 'frisbee';
   }
 
-  if (type === 'frisbee' && !state.chaseActive && rng() < 0.5) {
-    spawnKind(state, spawnX, skin, 'bird', rng);
-  } else if (type === 'frisbee') {
-    spawnKind(state, spawnX, skin, 'frisbeePair', rng);
+  if (type === 'frisbee') {
+    const asBird = !state.chaseActive && rng() < SPAWN_MIX.frisbeeAsBird;
+    spawnKind(state, spawnX, skin, asBird ? 'bird' : 'frisbeePair');
   } else {
-    spawnKind(state, spawnX, skin, type, rng);
+    spawnKind(state, spawnX, skin, type);
   }
 
   if (type !== prevType) {
-    state.nextObstacleIn = MIN_OBSTACLE_GAP * 1.5 + rng() * MAX_OBSTACLE_GAP;
+    state.nextObstacleIn = MIN_OBSTACLE_GAP * SPAWN_MIX.typeChangeGapMult + rng() * MAX_OBSTACLE_GAP;
   }
   state.lastObstacleType = type;
 }
 
 export function spawnObstacle(state, rng = Math.random) {
   // --- Golden hot dog spawn check ---
-  const goldenEligible = !giantBusy(state) && !chaseBusy(state) && !bossBusy(state)
-    && !trampBusy(state)
+  const goldenEligible = !giantBusy(state) && !anySceneBusy(state)
     && state.score >= GIANT_FIRST_AT
     && state.score >= state.lastGoldenSpawnScore + GIANT_COOLDOWN
     && rng() < GIANT_SPAWN_CHANCE;
   if (goldenEligible) {
     state.activeSpawnPattern = null;
-    state.obstacles.push({
-      x: W + 10,
-      y: GROUND_Y + 4,
-      width: 36,
-      height: 22,
-      type: 'golden',
-    });
+    state.obstacles.push(makeObstacle('golden', W + 10));
     state.lastGoldenSpawnScore = state.score;
     state.nextObstacleIn = MIN_OBSTACLE_GAP + rng() * MAX_OBSTACLE_GAP;
     state.lastObstacleType = 'golden';

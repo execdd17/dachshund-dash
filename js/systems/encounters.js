@@ -81,7 +81,7 @@ export function markSceneEnd(state, now) {
 // update()'s fixed call order breaks ties, and chase's short cooldown lets it
 // win nearly every one — starving the trampoline scene.
 
-function anySceneBusy(state) {
+export function anySceneBusy(state) {
   return chaseBusy(state) || bossBusy(state) || trampBusy(state);
 }
 

@@ -1,9 +1,10 @@
 // Input wiring: desktop keyboard (Space/Up jump, Down/S duck, plus debug
 // keys) and mobile touch (right side jumps, left DUCK_ZONE_RATIO ducks).
 
-import { W, H, GROUND_Y, DUCK_ZONE_RATIO } from '../config.js';
+import { W, H, DUCK_ZONE_RATIO } from '../config.js';
 import { jump, duck } from '../systems/control.js';
 import { initRain } from '../systems/weather.js';
+import { makeObstacle } from '../systems/obstacleTypes.js';
 
 export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -70,13 +71,7 @@ export function wireInput(deps) {
     // Debug: G = spawn a golden hot dog right in front of the dog
     if (e.code === 'KeyG' && state.gameState === 'running' && !state.giantActive) {
       e.preventDefault();
-      state.obstacles.push({
-        x: state.dog.x + 120,
-        y: GROUND_Y + 4,
-        width: 36,
-        height: 22,
-        type: 'golden',
-      });
+      state.obstacles.push(makeObstacle('golden', state.dog.x + 120));
     }
     // Debug: R = toggle rain
     if (e.code === 'KeyR') {

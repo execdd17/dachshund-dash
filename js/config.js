@@ -50,6 +50,17 @@ export const PATTERN_CHANCE = 0.22;          // per spawn cycle when eligible
 export const PATTERN_CLOSE_GAP = 185;        // px between beats (~0.6s at mid speed)
 export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle solo spawns
 
+// Solo spawn mix. One roll r is checked against each band in order (each
+// gated by score); an aerial or frisbee pick then rolls again for its variant.
+export const SPAWN_MIX = {
+  stack: { after: 150, below: 0.15 },
+  aerial: { below: 0.48 },                                     // from BIRD_WALL_FIRST_AT
+  aerialSplit: { birdStack: 0.34, birdTriangle: 0.67, bird: 0.82 },  // rest: frisbee pair
+  frisbee: { after: 80, below: 0.40 },
+  frisbeeAsBird: 0.5,      // outside chase, a frisbee pick becomes a lone bird this often
+  typeChangeGapMult: 1.5,  // extra breathing room when the obstacle type changes
+};
+
 // The game was tuned at 120Hz-equivalent dt units; update() scales by dt/DT_BASELINE.
 export const DT_BASELINE = 1000 / 120;
 

@@ -2,12 +2,13 @@
 // scene, mutually exclusive with chase/boss/giant.
 
 import {
-  W, GROUND_Y, MIN_OBSTACLE_GAP,
+  W, MIN_OBSTACLE_GAP,
   TRAMP_FIRST_AT, TRAMP_COOLDOWN, TRAMP_BOUNCES, TRAMP_BOUNCE_VY,
   TRAMP_BOUNCE_BONUS, TRAMP_BREATHER, TRAMP_TILE_W, TRAMP_HITBOX_PAD,
   TRAMP_REPS, TRAMP_SQUASH_MS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
+import { makeObstacle } from './obstacleTypes.js';
 import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
 
 export function getTrampLayout(rep, speed) {
@@ -24,43 +25,20 @@ export function getTrampLayout(rep, speed) {
   };
 }
 
+// One rep: entry thorns, the trampoline island, exit thorns.
 export function spawnTrampRep(state) {
   const layout = getTrampLayout(state.trampRep, state.speed);
   let x = W + 10;
+  const pushThorns = count => {
+    for (let i = 0; i < count; i++, x += TRAMP_TILE_W) {
+      state.obstacles.push(makeObstacle('thorns', x, { seed: x }));
+    }
+  };
 
-  for (let i = 0; i < layout.entryTiles; i++) {
-    state.obstacles.push({
-      x,
-      y: GROUND_Y - 14,
-      width: TRAMP_TILE_W,
-      height: 30,
-      type: 'thorns',
-      seed: x,
-    });
-    x += TRAMP_TILE_W;
-  }
-
-  state.obstacles.push({
-    x,
-    y: GROUND_Y - 12,
-    width: layout.trampWidth,
-    height: 12,
-    type: 'trampoline',
-    squashUntil: 0,
-  });
+  pushThorns(layout.entryTiles);
+  state.obstacles.push(makeObstacle('trampoline', x, { width: layout.trampWidth, squashUntil: 0 }));
   x += layout.trampWidth;
-
-  for (let i = 0; i < layout.exitTiles; i++) {
-    state.obstacles.push({
-      x,
-      y: GROUND_Y - 14,
-      width: TRAMP_TILE_W,
-      height: 30,
-      type: 'thorns',
-      seed: x,
-    });
-    x += TRAMP_TILE_W;
-  }
+  pushThorns(layout.exitTiles);
 }
 
 function checkTrampolineBounce(state, services, now) {
