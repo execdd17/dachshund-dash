@@ -23,6 +23,23 @@ npm run firebase:deploy
 
 There is no lint or build tooling. Verify gameplay changes by running the tests and playing the game in a browser (check the DevTools console for errors, especially around asset loading and Firebase init). For headless verification, `.claude/skills/verify/SKILL.md` documents a working playwright-core recipe (driving the game, reading canvas state, DOM signals).
 
+### Chrome DevTools MCP (interactive browser access)
+
+A `chrome-devtools` MCP server is registered at **user scope** on the Beelink (lives in `~/.claude.json`, not this repo). It gives Claude navigate/click/press_key/evaluate_script/take_screenshot/console/network/performance-trace tools against a headless Chromium. Registration (re-run if it needs rebuilding):
+
+```bash
+claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@1.11.0 \
+  --headless --isolated \
+  --executablePath ~/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome \
+  --chromeArg=--no-sandbox --viewport 1280x720 --screenshotMaxWidth 1280 \
+  --usageStatistics=false --performanceCrux=false
+```
+
+- **Startup**: Claude Code spawns the server when a session starts — a server added mid-session isn't usable until restart (`claude mcp list` shows health). Chromium itself launches lazily on the first page tool call. The game is **not** auto-served: start `python3 -m http.server 8123` in the background first. **Port 8000 is taken on the Beelink** by another service bound to `127.0.0.1` (it 404s everything and the python server fails silently), so use 8123 here.
+- **Usage**: page tools require a `pageId` — call `list_pages` first. The game is all canvas, so `take_snapshot` (a11y tree) shows almost nothing; read state with `evaluate_script` and look with `take_screenshot`. Drive it with `press_key` (Space jump, debug keys per Input below) after the setup overlay. `--isolated` means a fresh profile per session — no stale cached modules, but also no persisted localStorage (high scores, cosmetics, name) between sessions.
+- **Shutdown**: the browser and its temp profile go away when the Claude session ends. Stop the http server by port (`fuser -k 8123/tcp`) or PID — **not** `pkill -f 'http.server 8123'`, which matches and kills the invoking shell too.
+- **Limitations**: headless only (nobody can watch it; no audio). Runs with `--no-sandbox` because Ubuntu's AppArmor userns restriction makes sandboxed Chromium abort ("No usable sandbox!") — fine for localhost/our own pages, don't point it at untrusted sites. The Chromium path is pinned to Playwright's `chromium-1228`; if a Playwright update removes it, re-register with the new path. Screenshots saved via `filePath` are safest under the OS temp dir (e.g. the scratchpad) — the server restricts file I/O to that by default unless the client negotiates MCP roots. The version is pinned to 1.11.0 deliberately — bump on purpose.
+
 ## Architecture
 
 The code is layered so that game logic never touches the DOM, canvas, or Web Audio directly — everything effectful is injected. That's what makes the `tests/` suite possible: all of `core/`, `systems/`, and `leaderboard/` runs under plain Node.
