@@ -35,8 +35,8 @@ test('giant mode expands the dog hitbox', () => {
 test('obstacle hitboxes are inset per type', () => {
   const frisbee = getObstacleHitbox({ type: 'frisbee', x: 0, y: 0, width: 44, height: 14 });
   assert.deepEqual(frisbee, { x: 6, y: 2, w: 32, h: 10 });
-  const stack = getObstacleHitbox({ type: 'stack', x: 0, y: 0, width: 36, height: 42 });
-  assert.deepEqual(stack, { x: 8, y: 4, w: 20, h: 36 });
+  const tower = getObstacleHitbox({ type: 'tower', x: 0, y: 0, width: 36, height: 122 });
+  assert.deepEqual(tower, { x: 8, y: 4, w: 20, h: 116 });
   const hotdog = getObstacleHitbox({ type: 'hotdog', x: 0, y: 0, width: 36, height: 22 });
   assert.deepEqual(hotdog, { x: 12, y: 8, w: 12, h: 12 });
 });

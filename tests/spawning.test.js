@@ -14,18 +14,22 @@ import { createSequenceRng } from './helpers.js';
 
 test('early game spawns only hotdogs regardless of roll', () => {
   const state = createState(() => 0.5);
-  state.score = 50; // below frisbee (80) and stack (150) thresholds
+  state.score = 50; // below the frisbee (80) and tower (400) thresholds
   spawnObstacle(state, createSequenceRng([0.0]));
   assert.equal(state.obstacles.length, 1);
   assert.equal(state.obstacles[0].type, 'hotdog');
   assert.equal(state.obstacles[0].x, W + 10);
 });
 
-test('stack spawns past score 150 on a low roll', () => {
+test('tower spawns past score 400 on a low roll, not before', () => {
   const state = createState(() => 0.5);
-  state.score = 200;
+  state.score = 450;
   spawnObstacle(state, createSequenceRng([0.99, 0.1]));
-  assert.equal(state.obstacles[0].type, 'stack');
+  assert.equal(state.obstacles[0].type, 'tower');
+  const early = createState(() => 0.5);
+  early.score = 350;
+  spawnObstacle(early, createSequenceRng([0.99, 0.1]));
+  assert.notEqual(early.obstacles[0].type, 'tower');
 });
 
 test('frisbee roll past score 80 spawns bird or stacked frisbee pair', () => {

@@ -6,12 +6,12 @@
 //   pending → teach → praise → teach … → done   (a miss: teach → retry → teach)
 
 import {
-  W, MIN_OBSTACLE_GAP, BIRD_LOW_Y, BIRD_HIGH_Y,
+  W, MIN_OBSTACLE_GAP, BIRD_LOW_Y, BIRD_HIGH_Y, TUTORIAL_TOWER_BARS,
   TUTORIAL_VERSION, TUTORIAL_REFRESH_MS, TUTORIAL_SLOW_SCALE, TUTORIAL_GAPS, TUTORIAL_AGAIN_VY,
   TUTORIAL_PRAISE_MS, TUTORIAL_RETRY_MS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
-import { makeObstacle, getObstacleHitbox } from './obstacleTypes.js';
+import { makeObstacle, getObstacleHitbox, towerSize } from './obstacleTypes.js';
 
 const STORAGE_KEY = 'dachshundDashTutorial';
 const PRACTICE = { practice: true };
@@ -47,7 +47,7 @@ const STEPS = [
     actions: [{ prompt: 'jump', ready: (gap, dog) => gap <= TUTORIAL_GAPS.jump.prompt && !dog.jumping, done: dog => dog.jumping }],
   },
   {
-    spawn: x => [makeObstacle('tower', x, PRACTICE)],
+    spawn: x => [makeObstacle('tower', x, { ...towerSize(TUTORIAL_TOWER_BARS), ...PRACTICE })],
     actions: [
       { prompt: 'jump', ready: (gap, dog) => gap <= TUTORIAL_GAPS.tower.prompt && !dog.jumping, done: dog => dog.jumping },
       {

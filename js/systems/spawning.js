@@ -74,7 +74,7 @@ const WALL = { aerialWall: true };
 // Spawn kinds: what one spawn (or pattern beat) puts on the field.
 const SPAWN_KINDS = {
   hotdog: (x, skin) => [makeObstacle('hotdog', x, { skin })],
-  stack: (x, skin) => [makeObstacle('stack', x, { skin })],
+  tower: (x, skin) => [makeObstacle('tower', x, { skin })],
   // Two frisbees, one above the other.
   frisbeePair: (x, skin) => {
     const low = makeObstacle('frisbee', x, { skin });
@@ -127,11 +127,11 @@ function spawnPatternBeat(state, spawnX, skin, rng) {
 
 function spawnSingleton(state, spawnX, skin, rng) {
   const prevType = state.lastObstacleType;
-  const { stack, aerial, aerialSplit, frisbee } = SPAWN_MIX;
+  const { tower, aerial, aerialSplit, frisbee } = SPAWN_MIX;
   let type = 'hotdog';
   const r = rng();
-  if (state.score > stack.after && r < stack.below) {
-    type = 'stack';
+  if (state.score > tower.after && r < tower.below) {
+    type = 'tower';
   } else if (state.score >= BIRD_WALL_FIRST_AT && r < aerial.below) {
     const r2 = rng();
     if (r2 < aerialSplit.birdStack) type = 'birdStack';

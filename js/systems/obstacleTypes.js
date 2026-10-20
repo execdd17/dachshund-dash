@@ -18,12 +18,16 @@ import {
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
 const DEFAULT_INSET = { dx: 12, dy: 8, dw: 24, dh: 10 };
 const AERIAL_INSET = { dx: 6, dy: 2, dw: 12, dh: 4 };
-const TOWER_H = 22 + 20 * (TOWER_BARS - 1);
+// A tower of `bars` bars, 20px apart, standing on the ground line.
+export function towerSize(bars) {
+  const height = 22 + 20 * (bars - 1);
+  return { height, y: GROUND_Y + 26 - height };
+}
+const TOWER = towerSize(TOWER_BARS);
 
 export const OBSTACLE_TYPES = {
   // Drawn as a chocolate bar normally and as a hot dog in giant mode.
   hotdog: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'hazard', giant: 'eat' },
-  stack: { width: 36, height: 42, y: GROUND_Y - 16, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
   frisbee: { width: 44, height: 14, y: GROUND_Y - 12, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
   bird: { width: BIRD_W, height: BIRD_H, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
   golden: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'pickup' },
@@ -34,8 +38,8 @@ export const OBSTACLE_TYPES = {
   // neighboring tile.
   thorns: { width: TRAMP_TILE_W, height: 30, y: GROUND_Y - 14, inset: { dx: 4, dy: 14, dw: 8, dh: 14 }, contact: 'terrain' },
   trampoline: { height: 12, y: GROUND_Y - 12, inset: DEFAULT_INSET, contact: 'none' },
-  // Tutorial only: bars stacked 20px apart, standing where a stack does.
-  tower: { width: 36, height: TOWER_H, y: GROUND_Y + 26 - TOWER_H, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
+  // Too tall for one jump: the double-jump obstacle.
+  tower: { width: 36, ...TOWER, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
 };
 
 // A new obstacle of `type` at x with the type's default size and height;

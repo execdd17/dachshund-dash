@@ -200,14 +200,12 @@ function drawAlertMark(ctx, x, y, frameCount) {
   ctx.fillText('!', x + 18, y - 8 + wobble);
 }
 
-function drawPile(ctx, x, y, frameCount, drawItem) {
-  drawItem(ctx, x + 2, y + 20);
-  drawItem(ctx, x - 2, y);
+// A tower of `drawItem`s (36x22 each) every 20px, alternately nudged left
+// and right so it reads as stacked by hand; the obstacle's height sets the count.
+function drawTower(ctx, x, y, height, frameCount, drawItem) {
+  const items = Math.round((height - 22) / 20) + 1;
+  for (let i = 0; i < items; i++) drawItem(ctx, x + (i % 2 ? -2 : 2), y + height - 22 - i * 20);
   drawAlertMark(ctx, x, y, frameCount);
-}
-
-export function drawHotDogStack(ctx, x, y, frameCount) {
-  drawPile(ctx, x, y, frameCount, drawHotDog);
 }
 
 // ============ Chocolate: Classic Segmented Bar ============
@@ -298,17 +296,6 @@ export function drawChocolateBar(ctx, x, y) {
   ctx.lineJoin = 'miter';
 }
 
-export function drawChocolateStack(ctx, x, y, frameCount) {
-  drawPile(ctx, x, y, frameCount, drawChocolateBar);
-}
-
-// A taller pile (tutorial double-jump tower): bars every 20px, alternately
-// nudged left and right so it reads as stacked by hand.
-function drawChocolateTower(ctx, x, y, height, frameCount) {
-  const bars = Math.round((height - 22) / 20) + 1;
-  for (let i = 0; i < bars; i++) drawChocolateBar(ctx, x + (i % 2 ? -2 : 2), y + height - 22 - i * 20);
-  drawAlertMark(ctx, x, y, frameCount);
-}
 
 export function drawFrisbee(ctx, x, y, frameCount) {
   const fw = 44;
@@ -603,13 +590,6 @@ export function drawAcorn(ctx, x, y, rotation) {
   if (rotation !== undefined) ctx.restore();
 }
 
-export function drawAcornPile(ctx, x, y) {
-  // 2-3 acorns stacked, same footprint as hot dog stack
-  drawAcorn(ctx, x + 4, y + 22);
-  drawAcorn(ctx, x, y + 10);
-  drawAcorn(ctx, x + 8, y + 4);
-}
-
 // Trampoline island: splayed legs, red-padded frame bar, blue membrane with
 // a constant idle wobble so it reads as bouncy on first sight.
 export function drawTrampoline(ctx, x, y, width, frameCount, squashed) {
@@ -791,11 +771,10 @@ export const OBSTACLE_LOOKS = {
     giant: (ctx, o) => drawHotDog(ctx, o.x, o.y),
     chase: (ctx, o) => drawAcorn(ctx, o.x, o.y),
   },
-  tower: { normal: (ctx, o, v) => drawChocolateTower(ctx, o.x, o.y, o.height, v.frameCount) },
-  stack: {
-    normal: (ctx, o, v) => drawChocolateStack(ctx, o.x, o.y, v.frameCount),
-    giant: (ctx, o, v) => drawHotDogStack(ctx, o.x, o.y, v.frameCount),
-    chase: (ctx, o) => drawAcornPile(ctx, o.x, o.y),
+  tower: {
+    normal: (ctx, o, v) => drawTower(ctx, o.x, o.y, o.height, v.frameCount, drawChocolateBar),
+    giant: (ctx, o, v) => drawTower(ctx, o.x, o.y, o.height, v.frameCount, drawHotDog),
+    chase: (ctx, o, v) => drawTower(ctx, o.x, o.y, o.height, v.frameCount, drawAcorn),
   },
   frisbee: {
     normal: (ctx, o, v) => drawFrisbee(ctx, o.x, o.y, v.frameCount),

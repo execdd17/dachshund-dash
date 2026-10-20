@@ -49,9 +49,13 @@ export const ACORN_W = 36;
 export const ACORN_H = 22;
 export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standing dog, duck clears it
 
-// Tutorial double-jump tower: a pile of chocolate bars too tall for one jump
-// (its top clears a single jump's apex, a double jump clears it with room).
-export const TOWER_BARS = 5;
+// Tower: a pile of bars too tall for one jump, so it takes a double jump.
+// Measured by sweeping press timings: 6 bars needs a double jump at every
+// speed (a 17ms single-jump fluke at MAX_SPEED), with a 130-230ms window from
+// slowest to fastest. 5 bars only holds at the starting speed (a single jump
+// clears it from speed 3.2), so it's the tutorial's gentler version.
+export const TOWER_BARS = 6;
+export const TUTORIAL_TOWER_BARS = 5;
 
 // --- Spawn patterns (close-gap sequences that punish jump-only play) ---
 export const PATTERN_FIRST_AT = 120;         // score before patterns can arm
@@ -62,7 +66,7 @@ export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle
 // Solo spawn mix. One roll r is checked against each band in order (each
 // gated by score); an aerial or frisbee pick then rolls again for its variant.
 export const SPAWN_MIX = {
-  stack: { after: 150, below: 0.15 },
+  tower: { after: 400, below: 0.15 },
   aerial: { below: 0.48 },                                     // from BIRD_WALL_FIRST_AT
   aerialSplit: { birdStack: 0.34, birdTriangle: 0.67, bird: 0.82 },  // rest: frisbee pair
   frisbee: { after: 80, below: 0.40 },
