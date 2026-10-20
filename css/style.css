@@ -259,10 +259,10 @@
   }
 
   /* --- Customize button (idle & game-over screens) --- */
-  /* Sits where the local high-scores panel used to be: centered, just below
-     the start/game-over text. The canvas maps 800 logical units across the
-     full viewport width with the ground pinned to the bottom edge, so
-     logical y=118 is (250-118)/800 of the width up from the bottom. */
+  /* Centered just below the start/game-over text. The canvas maps 800
+     logical units across the full viewport width with the ground pinned to
+     the bottom edge, so logical y=118 is (250-118)/800 of the width up from
+     the bottom. */
   #customizeBtn {
     display: none;
     position: absolute;

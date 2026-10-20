@@ -1,4 +1,4 @@
-// PNG sprite loading and frame-advance state for the dachshund and squirrel.
+// PNG sprite loading and frame-advance state for the dachshund, squirrel, and bird.
 // Image loading is browser-only; the frame-selection helpers
 // (getDogSpriteAnim, getDogJumpFrameIndex) are pure and unit-testable.
 
@@ -50,7 +50,6 @@ export function loadBirdSprites(store) {
 }
 
 // Which animation set the dog should be showing, given game state.
-// `now` is injected for testability (defaults to performance.now()).
 export function getDogSpriteAnim(state, now = performance.now()) {
   if (state.gameState === 'dead') return 'dead';
   const lastChomp = state.effects.findLast(e => e.kind === 'chomp');

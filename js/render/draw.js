@@ -70,7 +70,6 @@ export function draw(deps) {
   drawFlowers(ctx, state);
   drawRain(ctx, state);
 
-  // Obstacles
   advanceBirdSpriteFrame(sprites, now);
   state.obstacles.forEach(o => drawObstacle(ctx, state, o, sprites, now));
 

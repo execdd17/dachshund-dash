@@ -767,10 +767,6 @@ export function drawThorns(ctx, x, y, seed = 0) {
   ctx.lineCap = 'butt';
 }
 
-// Dispatch a single obstacle to its draw function, honoring the chase skin
-// (acorns) and giant mode (chocolate bars become edible hot dogs).
-// `sprites` is optional (render-only); birds fall back to the procedural
-// drawing while the PNG frames load.
 // Each type's look per skin: 'normal', 'chase' (acorns during the squirrel
 // chase) and 'giant' (edible hot dogs in giant mode); a missing skin falls
 // back to normal. view = { frameCount, sprites, now, acornY }.
@@ -805,6 +801,7 @@ export function drawObstacleLook(ctx, o, skin, view) {
   (looks[skin] ?? looks.normal)(ctx, o, view);
 }
 
+// `sprites` may be omitted; birds then use the procedural drawing (as they do while their PNGs load).
 export function drawObstacle(ctx, state, o, sprites, now = performance.now()) {
   const chase = (o.skin ?? (isChaseActive(state) ? 'chase' : 'normal')) === 'chase';
   const skin = chase ? 'chase' : isGiant(state) ? 'giant' : 'normal';

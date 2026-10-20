@@ -53,7 +53,7 @@ function drawEquippedCosmetics(ctx, cosmetics, anim, frameIdx, anchorX, y) {
     if (!itemId) return;
     const entry = cosmetics.imageById[slot][itemId];
     if (entry && entry.frames) {
-      // per-frame overlay (shoes): same geometry as the base sprite frame
+      // per-frame overlay (shoes, body outfits): same geometry as the base sprite frame
       if (anim === 'bite') {
         drawSpriteSheetLayer(ctx, entry.biteSheet, frameIdx, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
       } else {

@@ -44,7 +44,6 @@ export function drawScore(ctx, state, view, now = performance.now()) {
       ctx.textAlign = 'left';
       ctx.fillText('x' + GIANT_SCORE_MULTIPLIER, hud.left, hud.top + 48);
     }
-    // Timer bar
     const barW = 60;
     const barH = 4;
     const barX = hud.left;
@@ -147,7 +146,7 @@ export function drawIdleScreen(ctx, state) {
 
 export function drawGameOverScreen(ctx, state) {
   // Global-placement banner above the GAME OVER box (only when the run
-  // actually placed on the loaded global board — see killDog).
+  // actually placed on the loaded global board — see leaderboard/recorder.js).
   if (state.globalPlacement) {
     const msg = `You got ${formatOrdinal(state.globalPlacement)} place on the global leaderboard!`;
     ctx.font = 'bold 14px Courier New';

@@ -3,7 +3,8 @@
 //
 // This config/API key is a public client-side Firebase web config (expected
 // to be visible in a static site) — not a secret, but also not a security
-// boundary. Firestore rules (not in this repo) gate write access.
+// boundary. Firestore rules (firestore.rules, deployed per firebase/README.md)
+// gate write access.
 
 const firebaseConfig = {
   apiKey: "AIzaSyA_fHbRyoebo-g54Mn9T_BVIStNxNS8hJ4",

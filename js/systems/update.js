@@ -56,13 +56,11 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   }
 
-  // Leg animation
   dog.legFrame += effectiveSpeed * 0.06 * scale;
 
-  // Ground scroll
   state.groundOffset += effectiveSpeed * scale;
 
-  // Clouds scroll (slower)
+  // Clouds drift at a fraction of the ground speed (parallax)
   state.clouds.forEach(c => {
     c.x -= effectiveSpeed * 0.15 * scale;
     if (c.x < -60 * c.size) {
@@ -72,7 +70,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   });
 
-  // Obstacles
+  // Spawn (unless a scene owns the field), then scroll obstacles
   state.nextObstacleIn -= effectiveSpeed * scale;
   if (state.nextObstacleIn <= 0 && !scenesBlockSpawning(state)) {
     spawnObstacle(state, rng);
@@ -110,13 +108,10 @@ export function update(state, dt, services, rng = Math.random, now = performance
   const weatherScale = dt / DT_BASELINE * 0.5;
   updateRain(state, weatherScale, rng);
 
-  // Score (with giant multiplier)
   state.score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier(state);
 
-  // Check for day/night transitions to roll for rain
   rollWeatherOnStageChange(state, rng);
 
-  // Giant mode timer
   if (isGiant(state)) {
     const elapsed = now - state.giantStartTime;
     if (elapsed >= GIANT_DURATION) {
@@ -136,7 +131,6 @@ export function update(state, dt, services, rng = Math.random, now = performance
     services.sfx.playScore();
   }
 
-  // Collision
   if (checkCollision(state, services, now)) {
     killDog(state, services, now);
   }
