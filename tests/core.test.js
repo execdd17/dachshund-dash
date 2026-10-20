@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { lerpColor } from '../js/core/color.js';
 import { getDogSpriteAnim } from '../js/assets/sprites.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
-import { createState, resetRun } from '../js/core/state.js';
+import { createState, createRunState, resetRun } from '../js/core/state.js';
 import { difficultyAt, isDifficultyLabel, DEFAULT_DIFFICULTY } from '../js/core/difficulty.js';
 import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
@@ -121,4 +121,19 @@ test('difficultyAt falls back to the default level; isDifficultyLabel matches la
   assert.equal(difficultyAt(Number('x')), DEFAULT_DIFFICULTY);
   assert.equal(isDifficultyLabel('HARD'), true);
   assert.equal(isDifficultyLabel('hard'), false);
+});
+
+test('resetRun restores exactly the createRunState defaults and keeps the session', () => {
+  const s = createState(() => 0.5);
+  s.startingHearts = 5;
+  s.playerName = 'ALEX';
+  s.highScores = [{ name: 'ALEX', score: 10 }];
+  for (const key of Object.keys(createRunState())) s[key] = 'dirty';
+  resetRun(s);
+  assert.deepEqual(
+    Object.fromEntries(Object.keys(createRunState()).map(k => [k, s[k]])),
+    createRunState(5),
+  );
+  assert.equal(s.playerName, 'ALEX');
+  assert.deepEqual(s.highScores, [{ name: 'ALEX', score: 10 }]);
 });
