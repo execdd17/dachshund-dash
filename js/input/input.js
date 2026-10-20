@@ -6,6 +6,7 @@ import { jump, duck } from '../systems/control.js';
 import { initRain } from '../systems/weather.js';
 import { makeObstacle } from '../systems/obstacleTypes.js';
 import { forceScene } from '../systems/scenes.js';
+import { isGiant } from '../systems/giant.js';
 
 const DEBUG_SCENE_KEYS = { KeyC: 'chase', KeyB: 'boss', KeyT: 'tramp' };
 
@@ -60,7 +61,7 @@ export function wireInput(deps) {
       forceScene(state, debugScene);
     }
     // Debug: G = spawn a golden hot dog right in front of the dog
-    if (e.code === 'KeyG' && state.gameState === 'running' && !state.giantActive) {
+    if (e.code === 'KeyG' && state.gameState === 'running' && !isGiant(state)) {
       e.preventDefault();
       state.obstacles.push(makeObstacle('golden', state.dog.x + 120));
     }

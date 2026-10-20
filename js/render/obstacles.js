@@ -8,6 +8,7 @@ import {
 } from '../config.js';
 import { chaseAcornY } from '../systems/obstacleTypes.js';
 import { isChaseActive } from '../systems/chase.js';
+import { isGiant } from '../systems/giant.js';
 import { roundRect, drawSparkle } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 
@@ -806,6 +807,6 @@ export function drawObstacleLook(ctx, o, skin, view) {
 
 export function drawObstacle(ctx, state, o, sprites) {
   const chase = (o.skin ?? (isChaseActive(state) ? 'chase' : 'normal')) === 'chase';
-  const skin = chase ? 'chase' : (state.giantActive || state.giantGrowing) ? 'giant' : 'normal';
+  const skin = chase ? 'chase' : isGiant(state) ? 'giant' : 'normal';
   drawObstacleLook(ctx, o, skin, { frameCount: state.frameCount, sprites, now: performance.now(), acornY: chaseAcornY(o) });
 }

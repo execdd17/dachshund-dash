@@ -7,6 +7,7 @@ import {
 } from '../config.js';
 import { roundRect } from './primitives.js';
 import { formatOrdinal } from '../leaderboard/global.js';
+import { isGiant } from '../systems/giant.js';
 
 // In app mode the HUD hugs the visible top edge (above world y=0, inside the
 // device safe areas) instead of the world's top — see view.js.
@@ -34,7 +35,7 @@ export function drawScore(ctx, state, view, now = performance.now()) {
   ctx.fillText(scoreStr, hud.right - 15, hud.top + 30);
 
   // Giant mode multiplier + timer bar
-  if (state.giantActive) {
+  if (isGiant(state)) {
     const remaining = GIANT_DURATION - (now - state.giantStartTime);
     const flash = remaining < GIANT_WARN_AT ? (Math.sin(now * 0.015) > 0) : true;
     if (flash) {

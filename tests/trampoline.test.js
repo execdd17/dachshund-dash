@@ -136,13 +136,12 @@ test('a golden hot dog on the field blocks arming, and giant mode drops a pendin
 
   // …through the shrink transition too…
   setScenePhase(pendingState, 'tramp', 'pending');
-  setGiantPhase(pendingState, 'off');
-  pendingState.giantShrinking = true;
+  setGiantPhase(pendingState, 'shrinking');
   updateTrampoline(pendingState, 1, services, 0);
   assert.notEqual(getScenePhase(pendingState, 'tramp'), 'pending');
 
   // …then re-arm once giant mode has fully ended (score gate still holds)
-  pendingState.giantShrinking = false;
+  setGiantPhase(pendingState, 'off');
   updateTrampoline(pendingState, 1, services, 0);
   assert.equal(getScenePhase(pendingState, 'tramp'), 'pending', 're-arms after giant mode ends');
 });

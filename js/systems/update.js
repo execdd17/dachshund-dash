@@ -14,7 +14,7 @@ import {
 } from '../config.js';
 import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
-import { deactivateGiantMode } from './giant.js';
+import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGiant } from './giant.js';
 import { bossSpeedMultiplier, isBossChasing } from './boss.js';
 import { updateScenes, scenesBlockSpawning } from './scenes.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
@@ -110,13 +110,13 @@ export function update(state, dt, services, rng = Math.random, now = performance
   updateRain(state, weatherScale, rng);
 
   // Score (with giant multiplier)
-  state.score += effectiveSpeed * 0.02 * scale * state.giantScoreMultiplier;
+  state.score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier(state);
 
   // Check for day/night transitions to roll for rain
   rollWeatherOnStageChange(state, rng);
 
   // Giant mode timer
-  if (state.giantActive) {
+  if (isGiant(state)) {
     const elapsed = now - state.giantStartTime;
     if (elapsed >= GIANT_DURATION) {
       deactivateGiantMode(state, services, now);
@@ -149,4 +149,6 @@ export function update(state, dt, services, rng = Math.random, now = performance
   if (checkCollision(state, services, now)) {
     killDog(state, services);
   }
+
+  finishGiantTransition(state, now);
 }

@@ -5,7 +5,7 @@ import {
   getDogHitbox, getObstacleHitbox, rectsOverlap, checkCollision,
 } from '../js/systems/collision.js';
 import { createState, createDog } from '../js/core/state.js';
-import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
+import { activateGiantMode, deactivateGiantMode, giantScoreMultiplier } from '../js/systems/giant.js';
 import {
   GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y,
 } from '../js/config.js';
@@ -145,7 +145,7 @@ test('golden hot dog activates giant mode instead of killing', () => {
   const died = checkCollision(state, createTestServices());
   assert.equal(died, false);
   assert.equal(getGiantPhase(state), 'growing');
-  assert.equal(state.giantScoreMultiplier, 2);
+  assert.equal(giantScoreMultiplier(state), 2);
   assert.deepEqual(state.obstacles, []);
 });
 

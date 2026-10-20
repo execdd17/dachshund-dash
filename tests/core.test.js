@@ -66,7 +66,6 @@ test('resetRun restores a dirty state to run defaults', () => {
   setScenePhase(s, 'chase', 'active');
   setScenePhase(s, 'boss', 'active');
   setGiantPhase(s, 'active');
-  s.giantScoreMultiplier = 2;
   s.weatherRain = true;
   s.lastTimeStage = 'night';
   s.hearts = 1;
@@ -84,7 +83,6 @@ test('resetRun restores a dirty state to run defaults', () => {
   assert.notEqual(getScenePhase(s, 'chase'), 'active');
   assert.notEqual(getScenePhase(s, 'boss'), 'active');
   assert.equal(getGiantPhase(s), 'off');
-  assert.equal(s.giantScoreMultiplier, 1);
   assert.equal(s.weatherRain, false);
   assert.equal(s.lastTimeStage, 'day');
   assert.equal(s.hearts, DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].hearts);

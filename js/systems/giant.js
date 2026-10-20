@@ -1,28 +1,30 @@
 // Giant mode lifecycle: triggered by eating a golden hot dog; scales the dog,
-// switches music, doubles score, and makes obstacles edible.
+// switches music, multiplies score, and makes obstacles edible.
 
 import {
   GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
 } from '../config.js';
 import { isChaseActive } from './chase.js';
 
+// Giant mode runs off → growing → active → shrinking → off. Growing counts
+// as giant (score multiplier, edible obstacles, bigger hitbox).
+export const isGiant = state => state.giantPhase === 'growing' || state.giantPhase === 'active';
+
+export function giantScoreMultiplier(state) {
+  return isGiant(state) ? GIANT_SCORE_MULTIPLIER : 1;
+}
+
 export function activateGiantMode(state, { sfx, music }, now = performance.now()) {
-  state.giantActive = true;
+  state.giantPhase = 'growing';
   state.giantStartTime = now;
-  state.giantGrowing = true;
-  state.giantShrinking = false;
   state.giantTransitionStart = now;
-  state.giantScoreMultiplier = GIANT_SCORE_MULTIPLIER;
   sfx.playGiantActivate();
   if (music.isOn()) music.switchToGiant();
 }
 
 export function deactivateGiantMode(state, { sfx, music }, now = performance.now()) {
-  state.giantActive = false;
-  state.giantShrinking = true;
-  state.giantGrowing = false;
+  state.giantPhase = 'shrinking';
   state.giantTransitionStart = now;
-  state.giantScoreMultiplier = 1;
   // Grace period: the shrink can land the dog inside an obstacle the player
   // meant to eat, so reuse the post-hit i-frames instead of killing them.
   state.invulnUntil = Math.max(state.invulnUntil, now + GIANT_END_INVULN);
@@ -30,23 +32,24 @@ export function deactivateGiantMode(state, { sfx, music }, now = performance.now
   if (music.isGiantActive()) music.switchToNormal();
 }
 
-// Current visual scale of the dog, easing through grow/shrink transitions.
-// Clears the growing/shrinking flags when a transition completes.
+// Ends a grow or shrink once its GIANT_SCALE_TRANSITION has run. Called at
+// the end of each update(), after the frame's gameplay.
+export function finishGiantTransition(state, now) {
+  const transitioning = state.giantPhase === 'growing' || state.giantPhase === 'shrinking';
+  if (!transitioning || now - state.giantTransitionStart < GIANT_SCALE_TRANSITION) return;
+  state.giantPhase = state.giantPhase === 'growing' ? 'active' : 'off';
+}
+
+// Current visual scale of the dog, easing out through grow/shrink transitions.
 export function getGiantVisualScale(state, now = performance.now()) {
-  if (state.giantGrowing) {
-    const t = Math.min(1, (now - state.giantTransitionStart) / GIANT_SCALE_TRANSITION);
-    const eased = t * (2 - t); // ease-out
-    if (t >= 1) state.giantGrowing = false;
-    return 1 + (GIANT_SCALE - 1) * eased;
+  const t = Math.min(1, (now - state.giantTransitionStart) / GIANT_SCALE_TRANSITION);
+  const eased = t * (2 - t);
+  switch (state.giantPhase) {
+    case 'growing': return 1 + (GIANT_SCALE - 1) * eased;
+    case 'shrinking': return GIANT_SCALE - (GIANT_SCALE - 1) * eased;
+    case 'active': return GIANT_SCALE;
+    default: return 1;
   }
-  if (state.giantShrinking) {
-    const t = Math.min(1, (now - state.giantTransitionStart) / GIANT_SCALE_TRANSITION);
-    const eased = t * (2 - t);
-    if (t >= 1) state.giantShrinking = false;
-    return GIANT_SCALE - (GIANT_SCALE - 1) * eased;
-  }
-  if (state.giantActive) return GIANT_SCALE;
-  return 1;
 }
 
 export function triggerChompEffect(state, obs, now = performance.now()) {

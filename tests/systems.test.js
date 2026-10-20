@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createState } from '../js/core/state.js';
 import {
-  activateGiantMode, deactivateGiantMode, getGiantVisualScale,
+  activateGiantMode, deactivateGiantMode, getGiantVisualScale, finishGiantTransition, giantScoreMultiplier,
 } from '../js/systems/giant.js';
 import { updateChase } from '../js/systems/chase.js';
 import { updateBoss } from '../js/systems/boss.js';
@@ -27,22 +27,26 @@ test('giant mode activation and timed visual scale easing', () => {
   const services = createTestServices();
   activateGiantMode(state, services, 1000);
   assert.equal(getGiantPhase(state), 'growing');
-  assert.equal(state.giantScoreMultiplier, GIANT_SCORE_MULTIPLIER);
+  assert.equal(giantScoreMultiplier(state), GIANT_SCORE_MULTIPLIER);
 
   // Halfway through the grow transition: eased t=0.5 → 1 + (scale-1)*0.75
   const half = getGiantVisualScale(state, 1000 + GIANT_SCALE_TRANSITION / 2);
   assert.ok(Math.abs(half - (1 + (GIANT_SCALE - 1) * 0.75)) < 1e-9);
 
-  // Past the transition: full scale, growing flag cleared
+  // Past the transition: full scale; the frame's update then ends the grow
   assert.equal(getGiantVisualScale(state, 1000 + GIANT_SCALE_TRANSITION), GIANT_SCALE);
+  finishGiantTransition(state, 1000 + GIANT_SCALE_TRANSITION - 1);
+  assert.equal(getGiantPhase(state), 'growing', 'not before the transition time');
+  finishGiantTransition(state, 1000 + GIANT_SCALE_TRANSITION);
   assert.equal(getGiantPhase(state), 'active');
   assert.equal(getGiantVisualScale(state, 2000), GIANT_SCALE);
 
   deactivateGiantMode(state, services, 5000);
   assert.equal(getGiantPhase(state), 'shrinking');
-  assert.equal(state.giantScoreMultiplier, 1);
+  assert.equal(giantScoreMultiplier(state), 1);
   assert.equal(state.invulnUntil, 5000 + GIANT_END_INVULN, 'grace i-frames after shrink');
   assert.equal(getGiantVisualScale(state, 5000 + GIANT_SCALE_TRANSITION), 1);
+  finishGiantTransition(state, 5000 + GIANT_SCALE_TRANSITION);
   assert.equal(getGiantPhase(state), 'off');
 });
 

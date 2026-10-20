@@ -19,7 +19,7 @@ import {
 import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
-import { getGiantVisualScale } from '../systems/giant.js';
+import { getGiantVisualScale, isGiant } from '../systems/giant.js';
 
 // Per-scene actors, keyed by scene id (scenes with none, like the trampoline, are absent).
 const SCENE_ACTORS = {
@@ -95,12 +95,12 @@ export function draw(deps) {
     const pivotY = GROUND_Y + 24;
 
     // Golden glow: draw the dog sprite slightly larger with shadowBlur behind the real sprite
-    if (state.giantActive || state.giantShrinking) {
-      const glowAlpha = state.giantShrinking
+    if (state.giantPhase !== 'off') {
+      const glowAlpha = state.giantPhase === 'shrinking'
         ? Math.max(0, 1 - (performance.now() - state.giantTransitionStart) / GIANT_SCALE_TRANSITION)
         : 1;
       const remaining = GIANT_DURATION - (performance.now() - state.giantStartTime);
-      const flash = (state.giantActive && remaining < GIANT_WARN_AT)
+      const flash = (isGiant(state) && remaining < GIANT_WARN_AT)
         ? (Math.sin(performance.now() * 0.015) > 0 ? 1 : 0.3)
         : 1;
       const glowPulse = 0.85 + 0.15 * Math.sin(performance.now() * 0.004);

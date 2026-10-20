@@ -89,12 +89,9 @@ export function createState(rng = Math.random) {
     lastSceneEndAt: -Infinity,  // ms timestamp when the last scene fully ended; -Infinity = none yet
 
     // --- Giant mode ---
-    giantActive: false,
+    giantPhase: 'off',          // 'off' | 'growing' | 'active' | 'shrinking' (systems/giant.js)
     giantStartTime: 0,
-    giantGrowing: false,
-    giantShrinking: false,
     giantTransitionStart: 0,
-    giantScoreMultiplier: 1,
     lastGoldenSpawnScore: 0,
     giantChompEffects: [],  // [{x, y, startTime}]
     giantBonkEffects: [],   // [{x, y, width, height, vx, vy, rotation, rotSpeed, startTime, type, skin}]
@@ -144,10 +141,7 @@ export function resetRun(state) {
   state.sceneMemory = {};
   state.lastSceneEndAt = -Infinity;
 
-  state.giantActive = false;
-  state.giantGrowing = false;
-  state.giantShrinking = false;
-  state.giantScoreMultiplier = 1;
+  state.giantPhase = 'off';
   state.giantChompEffects = [];
   state.giantBonkEffects = [];
   state.birdJumpEffects = [];

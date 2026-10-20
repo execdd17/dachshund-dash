@@ -5,20 +5,20 @@ import {
   GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
   DOG_HITBOX_STAND, DOG_HITBOX_DUCK,
 } from '../config.js';
-import { activateGiantMode, triggerChompEffect, triggerBonkEffect } from './giant.js';
+import { activateGiantMode, triggerChompEffect, triggerBonkEffect, isGiant } from './giant.js';
 import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
 
 export { getObstacleHitbox };
 
 // Ducking lowers the profile (frisbees pass over); giant mode expands it.
-export function getDogHitbox(dog, giantActive) {
+export function getDogHitbox(dog, giant) {
   const box = dog.ducking ? DOG_HITBOX_DUCK : DOG_HITBOX_STAND;
   let dx = dog.x + box.dx;
   let dy = dog.y + box.dy;
   let dw = box.w;
   let dh = box.h;
 
-  if (giantActive) {
+  if (giant) {
     const expansion = (GIANT_SCALE - 1) * 0.5;
     dx -= dw * expansion * 0.5;
     dy -= dh * expansion;
@@ -45,7 +45,7 @@ function spendHeart(state, services, now) {
 // Walk obstacles, resolving overlaps by each type's contact rule
 // (OBSTACLE_TYPES). Returns true if the dog died.
 export function checkCollision(state, services, now = performance.now()) {
-  const dogBox = getDogHitbox(state.dog, state.giantActive);
+  const dogBox = getDogHitbox(state.dog, isGiant(state));
 
   for (let i = state.obstacles.length - 1; i >= 0; i--) {
     const obs = state.obstacles[i];
@@ -62,7 +62,7 @@ export function checkCollision(state, services, now = performance.now()) {
       if (state.dog.vy < 0 || now < state.invulnUntil) continue;
       if (!spendHeart(state, services, now)) return true;
     } else if (def.contact === 'hazard') {
-      if (state.giantActive) {
+      if (isGiant(state)) {
         if (def.giant === 'bonk') {
           triggerBonkEffect(state, obs, now);
           services.sfx.playBonk();

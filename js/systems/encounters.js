@@ -16,7 +16,7 @@
 import { SCENE_MIN_GAP } from '../config.js';
 
 export function giantBusy(state) {
-  return state.giantActive || state.giantGrowing || state.giantShrinking;
+  return state.giantPhase !== 'off';
 }
 
 export function anySceneBusy(state) {
@@ -28,18 +28,13 @@ export function inScene(state, id, phase) {
   return state.scene?.id === id && (phase === undefined || state.scene.phase === phase);
 }
 
-// Giant mode: 'off' | 'growing' | 'active' | 'shrinking'. Growing counts as
-// active (score multiplier and edible obstacles apply during the grow).
+// Giant mode: 'off' | 'growing' | 'active' | 'shrinking' (see giant.js).
 export function getGiantPhase(state) {
-  if (state.giantShrinking) return 'shrinking';
-  if (!state.giantActive) return 'off';
-  return state.giantGrowing ? 'growing' : 'active';
+  return state.giantPhase;
 }
 
 export function setGiantPhase(state, phase) {
-  state.giantActive = phase === 'growing' || phase === 'active';
-  state.giantGrowing = phase === 'growing';
-  state.giantShrinking = phase === 'shrinking';
+  state.giantPhase = phase;
 }
 
 // A golden pickup on the field means giant mode is imminent — score-armed

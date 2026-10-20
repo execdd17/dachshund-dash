@@ -10,10 +10,7 @@ export function killDog(state, services) {
 
   state.sceneQueue = [];
   state.scene = null;
-  state.giantActive = false;
-  state.giantGrowing = false;
-  state.giantShrinking = false;
-  state.giantScoreMultiplier = 1;
+  state.giantPhase = 'off';
   services.music.resetToNormal();
 
   const qualifies = qualifiesLocally(state.highScores, state.score)
