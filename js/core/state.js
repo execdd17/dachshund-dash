@@ -79,10 +79,8 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     giantStartTime: 0,
     giantTransitionStart: 0,
     lastGoldenSpawnScore: 0,
-    giantChompEffects: [],  // [{x, y, startTime}]
-    giantBonkEffects: [],   // [{x, y, width, height, vx, vy, rotation, rotSpeed, startTime, type, skin}]
-    birdJumpEffects: [],    // [{x, y, startTime}]
-    trampBounceEffects: [], // [{x, y, startTime}] "+50" popups
+
+    effects: [],  // popups + knocked-away obstacles: [{ kind, startTime, ... }] (systems/effects.js)
 
     // --- Weather ---
     weatherRain: false,

@@ -10,7 +10,7 @@ import {
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   BOSS_OBSTACLE_GAP_MULTIPLIER,
   DOG_HITBOX_STAND,
-  GIANT_DURATION, BIRD_JUMP_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS,
+  GIANT_DURATION, BIRD_JUMP_BONUS,
 } from '../config.js';
 import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
@@ -18,6 +18,7 @@ import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGia
 import { bossSpeedMultiplier, isBossChasing } from './boss.js';
 import { updateScenes, scenesBlockSpawning } from './scenes.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
+import { addEffect, updateEffects } from './effects.js';
 import { killDog } from './death.js';
 
 export function update(state, dt, services, rng = Math.random, now = performance.now()) {
@@ -90,7 +91,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
     if (o.type === 'bird' && !o.aerialWall && !o.jumped && dog.jumping && o.x + o.width < dog.x + DOG_HITBOX_STAND.dx) {
       o.jumped = true;
       state.score += BIRD_JUMP_BONUS;
-      state.birdJumpEffects.push({ x: o.x + o.width / 2, y: o.y, startTime: now });
+      addEffect(state, 'birdJump', now, { x: o.x + o.width / 2, y: o.y });
     }
   });
 
@@ -122,17 +123,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
       deactivateGiantMode(state, services, now);
     }
   }
-  // Update chomp/bonk visual effects
-  state.giantChompEffects = state.giantChompEffects.filter(e => now - e.startTime < CHOMP_EFFECT_MS);
-  state.giantBonkEffects = state.giantBonkEffects.filter(e => {
-    e.x += e.vx * scale;
-    e.y += e.vy * scale;
-    e.vy += 0.3 * scale;
-    e.rotation += e.rotSpeed * scale;
-    return now - e.startTime < BONK_EFFECT_MS;
-  });
-  state.birdJumpEffects = state.birdJumpEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
-  state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
+  updateEffects(state, scale, now);
 
   // Scenes (the boss may kill the dog; the trampoline bounce must run before
   // collision resolves thorns on the same frame)

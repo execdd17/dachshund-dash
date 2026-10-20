@@ -5,6 +5,7 @@ import {
   GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
 } from '../config.js';
 import { isChaseActive } from './chase.js';
+import { addEffect } from './effects.js';
 
 // Giant mode runs off → growing → active → shrinking → off. Growing counts
 // as giant (score multiplier, edible obstacles, bigger hitbox).
@@ -53,15 +54,12 @@ export function getGiantVisualScale(state, now = performance.now()) {
 }
 
 export function triggerChompEffect(state, obs, now = performance.now()) {
-  state.giantChompEffects.push({
-    x: obs.x,
-    y: obs.y,
-    startTime: now,
-  });
+  addEffect(state, 'chomp', now, { x: obs.x, y: obs.y });
 }
 
+// The obstacle flies off keeping its look (type + skin) — see the 'bonk' effect.
 export function triggerBonkEffect(state, obs, now = performance.now(), rng = Math.random) {
-  state.giantBonkEffects.push({
+  addEffect(state, 'bonk', now, {
     x: obs.x,
     y: obs.y,
     width: obs.width,
@@ -70,7 +68,6 @@ export function triggerBonkEffect(state, obs, now = performance.now(), rng = Mat
     vy: -6 - rng() * 3,
     rotation: 0,
     rotSpeed: 0.3 + rng() * 0.3,
-    startTime: now,
     type: obs.type,
     skin: obs.skin ?? (isChaseActive(state) ? 'chase' : 'normal'),
   });

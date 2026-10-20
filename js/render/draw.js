@@ -12,10 +12,7 @@ import {
 } from './background.js';
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
-import {
-  drawChompEffects, drawBonkEffects, drawBirdJumpEffects, drawTrampBounceEffects,
-  drawLandingParticles,
-} from './effects.js';
+import { drawEffects, drawLandingParticles } from './effects.js';
 import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
@@ -126,10 +123,7 @@ export function draw(deps) {
   }
   ctx.restore();
 
-  drawChompEffects(ctx, state);
-  drawBonkEffects(ctx, state, sprites);
-  drawBirdJumpEffects(ctx, state);
-  drawTrampBounceEffects(ctx, state);
+  drawEffects(ctx, state, sprites);
   drawLandingParticles(ctx, state);
 
   drawScore(ctx, state, view);

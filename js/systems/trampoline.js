@@ -9,6 +9,7 @@ import {
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
 import { makeObstacle } from './obstacleTypes.js';
+import { addEffect } from './effects.js';
 import { sceneMemory, scoreCooldownTrigger, stepScene } from './encounters.js';
 
 export function getTrampLayout(rep, speed) {
@@ -55,7 +56,7 @@ function checkTrampolineBounce(state, services, now) {
     state.dog.doubleJumped = false;
     state.dog.ducking = false;
     state.score += TRAMP_BOUNCE_BONUS;
-    state.trampBounceEffects.push({ x: tramp.x + tramp.width / 2, y: tramp.y, startTime: now });
+    addEffect(state, 'trampBounce', now, { x: tramp.x + tramp.width / 2, y: tramp.y });
     tramp.squashUntil = now + TRAMP_SQUASH_MS;
     services.sfx.playBoing();
   }

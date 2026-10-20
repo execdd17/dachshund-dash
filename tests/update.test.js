@@ -11,6 +11,7 @@ import {
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { giantScoreMultiplier } from '../js/systems/giant.js';
+import { effectsOfKind } from '../js/systems/effects.js';
 import { createTestServices } from './helpers.js';
 
 const DT = DT_BASELINE; // one baseline tick per update
@@ -99,7 +100,7 @@ test('jumping over a bird awards the bonus once', () => {
   const before = state.score;
   update(state, DT, services, () => 0.99, 0);
   assert.ok(state.score >= before + BIRD_JUMP_BONUS);
-  assert.equal(state.birdJumpEffects.length, 1);
+  assert.equal(effectsOfKind(state, 'birdJump').length, 1);
   const after = state.score;
   update(state, DT, services, () => 0.99, 1);
   assert.ok(state.score < after + BIRD_JUMP_BONUS, 'bonus not granted twice');
@@ -115,7 +116,7 @@ test('jumping over a bird wall does not award the solo-bird bonus', () => {
   }];
   update(state, DT, services, () => 0.99, 0);
   assert.equal(state.obstacles[0].jumped, undefined);
-  assert.equal(state.birdJumpEffects.length, 0);
+  assert.equal(effectsOfKind(state, 'birdJump').length, 0);
 });
 
 test('milestone chime fires every 100 points', () => {

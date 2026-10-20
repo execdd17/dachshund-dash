@@ -53,8 +53,8 @@ export function loadBirdSprites(store) {
 // `now` is injected for testability (defaults to performance.now()).
 export function getDogSpriteAnim(state, now = performance.now()) {
   if (state.gameState === 'dead') return 'dead';
-  if (isGiant(state) && state.giantChompEffects.length > 0
-    && now - state.giantChompEffects[state.giantChompEffects.length - 1].startTime < BITE_ANIM_MS) return 'bite';
+  const lastChomp = state.effects.findLast(e => e.kind === 'chomp');
+  if (isGiant(state) && lastChomp && now - lastChomp.startTime < BITE_ANIM_MS) return 'bite';
   if (state.dog.ducking) return 'slide';
   if (state.dog.jumping) return state.dog.doubleJumped ? 'doublejump' : 'jump';
   if (state.gameState === 'idle' || state.gameState === 'setup') return 'idle';

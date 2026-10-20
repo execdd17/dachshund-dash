@@ -10,6 +10,7 @@ import {
   GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y,
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
+import { effectsOfKind } from '../js/systems/effects.js';
 import { createTestServices } from './helpers.js';
 
 test('dog hitbox is lower-profile when ducking', () => {
@@ -100,7 +101,7 @@ test('first hit spends a heart instead of killing', () => {
   assert.equal(died, false);
   assert.equal(state.hearts, state.startingHearts - 1);
   assert.deepEqual(state.obstacles, [], 'obstacle knocked away');
-  assert.equal(state.giantBonkEffects.length, 1);
+  assert.equal(effectsOfKind(state, 'bonk').length, 1);
   assert.equal(state.heartLostAt, 1000);
   assert.ok(state.invulnUntil > 1000, 'i-frames granted');
 });
@@ -157,7 +158,7 @@ test('giant mode eats ground obstacles for bonus points', () => {
   assert.equal(died, false);
   assert.equal(state.score, before + GIANT_EAT_BONUS);
   assert.deepEqual(state.obstacles, []);
-  assert.equal(state.giantChompEffects.length, 1);
+  assert.equal(effectsOfKind(state, 'chomp').length, 1);
 });
 
 test('giant mode bonks birds for a smaller bonus', () => {
@@ -170,7 +171,7 @@ test('giant mode bonks birds for a smaller bonus', () => {
   const died = checkCollision(state, createTestServices());
   assert.equal(died, false);
   assert.equal(state.score, before + GIANT_BONK_BONUS);
-  assert.equal(state.giantBonkEffects.length, 1);
+  assert.equal(effectsOfKind(state, 'bonk').length, 1);
 });
 
 test('ducking avoids a frisbee at head height', () => {

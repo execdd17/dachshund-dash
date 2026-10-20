@@ -23,6 +23,7 @@ import {
 } from '../js/config.js';
 import { setGiantPhase, sceneMemory } from '../js/systems/encounters.js';
 import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
+import { effectsOfKind } from '../js/systems/effects.js';
 import { createTestServices } from './helpers.js';
 
 const DT = DT_BASELINE;
@@ -203,7 +204,7 @@ test('descending onto the trampoline launches, resets double jump, scores, and b
   assert.equal(state.dog.jumping, true);
   assert.equal(state.dog.doubleJumped, false, 'double jump reset for a fresh air correction');
   assert.equal(state.score, scoreBefore + TRAMP_BOUNCE_BONUS);
-  assert.equal(state.trampBounceEffects.length, 1);
+  assert.equal(effectsOfKind(state, 'trampBounce').length, 1);
   assert.equal(tramp.squashUntil, 1250, 'membrane squash window set');
   assert.equal(boings, 1);
 });
@@ -248,7 +249,7 @@ test('a jump onto the island carries the dog across the whole patch unharmed', (
   }
 
   assert.ok(jumped, 'the scripted jump fired');
-  assert.ok(state.trampBounceEffects.length >= 1, 'the bounce happened');
+  assert.ok(effectsOfKind(state, 'trampBounce').length >= 1, 'the bounce happened');
   assert.equal(state.hearts, heartsBefore, 'no thorn contact anywhere in the patch');
   assert.equal(state.gameState, 'running');
   assert.equal(state.dog.y, GROUND_Y, 'dog ended grounded past the patch');
@@ -269,7 +270,7 @@ test('thorn contact spends one heart, keeps the patch, and i-frames cover the re
   assert.equal(state.hearts, 2, 'exactly one heart lost');
   assert.equal(state.invulnUntil, 1000 + HEART_HIT_INVULN);
   assert.equal(state.obstacles.length, 1, 'thorn tile not spliced');
-  assert.equal(state.giantBonkEffects.length, 0, 'no bonk-fling for terrain');
+  assert.equal(effectsOfKind(state, 'bonk').length, 0, 'no bonk-fling for terrain');
 
   // Further overlap during i-frames costs nothing
   const died2 = checkCollision(state, services, 1000 + HEART_HIT_INVULN - 1);
@@ -366,13 +367,13 @@ test('resetRun clears the running scene, its memory, and its effects', () => {
   state.scene.rep = 2;
   state.scene.breatherFrames = 55;
   sceneMemory(state, 'tramp').lastEndScore = 777;
-  state.trampBounceEffects = [{ x: 1, y: 2, startTime: 3 }];
+  state.effects = [{ kind: 'trampBounce', x: 1, y: 2, startTime: 3 }];
 
   resetRun(state);
 
   assert.equal(state.scene, null);
   assert.deepEqual(state.sceneMemory, {});
-  assert.deepEqual(state.trampBounceEffects, []);
+  assert.deepEqual(state.effects, []);
 });
 
 // --- 11. Wide-obstacle cull is right-edge based ---
