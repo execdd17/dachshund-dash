@@ -1,14 +1,9 @@
-// Input wiring: desktop keyboard (Space/Up jump, Down/S duck, plus debug
-// keys) and mobile touch (right side jumps, left DUCK_ZONE_RATIO ducks).
+// Input wiring: desktop keyboard (Space/Up jump, Down/S duck, plus the debug
+// keys in debug.js) and mobile touch (right side jumps, left DUCK_ZONE_RATIO ducks).
 
 import { W, H, DUCK_ZONE_RATIO } from '../config.js';
 import { jump, duck } from '../systems/control.js';
-import { initRain } from '../systems/weather.js';
-import { makeObstacle } from '../systems/obstacleTypes.js';
-import { forceScene } from '../systems/scenes.js';
-import { isGiant } from '../systems/giant.js';
-
-const DEBUG_SCENE_KEYS = { KeyC: 'chase', KeyB: 'boss', KeyT: 'tramp' };
+import { runDebugKey } from './debug.js';
 
 export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -44,33 +39,7 @@ export function wireInput(deps) {
       e.preventDefault();
       duck(state, true, services);
     }
-    // Debug: P = slow motion
-    if (e.code === 'KeyP') {
-      e.preventDefault();
-      state.slowMode = !state.slowMode;
-    }
-    // Debug: H = toggle default hat
-    if (e.code === 'KeyH') {
-      e.preventDefault();
-      cosmetics.toggleDefaultHat();
-    }
-    // Debug: C / B / T = start the chase / boss / trampoline scene now
-    const debugScene = DEBUG_SCENE_KEYS[e.code];
-    if (debugScene && state.gameState === 'running') {
-      e.preventDefault();
-      forceScene(state, debugScene);
-    }
-    // Debug: G = spawn a golden hot dog right in front of the dog
-    if (e.code === 'KeyG' && state.gameState === 'running' && !isGiant(state)) {
-      e.preventDefault();
-      state.obstacles.push(makeObstacle('golden', state.dog.x + 120));
-    }
-    // Debug: R = toggle rain
-    if (e.code === 'KeyR') {
-      e.preventDefault();
-      state.weatherRain = !state.weatherRain;
-      if (state.weatherRain) initRain(state); else state.rainDrops = [];
-    }
+    if (runDebugKey(e.code, state, { cosmetics })) e.preventDefault();
   });
 
   document.addEventListener('keyup', e => {
