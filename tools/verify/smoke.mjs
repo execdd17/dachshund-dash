@@ -53,7 +53,7 @@ try {
   await shot(page, '01-idle.png');
   await page.screenshot({ path: path.join(outDir, '00-fullpage.png'), fullPage: true });
   const played = await page.evaluate(async () => {
-    const { createSfx, SFX_NAMES } = await import('/js/audio/sfx.js');
+    const { createSfx, SFX_NAMES } = await import(new URL('js/audio/sfx.js', document.baseURI).href);  // the site may live under a subpath
     const sfx = createSfx();
     await new Promise(r => setTimeout(r, 300));  // let the chomp sample decode
     for (const name of SFX_NAMES) sfx[name]();
