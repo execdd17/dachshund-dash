@@ -5,9 +5,7 @@ import {
   BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, BONK_TEXT_MS, SCORE_POPUP_MS,
 } from '../config.js';
 import { drawPopupText } from './primitives.js';
-import {
-  drawFrisbee, drawBird, drawBirdSprite, drawChocolateBar, drawChocolateStack, drawAcorn, drawAcornPile,
-} from './obstacles.js';
+import { drawObstacleLook } from './obstacles.js';
 
 export function drawChompEffects(ctx, state, now = performance.now()) {
   state.giantChompEffects.forEach(e => {
@@ -28,23 +26,10 @@ export function drawChompEffects(ctx, state, now = performance.now()) {
   });
 }
 
-// The knocked-away obstacle keeps its original look, mirroring the skin/type
-// dispatch in drawObstacle (birds keep flapping: sprite frames keep advancing
-// via the shared store, with the procedural bird as the loading fallback).
+// A knocked-away obstacle keeps the look it had on the field (birds keep flapping).
 function drawBonkedObstacle(ctx, e, frameCount, sprites) {
-  if (e.skin === 'chase') {
-    if (e.type === 'frisbee' || e.type === 'bird') drawAcorn(ctx, e.x, e.y - 8, frameCount * 0.15);
-    else if (e.type === 'stack') drawAcornPile(ctx, e.x, e.y);
-    else drawAcorn(ctx, e.x, e.y);
-  } else if (e.type === 'bird') {
-    if (!drawBirdSprite(ctx, sprites, e)) drawBird(ctx, e.x, e.y, frameCount);
-  } else if (e.type === 'stack') {
-    drawChocolateStack(ctx, e.x, e.y, frameCount);
-  } else if (e.type === 'hotdog') {
-    drawChocolateBar(ctx, e.x, e.y);
-  } else {
-    drawFrisbee(ctx, e.x, e.y, frameCount);
-  }
+  const skin = e.skin === 'chase' ? 'chase' : 'normal';
+  drawObstacleLook(ctx, e, skin, { frameCount, sprites, acornY: e.y - 8 });
 }
 
 export function drawBonkEffects(ctx, state, sprites, now = performance.now()) {

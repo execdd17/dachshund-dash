@@ -1,11 +1,12 @@
-// Obstacle rendering — all drawn with canvas primitives, no image assets.
-// drawObstacle() dispatches on obstacle type/skin; individual draw functions
-// take (ctx, x, y, ...) so they stay independently testable/reusable.
+// Obstacle rendering — canvas primitives, plus the bird sprite frames.
+// OBSTACLE_LOOKS maps each type and skin to its draw function; the individual
+// draw functions take (ctx, x, y, ...) so they stay independently reusable.
 
 import {
-  GROUND_Y, ACORN_W, ACORN_H, CHASE_ACORN_Y,
+  GROUND_Y, ACORN_W, ACORN_H,
   BIRD_SPRITE_W, BIRD_SPRITE_FEET_FRAC,
 } from '../config.js';
+import { chaseAcornY } from '../systems/obstacleTypes.js';
 import { roundRect, drawSparkle } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 
@@ -768,37 +769,42 @@ export function drawThorns(ctx, x, y, seed = 0) {
 // (acorns) and giant mode (chocolate bars become edible hot dogs).
 // `sprites` is optional (render-only); birds fall back to the procedural
 // drawing while the PNG frames load.
+// Each type's look per skin: 'normal', 'chase' (acorns during the squirrel
+// chase) and 'giant' (edible hot dogs in giant mode); a missing skin falls
+// back to normal. view = { frameCount, sprites, now, acornY }.
+const drawAerialAcorn = (ctx, o, v) => drawAcorn(ctx, o.x, v.acornY, v.frameCount * 0.15);
+
+export const OBSTACLE_LOOKS = {
+  hotdog: {
+    normal: (ctx, o) => drawChocolateBar(ctx, o.x, o.y),
+    giant: (ctx, o) => drawHotDog(ctx, o.x, o.y),
+    chase: (ctx, o) => drawAcorn(ctx, o.x, o.y),
+  },
+  stack: {
+    normal: (ctx, o, v) => drawChocolateStack(ctx, o.x, o.y, v.frameCount),
+    giant: (ctx, o, v) => drawHotDogStack(ctx, o.x, o.y, v.frameCount),
+    chase: (ctx, o) => drawAcornPile(ctx, o.x, o.y),
+  },
+  frisbee: {
+    normal: (ctx, o, v) => drawFrisbee(ctx, o.x, o.y, v.frameCount),
+    chase: drawAerialAcorn,
+  },
+  bird: {
+    normal: (ctx, o, v) => { if (!drawBirdSprite(ctx, v.sprites, o)) drawBird(ctx, o.x, o.y, v.frameCount); },
+    chase: drawAerialAcorn,
+  },
+  golden: { normal: (ctx, o, v) => drawGoldenHotDog(ctx, o.x, o.y, v.frameCount) },
+  trampoline: { normal: (ctx, o, v) => drawTrampoline(ctx, o.x, o.y, o.width, v.frameCount, v.now < (o.squashUntil ?? 0)) },
+  thorns: { normal: (ctx, o) => drawThorns(ctx, o.x, o.y, o.seed ?? 0) },
+};
+
+export function drawObstacleLook(ctx, o, skin, view) {
+  const looks = OBSTACLE_LOOKS[o.type];
+  (looks[skin] ?? looks.normal)(ctx, o, view);
+}
+
 export function drawObstacle(ctx, state, o, sprites) {
-  if (o.type === 'golden') {
-    drawGoldenHotDog(ctx, o.x, o.y, state.frameCount);
-    return;
-  }
-  if (o.type === 'trampoline') {
-    drawTrampoline(ctx, o.x, o.y, o.width, state.frameCount, performance.now() < (o.squashUntil ?? 0));
-    return;
-  }
-  if (o.type === 'thorns') {
-    drawThorns(ctx, o.x, o.y, o.seed ?? 0);
-    return;
-  }
-  const useChaseSkin = (o.skin ?? (state.chaseActive ? 'chase' : 'normal')) === 'chase';
-  if (useChaseSkin) {
-    if (o.type === 'frisbee' || o.type === 'bird') {
-      const y = o.aerialWall
-        ? (o.wallRow === 'low' ? CHASE_ACORN_Y : o.y)
-        : CHASE_ACORN_Y;
-      drawAcorn(ctx, o.x, y, state.frameCount * 0.15);
-    } else if (o.type === 'stack') drawAcornPile(ctx, o.x, o.y);
-    else drawAcorn(ctx, o.x, o.y);
-  } else if (o.type === 'bird') {
-    if (!drawBirdSprite(ctx, sprites, o)) drawBird(ctx, o.x, o.y, state.frameCount);
-  } else if (o.type === 'frisbee') {
-    drawFrisbee(ctx, o.x, o.y, state.frameCount);
-  } else if (state.giantActive || state.giantGrowing) {
-    if (o.type === 'stack') drawHotDogStack(ctx, o.x, o.y, state.frameCount);
-    else drawHotDog(ctx, o.x, o.y);
-  } else {
-    if (o.type === 'stack') drawChocolateStack(ctx, o.x, o.y, state.frameCount);
-    else drawChocolateBar(ctx, o.x, o.y);
-  }
+  const chase = (o.skin ?? (state.chaseActive ? 'chase' : 'normal')) === 'chase';
+  const skin = chase ? 'chase' : (state.giantActive || state.giantGrowing) ? 'giant' : 'normal';
+  drawObstacleLook(ctx, o, skin, { frameCount: state.frameCount, sprites, now: performance.now(), acornY: chaseAcornY(o) });
 }
