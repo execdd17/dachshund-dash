@@ -49,6 +49,10 @@ export const ACORN_W = 36;
 export const ACORN_H = 22;
 export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standing dog, duck clears it
 
+// Tutorial double-jump tower: a pile of chocolate bars too tall for one jump
+// (its top clears a single jump's apex, a double jump clears it with room).
+export const TOWER_BARS = 5;
+
 // --- Spawn patterns (close-gap sequences that punish jump-only play) ---
 export const PATTERN_FIRST_AT = 120;         // score before patterns can arm
 export const PATTERN_CHANCE = 0.22;          // per spawn cycle when eligible
@@ -75,6 +79,28 @@ export const DT_BASELINE = 1000 / 120;
 // Applies across scene types — each one's own score cooldown gates repeats
 // of the same scene, this gates back-to-back scenes of any kind.
 export const SCENE_MIN_GAP = 15000;  // ms
+
+// --- Controls tutorial (systems/tutorial.js) ---
+// Shown at the start of a run on a device's first visit, TUTORIAL_REFRESH_MS
+// after it was last seen, or once TUTORIAL_VERSION is bumped (do that when
+// the controls or the tutorial change — not on every deploy).
+export const TUTORIAL_VERSION = 1;
+export const TUTORIAL_REFRESH_MS = 30 * 24 * 60 * 60 * 1000;  // 30 days
+export const TUTORIAL_SLOW_SCALE = 0.15;  // game speed while a prompt waits for the player
+// Per step, the gap between dog and obstacle hitboxes (px) where its prompt
+// appears and time slows, at the tutorial's run speed. Each window closes
+// where the action stops clearing the obstacle, so a late press still fails.
+export const TUTORIAL_GAPS = {
+  jump: { prompt: 60 },   // a single jump clears the bar from 4..68 (~1s of slow-mo)
+  // Then a second jump from the rise's last moments (vy >= TUTORIAL_AGAIN_VY),
+  // but only if the tower is within `apex` by then: a first jump too early
+  // can't make it, so it gets no prompt.
+  tower: { prompt: 72, apex: 30 },   // first jump clears from 32..78 with the second
+  duck: { prompt: 90 },   // ducking clears the bird wall from anywhere under 200
+};
+export const TUTORIAL_AGAIN_VY = -2;
+export const TUTORIAL_PRAISE_MS = 900;    // "NICE!" between steps
+export const TUTORIAL_RETRY_MS = 1100;    // "TRY AGAIN!" before a missed step repeats
 
 // --- Chase mode ---
 export const CHASE_FIRST_AT = 200;

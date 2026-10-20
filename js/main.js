@@ -14,7 +14,10 @@ import { createLeaderboardUi } from './leaderboard/ui.js';
 import { loadHighScores } from './leaderboard/local.js';
 import { createScoreRecorder } from './leaderboard/recorder.js';
 import { createNameEntry } from './ui/nameEntry.js';
+import { createHowToPlayButton } from './ui/howToPlay.js';
 import { update } from './systems/update.js';
+import { jump } from './systems/control.js';
+import { isTutorialDue, markTutorialSeen } from './systems/tutorial.js';
 import { draw } from './render/draw.js';
 import { createView } from './render/view.js';
 import { wireInput, isTouchDevice } from './input/input.js';
@@ -36,6 +39,7 @@ const state = createState();
 state.touchDevice = touchDevice;
 state.highScores = loadHighScores(localStorage);
 state.highScore = state.highScores[0]?.score ?? 0;
+state.tutorialPending = isTutorialDue(localStorage, Date.now());
 
 // --- View (canvas sizing / world-to-screen mapping) ---
 const view = createView(canvas);
@@ -76,16 +80,20 @@ const nameEntry = createNameEntry(state, {
 const cosmeticsMenu = createCosmeticsMenu(cosmetics, sprites, state);
 
 // Everything update() needs to cause effects outside the state object.
+// Date.now() (not the frame clock) for the tutorial: "last seen" spans visits.
 const services = {
   sfx,
   music,
   recordRun: scoreRecorder.recordRun,
+  tutorialSeen: () => markTutorialSeen(localStorage, Date.now()),
 };
+const howToPlay = createHowToPlayButton(state, { startRun: () => jump(state, services) });
 
 // --- Wiring ---
 wireInput({ state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view });
 nameEntry.wireControls();
 cosmeticsMenu.wireControls();
+howToPlay.wireControls();
 leaderboardUi.wireControls();
 
 // --- Main loop ---
@@ -96,6 +104,7 @@ function gameLoop(now) {
   lastFrameTime = now;
   update(state, dt, services, Math.random, now);
   cosmeticsMenu.updateCustomizeButtonVisibility();
+  howToPlay.updateVisibility();
   draw({
     canvas, ctx, state, sprites, cosmetics, music, view, now,
     // Periodic global score refresh while sitting on the idle screen

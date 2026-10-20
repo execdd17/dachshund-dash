@@ -13,7 +13,7 @@ import {
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
 import { drawEffects, drawLandingParticles } from './effects.js';
-import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen } from './hud.js';
+import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen, drawTutorialOverlay } from './hud.js';
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale, isGiant } from '../systems/giant.js';
@@ -129,6 +129,7 @@ export function draw(deps) {
   drawScore(ctx, state, view, now);
   if (state.gameState !== 'idle' && state.gameState !== 'setup') drawHearts(ctx, state, view, now);
   drawMusicIcon(ctx, music.isOn(), view);
+  drawTutorialOverlay(ctx, state, now);
 
   if (state.gameState === 'idle') {
     deps.onIdleFrame?.();

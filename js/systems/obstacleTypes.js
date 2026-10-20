@@ -12,12 +12,13 @@
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
 
 import {
-  GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W,
+  GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W, TOWER_BARS,
 } from '../config.js';
 
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
 const DEFAULT_INSET = { dx: 12, dy: 8, dw: 24, dh: 10 };
 const AERIAL_INSET = { dx: 6, dy: 2, dw: 12, dh: 4 };
+const TOWER_H = 22 + 20 * (TOWER_BARS - 1);
 
 export const OBSTACLE_TYPES = {
   // Drawn as a chocolate bar normally and as a hot dog in giant mode.
@@ -33,6 +34,8 @@ export const OBSTACLE_TYPES = {
   // neighboring tile.
   thorns: { width: TRAMP_TILE_W, height: 30, y: GROUND_Y - 14, inset: { dx: 4, dy: 14, dw: 8, dh: 14 }, contact: 'terrain' },
   trampoline: { height: 12, y: GROUND_Y - 12, inset: DEFAULT_INSET, contact: 'none' },
+  // Tutorial only: bars stacked 20px apart, standing where a stack does.
+  tower: { width: 36, height: TOWER_H, y: GROUND_Y + 26 - TOWER_H, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
 };
 
 // A new obstacle of `type` at x with the type's default size and height;

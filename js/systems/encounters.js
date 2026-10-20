@@ -1,17 +1,19 @@
 // Encounter exclusion and the generic scene runner. Encounters (giant mode
-// and the scenes: chase, boss, trampoline) never overlap, including their
+// and the scenes: tutorial, chase, boss, trampoline) never overlap, including their
 // transition phases. Scenes share one slot, state.scene = { id, phase, …data },
 // so "is any scene busy" is just whether the slot is taken.
 //
-// A scene is a definition object (see chase.js, boss.js, trampoline.js):
-//   id                         — 'chase' | 'boss' | 'tramp'
+// A scene is a definition object (see tutorial.js, chase.js, boss.js, trampoline.js):
+//   id                         — 'tutorial' | 'chase' | 'boss' | 'tramp'
 //   initialData()              — fresh per-run data merged into state.scene
-//   wantsTurn(state, memory)   — score trigger; memory (state.sceneMemory[id])
+//   wantsTurn(state, memory)   — trigger (usually score); memory (state.sceneMemory[id])
 //                                outlives each run of the scene
 //   start(state, scene)        — the field is clear: set the first real phase + data
 //   phases[phase](state, scene, ctx) — one frame of that phase; returns the
 //                                next phase name, 'done', or nothing to stay
 //   quietPhases                — phases (besides 'pending') with no normal spawning
+//   timeScale(scene)           — optional: multiplier on game time (scenes.js)
+//   scoreless                  — optional: no distance points while it runs
 
 import { SCENE_MIN_GAP } from '../config.js';
 

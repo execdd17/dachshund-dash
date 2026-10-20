@@ -17,7 +17,7 @@ import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
 import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGiant } from './giant.js';
 import { bossSpeedMultiplier, isBossChasing } from './boss.js';
-import { updateScenes, scenesBlockSpawning } from './scenes.js';
+import { updateScenes, scenesBlockSpawning, sceneTimeScale, scenesFreezeScore } from './scenes.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
 import { addEffect, updateEffects } from './effects.js';
 import { killDog } from './death.js';
@@ -25,7 +25,7 @@ import { killDog } from './death.js';
 export function update(state, dt, services, rng = Math.random, now = performance.now()) {
   if (state.gameState !== 'running') return;
 
-  const scale = (dt / DT_BASELINE) * (state.slowMode ? 0.5 : 1);
+  const scale = (dt / DT_BASELINE) * (state.slowMode ? 0.5 : 1) * sceneTimeScale(state);
   state.frameCount++;
   state.speed = Math.min(MAX_SPEED, INITIAL_SPEED + state.score * SPEED_INCREMENT);
 
@@ -113,7 +113,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
   const weatherScale = dt / DT_BASELINE * 0.5;
   updateRain(state, weatherScale, rng);
 
-  state.score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier(state);
+  if (!scenesFreezeScore(state)) state.score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier(state);
 
   rollWeatherOnStageChange(state, rng);
 

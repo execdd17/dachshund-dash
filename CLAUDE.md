@@ -18,7 +18,7 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 npm test                         # or: node --test tests/*.test.js
 
 # Browser verification (headless Chromium via playwright-core; Firestore blocked)
-npm run verify:smoke                     # end-to-end run: sounds, menu, every encounter, death; [url] to check a deployment
+npm run verify:smoke                     # end-to-end run: sounds, menu, tutorial, every encounter, death; [url] to check a deployment
 npm run verify:lockstep -- [ref=main]    # update() vs a baseline ref, frame by frame on seeded runs
 npm run verify:render -- [ref=main]      # full-frame pixel diff vs a baseline ref; [--save] keeps every frame
 
@@ -57,25 +57,26 @@ Game logic never touches the DOM, canvas, or Web Audio — everything effectful 
 - **`systems/`** — gameplay on `(state, …, services)`, with `services = { sfx, music, recordRun }` and injectable `rng`/`now`:
   - `update.js` — the per-frame orchestrator.
   - `control.js` (jump/duck, run start), `spawning.js`, `obstacleTypes.js` (obstacle registry), `collision.js` (dog hitbox + contact resolution), `effects.js` (transient effects list), `giant.js`, `weather.js`, `death.js`.
-  - Scenes: `encounters.js` (exclusion rules, scene queue, generic runner `stepScene`), `scenes.js` (registry, phase accessors, `forceScene`), and the scene definitions `chase.js` / `boss.js` / `trampoline.js`.
+  - Scenes: `encounters.js` (exclusion rules, scene queue, generic runner `stepScene`), `scenes.js` (registry, phase accessors, `forceScene`), and the scene definitions `tutorial.js` / `chase.js` / `boss.js` / `trampoline.js`.
 - **`render/`** — canvas drawing only: `draw.js` (frame orchestrator + per-scene `SCENE_ACTORS`), `view.js` (world→canvas mapping), `background.js`, `obstacles.js` (`OBSTACLE_LOOKS`), `actors.js` (dog/squirrel + cosmetic overlays), `effects.js` (`EFFECT_DRAWERS`), `hud.js`, `primitives.js`.
 - **`audio/`** — `sfx.js` (sounds as data in `TONES`; `createSilentSfx()` derives from the same names) and `music.js` (normal + giant-mode tracks); both have silent test doubles.
 - **`assets/`** — `sprites.js` (loading + frame advance for dog/squirrel/bird), `dogFrames.js` (the one dog frame list and `resolveDogFrame`, shared with `tools/`), `images.js`.
 - **`cosmetics/`** — `cosmetics.js` (`COSMETIC_DEFS`, calibrated `HEAD_ANCHORS`, equipped-state persistence) and `menu.js` (DOM overlay).
 - **`leaderboard/`** — `local.js` (localStorage top list), `global.js` (Firestore boards), `recorder.js` (`recordRun`: placement, local list, global submit for a finished run), `checksum.js`, `ui.js` (HTML table).
 - **`input/`** — `input.js` (keyboard/touch/mouse) and `debug.js` (`DEBUG_KEYS`: P slow-mo, C chase, B boss, T trampoline, G golden hot dog, R rain, H hat).
-- **`ui/nameEntry.js`** — start overlay (name + difficulty, once per page load).
+- **`ui/`** — `nameEntry.js` (start overlay: name + difficulty, once per page load) and `howToPlay.js` (the HOW TO PLAY button beside ACCESSORIZE: replays the tutorial).
 - **`main.js`** — composition root: builds services, wires the DOM, runs the rAF loop (`update()` then `draw()`).
 
 ### Invariants and runtime facts
 
 - **State machine**: `state.gameState` goes `setup` → `idle` → `running` → `dead` → `running`. Death records qualifying scores under the setup name via `services.recordRun`; there is no post-death prompt.
 - **Coordinates**: the logical world is `W=800, H=250`. `render/view.js` fits it to the viewport width, pins the ground to the bottom, and turns extra height into sky above y=0 (`view.extraTop`; systems see `state.skyTop ≤ 0`). Use `view.scale`/`view.extraTop`, never a hardcoded scale.
-- **One clock**: `main.js` passes the rAF timestamp as `now` to `update()` and `draw()`; everything time-based reads it, and renderers never read the clock themselves. Only the leaderboard uses `Date.now()` (Firestore wall-clock timestamps). Physics was tuned at a 120Hz baseline: `update()` scales by `dt / DT_BASELINE`, with dt capped at 100ms.
-- **Encounters never overlap** (giant mode and the three scenes), including transition phases. Scenes share one slot, `state.scene = { id, phase, …data } | null`; trigger bookkeeping that outlives a scene (`lastEndScore`, boss `lastMilestone`) lives in `state.sceneMemory[id]`. Scenes keep `SCENE_MIN_GAP` of normal play between one another.
+- **One clock**: `main.js` passes the rAF timestamp as `now` to `update()` and `draw()`; everything time-based reads it, and renderers never read the clock themselves. Only the leaderboard (Firestore timestamps) and the tutorial's last-seen record use `Date.now()`, since both span visits. Physics was tuned at a 120Hz baseline: `update()` scales by `dt / DT_BASELINE`, with dt capped at 100ms.
+- **Encounters never overlap** (giant mode and the four scenes), including transition phases. Scenes share one slot, `state.scene = { id, phase, …data } | null`; trigger bookkeeping that outlives a scene (`lastEndScore`, boss `lastMilestone`) lives in `state.sceneMemory[id]`. Scenes keep `SCENE_MIN_GAP` of normal play between one another.
 - **Scene engine**: a scene definition provides `initialData`, `wantsTurn`, `start`, `phases`, and `quietPhases`; `stepScene` handles the shared lifecycle — request a turn → wait at the head of the FIFO `state.sceneQueue` → `'pending'` until the field clears → phases → `'done'`. The queue is what keeps chase's short cooldown from starving the trampoline. A pending scene stands down if giant mode starts but keeps its turn at the queue front.
 - **Giant mode**: `state.giantPhase` runs `off → growing → active → shrinking`; `isGiant()` means growing-or-active, and the score multiplier derives from it. `finishGiantTransition` ends grow/shrink at the end of `update()` (drawing never mutates state). Ending grants `GIANT_END_INVULN` i-frames.
 - **Hearts**: `state.startingHearts` comes from the difficulty slider (`DIFFICULTY_LEVELS`, locked per session). A non-fatal hit spends a heart, knocks the obstacle away, and grants `HEART_HIT_INVULN` i-frames; the last heart kills. Boss catches bypass hearts.
+- **Tutorial scene** (`systems/tutorial.js`): runs at the start of a run while `state.tutorialPending`, which `main.js` sets from `isTutorialDue` (a device's first visit, `TUTORIAL_REFRESH_MS` since last seen, or a newer `TUTORIAL_VERSION` — bump it when the controls or the tutorial change, not on every deploy) and the HOW TO PLAY button sets. Three steps (chocolate bar: jump; `tower`: double jump; bird wall: duck), each a `practice` obstacle — collision knocks it away without a heart and the step repeats (TRY AGAIN). A prompt appears, and time slows to `TUTORIAL_SLOW_SCALE`, inside each step's `TUTORIAL_GAPS` window; only an action taken while prompted counts, and a jump prompts only with the dog grounded (the jump that starts a run must not count). The windows were measured by sweeping press timings — re-measure if jump physics, speed, or the tower change (`tests/tutorial.test.js` plays it with a bot at several reaction times). The score stays 0 (`scoreless`).
 - **Trampoline scene**: reps scale with speed (`getTrampLayout`) so the thorn patch can't be double-jumped; landing on the island auto-bounces. Thorns are terrain — they cost a heart but stay, and a rising dog passes over them. The obstacle cull is right-edge-based so the wide trampoline doesn't vanish early.
 - **Layout**: full-bleed everywhere; the CSS splits on `touch-device`. Touch landscape is game-only, touch portrait shows a rotate prompt + leaderboard, desktop scrolls to hints + leaderboard below the game. Installable as a home-screen PWA (`manifest.json`). `?app=1` is a no-op kept for old links.
 - Music needs a user interaction to start (autoplay policy): `music.attachAutoplayUnlock()`.
@@ -84,7 +85,7 @@ Game logic never touches the DOM, canvas, or Web Audio — everything effectful 
 
 - **Obstacle type**: an `OBSTACLE_TYPES` entry (`systems/obstacleTypes.js`: size/y, hitbox `inset`, `contact` — `hazard`/`terrain`/`pickup`/`none` — plus `giant: 'eat'|'bonk'` and `aerial`) and an `OBSTACLE_LOOKS` entry (`render/obstacles.js`: `normal`, optional `chase`/`giant`). Build with `makeObstacle`; spawn via a `SPAWN_KINDS` entry or from a scene. `tests/obstacleTypes.test.js` catches a missing registration or look.
 - **Spawn mix and patterns**: `SPAWN_MIX` (config) sets the solo mix; `SPAWN_PATTERNS` (`spawning.js`) are close-gap multi-beat sequences; bird walls (`birdStack`, `birdTriangle`) carry `aerialWall` and earn no jump bonus. In chase, aerials become acorns at `chaseAcornY()`, the one source for their height in both hitbox and draw.
-- **Scene**: a definition object in its own file, added to `SCENES` (`scenes.js`), plus `SCENE_ACTORS` (`render/draw.js`) if it draws actors. Scene tests use `getScenePhase`/`setScenePhase`, never raw state.
+- **Scene**: a definition object in its own file, added to `SCENES` (`scenes.js`), plus `SCENE_ACTORS` (`render/draw.js`) if it draws actors. Optional `timeScale(scene)` slows game time and `scoreless` stops distance points (see the field list in `encounters.js`). Scene tests use `getScenePhase`/`setScenePhase`, never raw state.
 - **Effect**: an `EFFECT_KINDS` entry (`systems/effects.js`: lifetime + optional `step`) and an `EFFECT_DRAWERS` entry (`render/effects.js`); spawn with `addEffect(state, kind, now, props)`.
 - **Run-scoped state**: add it to `createRunState()`; a test checks `resetRun` restores exactly that set.
 - **Sound**: one `TONES` entry in `audio/sfx.js`; `tests/audio.test.js` checks every `sfx.play*` call exists.

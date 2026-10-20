@@ -1,6 +1,6 @@
 // End-to-end smoke run in headless Chromium: the start overlay, every sound,
-// the cosmetics menu, each encounter via its debug key, a death, and the
-// restart lockout. Fails on page errors, console errors/warnings, and failed
+// the cosmetics menu, the controls tutorial, each encounter via its debug
+// key, a death, and the restart lockout. Fails on page errors, console errors/warnings, and failed
 // requests; screenshots key moments for eyeballing.
 //
 // Usage: node tools/verify/smoke.mjs [url]
@@ -22,16 +22,21 @@ const base = process.argv[2] ?? server.url;
 
 const EQUIPPED = { hat: 'tophat', sunglasses: 'aviator', clothes: 'sneakers-red', body: 'cape-hero' };
 const problems = [];
-// With Firestore blocked, its client logs connection failures; those are expected.
-const isFirestoreNoise = t => /firestore|Failed to load resource: net::ERR_FAILED$/i.test(t);
+// Expected noise: Firestore's client logging its blocked connection, and
+// Chrome nudging about this script's own canvas pixel polling.
+const isToolNoise = t => /firestore|Failed to load resource: net::ERR_FAILED$|willReadFrequently/i.test(t);
 
-async function newGame(browser, label, difficulty) {
+async function newGame(browser, label, difficulty, { tutorial = false } = {}) {
   const page = await newPage(browser);
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') problems.push(`[${label}] console.${m.type()}: ${m.text()}`); });
   page.on('pageerror', e => problems.push(`[${label}] pageerror: ${e.message}`));
   page.on('requestfailed', r => { if (!/firestore\.googleapis\.com/.test(r.url())) problems.push(`[${label}] request failed: ${r.url()}`); });
   page.on('response', r => { if (r.status() >= 400) problems.push(`[${label}] HTTP ${r.status()}: ${r.url()}`); });
-  await page.addInitScript(eq => localStorage.setItem('dachshundDashEquippedCosmetics', JSON.stringify(eq)), EQUIPPED);
+  await page.addInitScript(({ eq, tutorial }) => {
+    localStorage.setItem('dachshundDashEquippedCosmetics', JSON.stringify(eq));
+    // A fresh profile would otherwise open every run with the tutorial.
+    if (!tutorial) localStorage.setItem('dachshundDashTutorial', JSON.stringify({ version: Number.MAX_SAFE_INTEGER, seenAt: Date.now() }));
+  }, { eq: EQUIPPED, tutorial });
   await page.goto(base);
   await page.waitForSelector('#nameEntryOverlay.visible');
   await page.fill('#nameInput', 'SMOKE');
@@ -42,6 +47,17 @@ async function newGame(browser, label, difficulty) {
 }
 
 const shot = (page, file) => page.screenshot({ path: path.join(outDir, file) });
+
+// Waits until the tutorial's gold prompt text (JUMP!, AGAIN!, DUCK!) is on
+// screen, or with `shown` false, until it's gone.
+const waitForPrompt = (page, shown = true) => page.waitForFunction(want => {
+  const c = document.getElementById('game');
+  const s = c.width / 800, top = c.height / s - 250;
+  const d = c.getContext('2d').getImageData(330 * s, (58 + top) * s, 140 * s, 28 * s).data;
+  let gold = 0;
+  for (let i = 0; i < d.length; i += 4) if (d[i] > 150 && d[i + 1] > 130 && d[i + 2] < 90) gold++;
+  return (gold > 40) === want;
+}, shown, { timeout: 15000, polling: 50 });
 const isRunning = page => page.evaluate(() => !document.getElementById('customizeBtn').classList.contains('visible'));
 const VERY_EASY = 0, VERY_HARD = 4;  // 6 hearts survive unattended; 1 heart dies fast
 
@@ -64,6 +80,23 @@ try {
   await page.waitForTimeout(400);
   await shot(page, '02-cosmetics-menu.png');
   await page.click('#cosmeticsDoneBtn', { force: true });
+  await page.close();
+
+  // The tutorial, as a first visit sees it: wait for each gold prompt, act.
+  page = await newGame(browser, 'tutorial', VERY_EASY, { tutorial: true });
+  await page.click('#game');
+  for (const [n, name, act] of [[1, 'jump', 'Space'], [2, 'tower-jump', 'Space'], [3, 'jump-again', 'Space'], [4, 'duck', 'ArrowDown']]) {
+    await waitForPrompt(page);
+    await shot(page, `tutorial-${n}-${name}.png`);
+    await page.keyboard.down(act);
+    await waitForPrompt(page, false);
+    if (act === 'Space') await page.keyboard.up(act);
+  }
+  await page.waitForTimeout(700);
+  await shot(page, 'tutorial-5-ready.png');
+  await page.keyboard.up('ArrowDown');
+  await page.waitForFunction(() => localStorage.getItem('dachshundDashTutorial'), null, { timeout: 5000 })
+    .catch(() => problems.push('tutorial: not recorded as seen after finishing'));
   await page.close();
 
   // Each encounter: start a run, press its debug key, capture moments.
@@ -112,7 +145,7 @@ try {
   server?.close();
 }
 
-const real = problems.filter(p => !isFirestoreNoise(p));
+const real = problems.filter(p => !isToolNoise(p));
 console.log(real.length ? `PROBLEMS:\n${real.join('\n')}` : 'no problems');
 console.log(`screenshots in ${outDir}`);
 process.exit(real.length ? 1 : 0);

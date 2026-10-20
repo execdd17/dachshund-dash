@@ -24,6 +24,7 @@ static server, `launchBrowser()` for the Playwright Chromium, and
 - Get past the start overlay: fill `#nameInput`, optionally set `#difficultySlider` (0 = VERY EASY, 6 hearts — good for unattended runs; 4 = VERY HARD, 1 heart — quick deaths) and dispatch `input`, then click `#nameSubmitBtn`.
 - Start/restart a run: `page.keyboard.press('Space')` or click the `#game` canvas.
 - To force collisions, just never jump — the dog hits the first obstacle in ~5s.
+- A fresh profile opens its first run with the controls tutorial, and debug scene keys do nothing while it runs. To skip it, `addInitScript` setting `localStorage.dachshundDashTutorial` to `JSON.stringify({ version: Number.MAX_SAFE_INTEGER, seenAt: Date.now() })` (not `Infinity`: JSON turns it into `null`). To drive it, wait for its gold prompt text, as `tools/verify/smoke.mjs` does.
 - Debug keys (`js/input/debug.js`): P slow-mo, C chase, B boss, T trampoline scene, G golden hot dog, R rain, H hat. C/B/T/G only act mid-run; C/B/T never start a scene on top of a running one.
 - Collect `pageerror` / console errors — CLAUDE.md says asset/Firebase init errors show there.
 

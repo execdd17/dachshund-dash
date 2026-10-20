@@ -191,14 +191,19 @@ export function drawGoldenHotDog(ctx, x, y, frameCount) {
 }
 
 // Two items piled on the ground with a wobbling "!" warning above.
-function drawPile(ctx, x, y, frameCount, drawItem) {
-  drawItem(ctx, x + 2, y + 20);
-  drawItem(ctx, x - 2, y);
+// The bobbing "!" above a pile.
+function drawAlertMark(ctx, x, y, frameCount) {
   const wobble = Math.sin(frameCount * 0.15) * 2;
   ctx.fillStyle = '#FF1493';
   ctx.font = 'bold 14px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText('!', x + 18, y - 8 + wobble);
+}
+
+function drawPile(ctx, x, y, frameCount, drawItem) {
+  drawItem(ctx, x + 2, y + 20);
+  drawItem(ctx, x - 2, y);
+  drawAlertMark(ctx, x, y, frameCount);
 }
 
 export function drawHotDogStack(ctx, x, y, frameCount) {
@@ -295,6 +300,14 @@ export function drawChocolateBar(ctx, x, y) {
 
 export function drawChocolateStack(ctx, x, y, frameCount) {
   drawPile(ctx, x, y, frameCount, drawChocolateBar);
+}
+
+// A taller pile (tutorial double-jump tower): bars every 20px, alternately
+// nudged left and right so it reads as stacked by hand.
+function drawChocolateTower(ctx, x, y, height, frameCount) {
+  const bars = Math.round((height - 22) / 20) + 1;
+  for (let i = 0; i < bars; i++) drawChocolateBar(ctx, x + (i % 2 ? -2 : 2), y + height - 22 - i * 20);
+  drawAlertMark(ctx, x, y, frameCount);
 }
 
 export function drawFrisbee(ctx, x, y, frameCount) {
@@ -778,6 +791,7 @@ export const OBSTACLE_LOOKS = {
     giant: (ctx, o) => drawHotDog(ctx, o.x, o.y),
     chase: (ctx, o) => drawAcorn(ctx, o.x, o.y),
   },
+  tower: { normal: (ctx, o, v) => drawChocolateTower(ctx, o.x, o.y, o.height, v.frameCount) },
   stack: {
     normal: (ctx, o, v) => drawChocolateStack(ctx, o.x, o.y, v.frameCount),
     giant: (ctx, o, v) => drawHotDogStack(ctx, o.x, o.y, v.frameCount),

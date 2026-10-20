@@ -4,18 +4,30 @@
 import { chaseScene } from './chase.js';
 import { bossScene } from './boss.js';
 import { trampScene } from './trampoline.js';
+import { tutorialScene } from './tutorial.js';
 import { stepScene, sceneBlocksSpawning } from './encounters.js';
 
-export const SCENES = [chaseScene, bossScene, trampScene];
+export const SCENES = [tutorialScene, chaseScene, bossScene, trampScene];
 const SCENE_BY_ID = Object.fromEntries(SCENES.map(def => [def.id, def]));
+const runningDef = state => SCENE_BY_ID[state.scene?.id];
 
 export function updateScenes(state, scale, services, now) {
   for (const def of SCENES) stepScene(state, def, { scale, services, now });
 }
 
 export function scenesBlockSpawning(state) {
-  const def = SCENE_BY_ID[state.scene?.id];
+  const def = runningDef(state);
   return Boolean(def && sceneBlocksSpawning(state, def));
+}
+
+// Multiplier on game time from the running scene's timeScale(scene), if any.
+export function sceneTimeScale(state) {
+  return runningDef(state)?.timeScale?.(state.scene) ?? 1;
+}
+
+// True while the running scene is `scoreless` (no distance points).
+export function scenesFreezeScore(state) {
+  return Boolean(runningDef(state)?.scoreless);
 }
 
 // 'idle' unless scene `id` holds the slot.

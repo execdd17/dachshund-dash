@@ -62,6 +62,15 @@ export function checkCollision(state, services, now = performance.now()) {
       if (state.dog.vy < 0 || now < state.invulnUntil) continue;
       if (!spendHeart(state, services, now)) return true;
     } else if (def.contact === 'hazard') {
+      // Tutorial practice obstacles (systems/tutorial.js) never cost a heart:
+      // knocked away and marked, so the step can repeat.
+      if (obs.practice) {
+        obs.hit = true;
+        triggerBonkEffect(state, obs, now);
+        services.sfx.playBonk();
+        state.obstacles.splice(i, 1);
+        continue;
+      }
       if (isGiant(state)) {
         if (def.giant === 'bonk') {
           triggerBonkEffect(state, obs, now);

@@ -1,5 +1,5 @@
 // HUD: score readout, giant-mode timer, hearts, music icon,
-// idle/game-over text.
+// idle/game-over text, tutorial prompts.
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
@@ -8,6 +8,7 @@ import {
 import { roundRect } from './primitives.js';
 import { formatOrdinal } from '../leaderboard/global.js';
 import { isGiant } from '../systems/giant.js';
+import { TUTORIAL_STEP_COUNT } from '../systems/tutorial.js';
 
 // In app mode the HUD hugs the visible top edge (above world y=0, inside the
 // device safe areas) instead of the world's top — see view.js.
@@ -178,4 +179,60 @@ export function drawGameOverScreen(ctx, state) {
   ctx.font = 'bold 7px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText('X', dog.x + 82, dog.y - 3);
+}
+
+// Tutorial text, per step (shown while its obstacle approaches) and per
+// prompt (flashing while the game waits on the action), worded per device.
+const TUTORIAL_STEP_TITLES = ['Jump over the chocolate!', 'Too tall? Jump twice!', 'Too high to jump? Duck!'];
+const TUTORIAL_PROMPTS = {
+  jump: { text: 'JUMP!', keys: 'SPACE or ↑', touch: 'TAP the right side' },
+  jumpAgain: { text: 'AGAIN!', keys: 'press again in the air', touch: 'tap again in the air' },
+  duck: {
+    text: 'DUCK!', keys: 'HOLD ↓', touch: 'HOLD the left side',
+    tip: { keys: 'tip: ↓ in the air drops you fast', touch: 'tip: hold left in the air to drop fast' },
+  },
+};
+
+export function drawTutorialOverlay(ctx, state, now = performance.now()) {
+  const scene = state.scene;
+  if (scene?.id !== 'tutorial' || scene.phase === 'pending') return;
+  const device = state.touchDevice ? 'touch' : 'keys';
+  const lastStep = scene.step === TUTORIAL_STEP_COUNT - 1;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  roundRect(ctx, W / 2 - 170, 30, 340, 90, 8);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.font = 'bold 12px Courier New';
+  ctx.fillText(`HOW TO PLAY  ${Math.min(scene.step + 1, TUTORIAL_STEP_COUNT)}/${TUTORIAL_STEP_COUNT}`, W / 2, 47);
+
+  const prompt = TUTORIAL_PROMPTS[scene.prompt];
+  if (scene.phase === 'praise') {
+    ctx.fillStyle = '#7CFC00';
+    ctx.font = 'bold 30px Courier New';
+    ctx.fillText(lastStep ? "YOU'RE READY!" : 'NICE!', W / 2, 88);
+  } else if (scene.phase === 'retry') {
+    ctx.fillStyle = '#FF6347';
+    ctx.font = 'bold 30px Courier New';
+    ctx.fillText('TRY AGAIN!', W / 2, 88);
+  } else if (prompt) {
+    ctx.save();
+    ctx.globalAlpha = Math.sin(now * 0.012) > 0 ? 1 : 0.55;
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 32px Courier New';
+    ctx.fillText(prompt.text, W / 2, 80);
+    ctx.restore();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px Courier New';
+    ctx.fillText(prompt[device], W / 2, 100);
+    if (prompt.tip) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.font = '12px Courier New';
+      ctx.fillText(prompt.tip[device], W / 2, 114);
+    }
+  } else {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Courier New';
+    ctx.fillText(TUTORIAL_STEP_TITLES[scene.step], W / 2, 86);
+  }
 }

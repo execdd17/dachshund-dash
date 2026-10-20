@@ -258,17 +258,25 @@
     padding: 16px;
   }
 
-  /* --- Customize button (idle & game-over screens) --- */
-  /* Centered just below the start/game-over text. The canvas maps 800
-     logical units across the full viewport width with the ground pinned to
-     the bottom edge, so logical y=118 is (250-118)/800 of the width up from
-     the bottom. */
-  #customizeBtn {
-    display: none;
+  /* --- Idle & game-over buttons: ACCESSORIZE, HOW TO PLAY --- */
+  /* One row centered just below the start/game-over text. The canvas maps
+     800 logical units across the full viewport width with the ground pinned
+     to the bottom edge, so logical y=118 is (250-118)/800 of the width up
+     from the bottom. */
+  #idleActions {
     position: absolute;
     top: calc(100% - 16.5vw);
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 5;
+    pointer-events: none;  /* the empty row mustn't block canvas taps */
+  }
+  #idleActions button { pointer-events: auto; white-space: nowrap; }
+  #customizeBtn {
+    display: none;
     align-items: center;
     gap: 9px;
     font-family: 'Courier New', monospace;
@@ -282,7 +290,6 @@
     border-radius: 6px;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
     cursor: pointer;
-    z-index: 5;
     animation: customize-pulse 1.6s ease-in-out infinite;
   }
   #customizeBtn.visible { display: inline-flex; }
@@ -304,12 +311,28 @@
   #customizeBtn:hover {
     background: #5aa34e;
     animation: none;
-    transform: translateX(-50%) scale(1.06);
+    transform: scale(1.06);
   }
   @keyframes customize-pulse {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50% { transform: translateX(-50%) scale(1.06); }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
   }
+  /* Secondary to ACCESSORIZE: same shape, quieter fill, no pulse. */
+  #howToPlayBtn {
+    display: none;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    padding: 10px 18px;
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+    border: 3px solid #fff;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #howToPlayBtn.visible { display: inline-block; }
+  #howToPlayBtn:hover { background: rgba(0, 0, 0, 0.5); }
 
   /* --- Cosmetics menu overlay --- */
   #cosmeticsMenu {

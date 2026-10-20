@@ -8,9 +8,10 @@ import { OBSTACLE_TYPES, makeObstacle, chaseAcornY } from '../js/systems/obstacl
 import { OBSTACLE_LOOKS } from '../js/render/obstacles.js';
 import { spawnObstacle } from '../js/systems/spawning.js';
 import { spawnTrampRep } from '../js/systems/trampoline.js';
+import { tutorialScene, TUTORIAL_STEP_COUNT } from '../js/systems/tutorial.js';
 import { createState } from '../js/core/state.js';
 import { CHASE_ACORN_Y, TRAMP_REPS } from '../js/config.js';
-import { createSequenceRng } from './helpers.js';
+import { createSequenceRng, createTestServices } from './helpers.js';
 
 test('every spawnable obstacle type is registered', () => {
   const seen = new Set();
@@ -28,6 +29,14 @@ test('every spawnable obstacle type is registered', () => {
     const state = createState(() => 0.5);
     spawnTrampRep(state, rep);
     state.obstacles.forEach(o => seen.add(o.type));
+  }
+  // The tutorial spawns its own practice obstacles, one step at a time.
+  const tutorial = createState(() => 0.5);
+  const scene = { id: 'tutorial', phase: 'pending', ...tutorialScene.initialData() };
+  tutorialScene.start(tutorial, scene);
+  for (let step = 0; step < TUTORIAL_STEP_COUNT; step++) {
+    tutorial.obstacles.forEach(o => seen.add(o.type));
+    tutorialScene.phases.praise(tutorial, scene, { now: Infinity, services: createTestServices() });
   }
   assert.deepEqual([...seen].sort(), Object.keys(OBSTACLE_TYPES).sort());
 });

@@ -26,6 +26,7 @@ export function createTestServices(overrides = {}) {
     sfx: createSilentSfx(),
     music: createSilentMusic(),
     recordRun: () => {},
+    tutorialSeen: () => {},
     ...overrides,
   };
 }
