@@ -1,7 +1,7 @@
 // Per-frame simulation step. Orchestrates physics, scrolling, spawning,
 // scoring, weather, giant mode, and the scenes.
 //
-// services: { sfx, music, globalScores, recordScore } — everything
+// services: { sfx, music, recordRun } — everything
 // effectful is injected so this whole layer runs under Node for tests.
 
 import {

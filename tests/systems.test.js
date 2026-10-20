@@ -285,48 +285,18 @@ test('boss squirrel trails the dog without catching it (peak stays behind hitbox
 
 // --- Death handling ---
 
-test('killDog: non-qualifying score goes straight to dead without recording', () => {
-  const state = createState(() => 0.5);
-  state.gameState = 'running';
-  state.score = 10;
-  state.highScores = [500, 400, 300, 200, 100].map(s => ({ name: 'X', score: s }));
-  let recorded = false;
-  killDog(state, createTestServices({ recordScore: () => { recorded = true; } }));
-  assert.equal(state.gameState, 'dead');
-  assert.equal(recorded, false);
-});
-
-test('killDog: qualifying score is recorded immediately, no name prompt', () => {
+test('killDog ends the run, then hands it to the leaderboard', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
   state.score = 999;
-  state.playerName = 'KID';
-  let recordedScore = null;
-  const services = createTestServices({ recordScore: (s) => { recordedScore = s; } });
-  killDog(state, services);
+  let recordedState = null;
+  let gameStateWhenRecorded = null;
+  killDog(state, createTestServices({
+    recordRun: s => { recordedState = s; gameStateWhenRecorded = s.gameState; },
+  }));
   assert.equal(state.gameState, 'dead');
-  assert.equal(recordedScore, 999);
-});
-
-test('killDog stores the global placement for the game-over banner', () => {
-  const state = createState(() => 0.5);
-  state.gameState = 'running';
-  state.score = 300;
-  state.difficulty = 'NORMAL';
-  let asked = null;
-  const services = createTestServices({
-    globalScores: {
-      qualifies: () => false,
-      placement: (score, difficulty) => { asked = { score, difficulty }; return 4; },
-      submit: async () => {},
-      maybeRefresh: () => {},
-      setSessionDifficulty: async () => {},
-      loadView: async () => {},
-    },
-  });
-  killDog(state, services);
-  assert.equal(state.globalPlacement, 4);
-  assert.deepEqual(asked, { score: 300, difficulty: 'NORMAL' });
+  assert.equal(recordedState, state);
+  assert.equal(gameStateWhenRecorded, 'dead');
 });
 
 test('killDog clears all encounter modes', () => {

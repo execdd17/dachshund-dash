@@ -1,13 +1,13 @@
 // Start-of-session setup overlay (DOM): asks for the player's name and a
-// difficulty (starting hearts) once per page load. The stored name is reused
-// for every qualifying score afterwards, so death never re-prompts; the
-// difficulty is locked for the session (reload the page to change it).
+// difficulty (starting hearts) once per page load. The name is reused for
+// every qualifying score afterwards (leaderboard/recorder.js), so death never
+// re-prompts; the difficulty is locked for the session (reload to change it).
 
-import { normalizeName, insertScore, saveHighScores } from '../leaderboard/local.js';
+import { normalizeName } from '../leaderboard/local.js';
 import { DEFAULT_DIFFICULTY_INDEX } from '../config.js';
 import { difficultyAt } from '../core/difficulty.js';
 
-export function createNameEntry(state, { storage, globalScores, onDifficultyChosen = () => {} }) {
+export function createNameEntry(state, { onDifficultyChosen = () => {} } = {}) {
   function difficultyText(idx) {
     const level = difficultyAt(idx);
     return `${level.label} — ${level.hearts} HEART${level.hearts === 1 ? '' : 'S'}`;
@@ -42,16 +42,6 @@ export function createNameEntry(state, { storage, globalScores, onDifficultyChos
     onDifficultyChosen(level.label);
   }
 
-  // Records a qualifying score locally and globally under the setup name.
-  // Called from killDog via services.recordScore.
-  function recordScore(scoreVal) {
-    const displayName = state.playerName ?? normalizeName('');
-    state.highScores = insertScore(state.highScores, displayName, scoreVal);
-    saveHighScores(storage, state.highScores);
-    state.highScore = state.highScores[0]?.score ?? 0;
-    globalScores.submit(displayName, scoreVal, state.difficulty);
-  }
-
   function wireControls() {
     document.getElementById('nameSubmitBtn').addEventListener('click', submit);
     const slider = document.getElementById('difficultySlider');
@@ -60,5 +50,5 @@ export function createNameEntry(state, { storage, globalScores, onDifficultyChos
     });
   }
 
-  return { show, hide, submit, recordScore, wireControls };
+  return { show, hide, submit, wireControls };
 }

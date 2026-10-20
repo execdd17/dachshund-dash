@@ -25,15 +25,7 @@ export function createTestServices(overrides = {}) {
   return {
     sfx: createSilentSfx(),
     music: createSilentMusic(),
-    globalScores: {
-      qualifies: () => false,
-      placement: () => null,
-      submit: async () => {},
-      maybeRefresh: () => {},
-      setSessionDifficulty: async () => {},
-      loadView: async () => {},
-    },
-    recordScore: () => {},
+    recordRun: () => {},
     ...overrides,
   };
 }

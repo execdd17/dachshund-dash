@@ -12,6 +12,7 @@ import { initFirebase } from './firebase.js';
 import { createGlobalScores } from './leaderboard/global.js';
 import { createLeaderboardUi } from './leaderboard/ui.js';
 import { loadHighScores } from './leaderboard/local.js';
+import { createScoreRecorder } from './leaderboard/recorder.js';
 import { createNameEntry } from './ui/nameEntry.js';
 import { update } from './systems/update.js';
 import { draw } from './render/draw.js';
@@ -67,9 +68,8 @@ const globalScores = createGlobalScores(initFirebase());
 const leaderboardUi = createLeaderboardUi(globalScores);
 globalScores.onChange = leaderboardUi.render;
 
+const scoreRecorder = createScoreRecorder({ storage: localStorage, globalScores });
 const nameEntry = createNameEntry(state, {
-  storage: localStorage,
-  globalScores,
   // Load the leaderboard for the board the player is actually competing on.
   onDifficultyChosen: label => leaderboardUi.setSessionDifficulty(label),
 });
@@ -79,8 +79,7 @@ const cosmeticsMenu = createCosmeticsMenu(cosmetics, sprites, state);
 const services = {
   sfx,
   music,
-  globalScores,
-  recordScore: nameEntry.recordScore,
+  recordRun: scoreRecorder.recordRun,
 };
 
 // --- Wiring ---

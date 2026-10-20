@@ -146,7 +146,7 @@ export function createGlobalScores({ db, ready }) {
 
   function placement(score, difficulty) {
     if (difficulty !== store.sessionDifficulty || !store.sessionLoaded) return null;
-    return getGlobalPlacement(sessionBoard(), difficulty, score);
+    return getGlobalPlacement(sessionBoard(), score);
   }
 
   store.setSessionDifficulty = setSessionDifficulty;
@@ -158,18 +158,11 @@ export function createGlobalScores({ db, ready }) {
   return store;
 }
 
-// Pure: the capped leaderboard for one difficulty, preserving fetch order
-// (score desc, timestamp asc).
-export function getScoresForDifficulty(scores, difficulty) {
-  return scores.filter(e => e.difficulty === difficulty).slice(0, GLOBAL_MAX_SCORES);
-}
-
-// Pure: the 1-based rank a score would take on one difficulty's board, or
-// null if it wouldn't make the capped board. Ties rank below the existing
-// entries (the board is ordered score desc, timestamp asc, so an equal score
-// already on the board got there first).
-export function getGlobalPlacement(scores, difficulty, score) {
-  const board = getScoresForDifficulty(scores, difficulty);
+// Pure: the 1-based rank a score would take on a board (one difficulty, as
+// fetched), or null if it wouldn't make the capped board. Ties rank below the
+// existing entries (the board is ordered score desc, timestamp asc, so an
+// equal score already on the board got there first).
+export function getGlobalPlacement(board, score) {
   const rank = board.filter(e => e.score >= score).length + 1;
   return rank <= GLOBAL_MAX_SCORES ? rank : null;
 }

@@ -6,9 +6,10 @@ import {
   loadHighScores, saveHighScores, normalizeName, insertScore, qualifiesLocally,
 } from '../js/leaderboard/local.js';
 import {
-  createGlobalScores, getFilteredScores, getScoresForDifficulty,
-  getGlobalPlacement, formatOrdinal,
+  createGlobalScores, getFilteredScores, getGlobalPlacement, formatOrdinal,
 } from '../js/leaderboard/global.js';
+import { createScoreRecorder } from '../js/leaderboard/recorder.js';
+import { createState } from '../js/core/state.js';
 import {
   HIGH_SCORES_KEY, MAX_HIGH_SCORES, GLOBAL_MAX_SCORES,
 } from '../js/config.js';
@@ -178,38 +179,17 @@ test('getFilteredScores ranks then filters by name substring', () => {
   assert.deepEqual(filtered.map(e => e.rank), [1, 3]);
 });
 
-test('getScoresForDifficulty slices one difficulty and caps the board', () => {
-  const scores = [
-    { name: 'A', score: 300, difficulty: 'NORMAL' },
-    { name: 'B', score: 250, difficulty: 'HARD' },
-    { name: 'C', score: 200, difficulty: 'NORMAL' },
-  ];
-  assert.deepEqual(getScoresForDifficulty(scores, 'NORMAL').map(e => e.name), ['A', 'C']);
-  assert.deepEqual(getScoresForDifficulty(scores, 'HARD').map(e => e.name), ['B']);
-  assert.deepEqual(getScoresForDifficulty(scores, 'VERY HARD'), []);
+test('getGlobalPlacement ranks on one board, ties below existing entries', () => {
+  const board = [{ name: 'A', score: 300 }, { name: 'C', score: 200 }];
+  assert.equal(getGlobalPlacement(board, 400), 1);
+  assert.equal(getGlobalPlacement(board, 250), 2);
+  assert.equal(getGlobalPlacement(board, 200), 3);
+  assert.equal(getGlobalPlacement(board, 10), 3);
+  assert.equal(getGlobalPlacement([], 1), 1);
 
-  const many = Array.from({ length: GLOBAL_MAX_SCORES + 5 },
-    (_, i) => ({ name: 'P' + i, score: 1000 - i, difficulty: 'EASY' }));
-  assert.equal(getScoresForDifficulty(many, 'EASY').length, GLOBAL_MAX_SCORES);
-});
-
-test('getGlobalPlacement ranks per difficulty, ties below existing entries', () => {
-  const scores = [
-    { name: 'A', score: 300, difficulty: 'NORMAL' },
-    { name: 'B', score: 250, difficulty: 'HARD' },
-    { name: 'C', score: 200, difficulty: 'NORMAL' },
-  ];
-  assert.equal(getGlobalPlacement(scores, 'NORMAL', 400), 1);
-  assert.equal(getGlobalPlacement(scores, 'NORMAL', 250), 2);
-  assert.equal(getGlobalPlacement(scores, 'NORMAL', 200), 3);
-  assert.equal(getGlobalPlacement(scores, 'NORMAL', 10), 3);
-  assert.equal(getGlobalPlacement(scores, 'HARD', 10), 2);
-  assert.equal(getGlobalPlacement(scores, 'VERY HARD', 1), 1);
-
-  const full = Array.from({ length: GLOBAL_MAX_SCORES },
-    (_, i) => ({ name: 'P' + i, score: 5000 - i, difficulty: 'EASY' }));
-  assert.equal(getGlobalPlacement(full, 'EASY', 1), null);
-  assert.equal(getGlobalPlacement(full, 'EASY', 6000), 1);
+  const full = Array.from({ length: GLOBAL_MAX_SCORES }, (_, i) => ({ name: 'P' + i, score: 5000 - i }));
+  assert.equal(getGlobalPlacement(full, 1), null);
+  assert.equal(getGlobalPlacement(full, 6000), 1);
 });
 
 test('formatOrdinal handles st/nd/rd/th including the teens', () => {
@@ -275,4 +255,60 @@ test('qualifies is judged against the board for that difficulty only', async () 
   assert.equal(store.qualifies(6000, 'HARD'), true);
   await store.setSessionDifficulty('NORMAL');
   assert.equal(store.qualifies(10, 'NORMAL'), true);
+});
+
+// --- Score recorder (what happens to a finished run) ---
+
+function fakeGlobalBoard({ qualifies = false, placement = null } = {}) {
+  const submitted = [];
+  return {
+    submitted,
+    qualifies: () => qualifies,
+    placement: (score, difficulty) => (typeof placement === 'function' ? placement(score, difficulty) : placement),
+    submit: (name, score, difficulty) => { submitted.push({ name, score, difficulty }); },
+  };
+}
+
+function finishedRun(overrides) {
+  const state = createState(() => 0.5);
+  Object.assign(state, { gameState: 'dead', difficulty: 'NORMAL', ...overrides });
+  return state;
+}
+
+test('recorder: a score that makes no board only moves the session best', () => {
+  const storage = createFakeStorage();
+  const globalScores = fakeGlobalBoard();
+  const full = [500, 400, 300, 200, 100].map(s => ({ name: 'X', score: s }));
+  const state = finishedRun({ score: 10, highScores: full, highScore: 5 });
+  createScoreRecorder({ storage, globalScores }).recordRun(state);
+  assert.deepEqual(state.highScores, full);
+  assert.equal(state.highScore, 10);
+  assert.deepEqual(globalScores.submitted, []);
+  assert.deepEqual(storage.dump(), {});
+});
+
+test('recorder: a qualifying score is saved locally and submitted under the setup name', () => {
+  const storage = createFakeStorage();
+  const globalScores = fakeGlobalBoard();
+  const state = finishedRun({ score: 999, playerName: 'KID' });
+  createScoreRecorder({ storage, globalScores }).recordRun(state);
+  assert.deepEqual(state.highScores, [{ name: 'KID', score: 999 }]);
+  assert.equal(state.highScore, 999);
+  assert.deepEqual(loadHighScores(storage), [{ name: 'KID', score: 999 }]);
+  assert.deepEqual(globalScores.submitted, [{ name: 'KID', score: 999, difficulty: 'NORMAL' }]);
+});
+
+test('recorder: a global-only qualifier is still recorded, and placement feeds the banner', () => {
+  const full = [500, 400, 300, 200, 100].map(s => ({ name: 'X', score: s }));
+  let asked = null;
+  const globalScores = fakeGlobalBoard({
+    qualifies: true,
+    placement: (score, difficulty) => { asked = { score, difficulty }; return 4; },
+  });
+  const state = finishedRun({ score: 50, highScores: full });
+  createScoreRecorder({ storage: createFakeStorage(), globalScores }).recordRun(state);
+  assert.equal(state.globalPlacement, 4);
+  assert.deepEqual(asked, { score: 50, difficulty: 'NORMAL' });
+  assert.equal(globalScores.submitted.length, 1);
+  assert.equal(globalScores.submitted[0].name, 'PLAYER', 'no setup name falls back to the default');
 });
