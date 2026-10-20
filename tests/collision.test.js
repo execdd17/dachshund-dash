@@ -9,6 +9,7 @@ import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
 import {
   GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y,
 } from '../js/config.js';
+import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { createTestServices } from './helpers.js';
 
 test('dog hitbox is lower-profile when ducking', () => {
@@ -136,21 +137,21 @@ test('golden hot dog still works during invulnerability', () => {
   state.invulnUntil = 2000;
   const died = checkCollision(state, createTestServices(), 1500);
   assert.equal(died, false);
-  assert.equal(state.giantActive, true);
+  assert.equal(getGiantPhase(state), 'growing');
 });
 
 test('golden hot dog activates giant mode instead of killing', () => {
   const state = stateWithObstacleAtDog('golden');
   const died = checkCollision(state, createTestServices());
   assert.equal(died, false);
-  assert.equal(state.giantActive, true);
+  assert.equal(getGiantPhase(state), 'growing');
   assert.equal(state.giantScoreMultiplier, 2);
   assert.deepEqual(state.obstacles, []);
 });
 
 test('giant mode eats ground obstacles for bonus points', () => {
   const state = stateWithObstacleAtDog('hotdog');
-  state.giantActive = true;
+  setGiantPhase(state, 'active');
   const before = state.score;
   const died = checkCollision(state, createTestServices());
   assert.equal(died, false);
@@ -162,7 +163,7 @@ test('giant mode eats ground obstacles for bonus points', () => {
 test('giant mode bonks birds for a smaller bonus', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
-  state.giantActive = true;
+  setGiantPhase(state, 'active');
   // Giant hitbox reaches higher; put the bird overlapping it
   state.obstacles = [{ x: state.dog.x + 20, y: GROUND_Y - 49, width: 66, height: 51, type: 'bird' }];
   const before = state.score;

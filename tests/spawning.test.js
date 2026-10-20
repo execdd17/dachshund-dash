@@ -9,6 +9,7 @@ import {
   BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
   PATTERN_CHANCE,
 } from '../js/config.js';
+import { setScenePhase } from '../js/systems/encounters.js';
 import { createSequenceRng } from './helpers.js';
 
 test('early game spawns only hotdogs regardless of roll', () => {
@@ -45,7 +46,7 @@ test('frisbee roll past score 80 spawns bird or stacked frisbee pair', () => {
 test('chase mode spawns acorn-skinned obstacles at the squirrel offset', () => {
   const state = createState(() => 0.5);
   state.score = 100;
-  state.chaseActive = true;
+  setScenePhase(state, 'chase', 'active');
   spawnObstacle(state, createSequenceRng([0.99]));
   assert.equal(state.obstacles[0].skin, 'chase');
   assert.equal(state.obstacles[0].x, state.dog.x + SQUIRREL_OFFSET);

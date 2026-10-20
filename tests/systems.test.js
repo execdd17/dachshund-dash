@@ -8,7 +8,7 @@ import {
 import { updateChase } from '../js/systems/chase.js';
 import { updateBoss } from '../js/systems/boss.js';
 import { updateTrampoline } from '../js/systems/trampoline.js';
-import { markSceneEnd } from '../js/systems/encounters.js';
+import { markSceneEnd, getScenePhase, setScenePhase, getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { killDog } from '../js/systems/death.js';
 import { jump, duck } from '../js/systems/control.js';
 import {
@@ -25,9 +25,8 @@ test('giant mode activation and timed visual scale easing', () => {
   const state = createState(() => 0.5);
   const services = createTestServices();
   activateGiantMode(state, services, 1000);
-  assert.equal(state.giantActive, true);
+  assert.equal(getGiantPhase(state), 'growing');
   assert.equal(state.giantScoreMultiplier, GIANT_SCORE_MULTIPLIER);
-  assert.equal(state.giantGrowing, true);
 
   // Halfway through the grow transition: eased t=0.5 → 1 + (scale-1)*0.75
   const half = getGiantVisualScale(state, 1000 + GIANT_SCALE_TRANSITION / 2);
@@ -35,16 +34,15 @@ test('giant mode activation and timed visual scale easing', () => {
 
   // Past the transition: full scale, growing flag cleared
   assert.equal(getGiantVisualScale(state, 1000 + GIANT_SCALE_TRANSITION), GIANT_SCALE);
-  assert.equal(state.giantGrowing, false);
+  assert.equal(getGiantPhase(state), 'active');
   assert.equal(getGiantVisualScale(state, 2000), GIANT_SCALE);
 
   deactivateGiantMode(state, services, 5000);
-  assert.equal(state.giantActive, false);
-  assert.equal(state.giantShrinking, true);
+  assert.equal(getGiantPhase(state), 'shrinking');
   assert.equal(state.giantScoreMultiplier, 1);
   assert.equal(state.invulnUntil, 5000 + GIANT_END_INVULN, 'grace i-frames after shrink');
   assert.equal(getGiantVisualScale(state, 5000 + GIANT_SCALE_TRANSITION), 1);
-  assert.equal(state.giantShrinking, false);
+  assert.equal(getGiantPhase(state), 'off');
 });
 
 test('giant-end grace period does not shorten longer existing i-frames', () => {
@@ -63,42 +61,42 @@ test('chase arms at CHASE_FIRST_AT, enters when obstacles clear, runs, escapes',
   state.obstacles = [{ x: 100, y: 0, width: 10, height: 10, type: 'hotdog' }];
 
   updateChase(state, 1);
-  assert.equal(state.chasePending, true, 'pending while obstacles on screen');
+  assert.equal(getScenePhase(state, 'chase'), 'pending', 'pending while obstacles on screen');
 
   state.obstacles = [];
   updateChase(state, 1);
-  assert.equal(state.chasePending, false);
-  assert.equal(state.chaseEntering, true);
+  assert.notEqual(getScenePhase(state, 'chase'), 'pending');
+  assert.equal(getScenePhase(state, 'chase'), 'entering');
   assert.equal(state.squirrelEnterX, W + 80);
 
   // Squirrel runs in until it reaches the offset ahead of the dog
-  for (let i = 0; i < 10000 && state.chaseEntering; i++) updateChase(state, 1);
-  assert.equal(state.chaseActive, true);
+  for (let i = 0; i < 10000 && getScenePhase(state, 'chase') === 'entering'; i++) updateChase(state, 1);
+  assert.equal(getScenePhase(state, 'chase'), 'active');
   assert.equal(state.nextObstacleIn, 80);
 
   // Chase runs for its fixed frame duration, then the squirrel escapes
   state.frameCount = state.chaseStartedFrame + CHASE_DURATION_FRAMES;
   updateChase(state, 1);
-  assert.equal(state.chaseActive, false);
-  assert.equal(state.chaseEscaping, true);
+  assert.notEqual(getScenePhase(state, 'chase'), 'active');
+  assert.equal(getScenePhase(state, 'chase'), 'exiting');
   assert.equal(state.squirrelEscapeX, state.dog.x + SQUIRREL_OFFSET);
   assert.equal(state.lastChaseEndScore, state.score);
 
-  for (let i = 0; i < 10000 && state.chaseEscaping; i++) updateChase(state, 1);
-  assert.equal(state.chaseEscaping, false);
+  for (let i = 0; i < 10000 && getScenePhase(state, 'chase') === 'exiting'; i++) updateChase(state, 1);
+  assert.notEqual(getScenePhase(state, 'chase'), 'exiting');
 });
 
 test('chase does not arm during giant or boss modes', () => {
   const state = createState(() => 0.5);
   state.score = CHASE_FIRST_AT + 100;
-  state.giantActive = true;
+  setGiantPhase(state, 'active');
   updateChase(state, 1);
-  assert.equal(state.chasePending, false);
+  assert.notEqual(getScenePhase(state, 'chase'), 'pending');
 
-  state.giantActive = false;
-  state.bossChasing = true;
+  setGiantPhase(state, 'off');
+  setScenePhase(state, 'boss', 'active');
   updateChase(state, 1);
-  assert.equal(state.chasePending, false);
+  assert.notEqual(getScenePhase(state, 'chase'), 'pending');
 });
 
 test('chase and boss do not arm behind a golden pickup, and stand down if giant wins', () => {
@@ -175,10 +173,10 @@ test('no scene arms until SCENE_MIN_GAP has elapsed since the last scene ended',
 
 test('a chase escape completing stamps lastSceneEndAt', () => {
   const state = createState(() => 0.5);
-  state.chaseEscaping = true;
+  setScenePhase(state, 'chase', 'exiting');
   state.squirrelEscapeX = W + 100;  // already past the exit threshold
   updateChase(state, 1, 12345);
-  assert.equal(state.chaseEscaping, false);
+  assert.notEqual(getScenePhase(state, 'chase'), 'exiting');
   assert.equal(state.lastSceneEndAt, 12345);
 });
 
@@ -187,13 +185,13 @@ test('a chase escape completing stamps lastSceneEndAt', () => {
 test('boss queues at each BOSS_MILESTONE and waits out a pending chase', () => {
   const state = createState(() => 0.5);
   state.score = BOSS_MILESTONE + 5;
-  state.chasePending = true;
+  setScenePhase(state, 'chase', 'pending');
   updateBoss(state, 1, createTestServices());
-  assert.equal(state.bossPending, false, 'chasePending blocks boss start');
+  assert.notEqual(getScenePhase(state, 'boss'), 'pending', 'chasePending blocks boss start');
 
-  state.chasePending = false;
+  setScenePhase(state, 'chase', 'idle');
   updateBoss(state, 1, createTestServices());
-  assert.equal(state.bossPending, true);
+  assert.equal(getScenePhase(state, 'boss'), 'pending');
   assert.equal(state.lastBossMilestone, 1);
 });
 
@@ -207,20 +205,20 @@ test('a scene that requested first gets the next turn, regardless of update orde
   const state = createState(() => 0.5);
   state.gameState = 'running';
   state.score = TRAMP_FIRST_AT + 10;
-  state.chaseActive = true;  // tramp requests its turn mid-chase
+  setScenePhase(state, 'chase', 'active');  // tramp requests its turn mid-chase
   updateTrampoline(state, 1, services, 0);
   assert.deepEqual(state.sceneQueue, ['tramp']);
-  assert.equal(state.trampPending, false, 'blocked while the chase runs');
+  assert.notEqual(getScenePhase(state, 'tramp'), 'pending', 'blocked while the chase runs');
 
   // Chase ends; on the next checks both scenes want a turn (chase cooldown
   // long elapsed), but chase runs first in update() — it must still yield.
-  state.chaseActive = false;
+  setScenePhase(state, 'chase', 'idle');
   state.lastChaseEndScore = 1;  // makes chase instantly re-eligible
   updateChase(state, 1, 0);
-  assert.equal(state.chasePending, false, 'chase waits behind the queued tramp');
+  assert.notEqual(getScenePhase(state, 'chase'), 'pending', 'chase waits behind the queued tramp');
   assert.deepEqual(state.sceneQueue, ['tramp', 'chase']);
   updateTrampoline(state, 1, services, 0);
-  assert.equal(state.trampPending, true, 'tramp takes its queued turn');
+  assert.equal(getScenePhase(state, 'tramp'), 'pending', 'tramp takes its queued turn');
   assert.deepEqual(state.sceneQueue, ['chase'], 'chase is next in line');
 });
 
@@ -228,7 +226,7 @@ test('a queued scene holds only one turn even if its condition re-fires', () => 
   const services = createTestServices();
   const state = createState(() => 0.5);
   state.gameState = 'running';
-  state.chaseActive = true;  // block starts so requests pile up
+  setScenePhase(state, 'chase', 'active');  // block starts so requests pile up
   state.score = BOSS_MILESTONE + 5;
   updateBoss(state, 1, services, 0);
   state.score = BOSS_MILESTONE * 2 + 5;  // second milestone while still queued
@@ -240,27 +238,27 @@ test('a queued scene holds only one turn even if its condition re-fires', () => 
 test('boss waits for clear field, chases, then squirrel retreats', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
-  state.bossPending = true;
+  setScenePhase(state, 'boss', 'pending');
   state.obstacles = [];
   const services = createTestServices();
 
   updateBoss(state, 1, services);
-  assert.equal(state.bossChasing, true);
+  assert.equal(getScenePhase(state, 'boss'), 'active');
   assert.equal(state.bossSquirrelX, BOSS_SQUIRREL_START_X);
 
   // Dog stays airborne (jumping) so the grounded-squirrel hitbox never
   // catches it; run the full encounter
   state.dog.jumping = true;
   state.dog.y = 100;
-  for (let i = 0; i < 5000 && state.bossChasing; i++) updateBoss(state, 1, services);
-  assert.equal(state.bossChasing, false);
-  assert.equal(state.bossLosing, true);
+  for (let i = 0; i < 5000 && getScenePhase(state, 'boss') === 'active'; i++) updateBoss(state, 1, services);
+  assert.notEqual(getScenePhase(state, 'boss'), 'active');
+  assert.equal(getScenePhase(state, 'boss'), 'exiting');
   assert.equal(state.gameState, 'running', 'dog survived');
 
   state.dog.jumping = false;
   state.dog.y = 200;
-  for (let i = 0; i < 5000 && state.bossLosing; i++) updateBoss(state, 1, services);
-  assert.equal(state.bossLosing, false);
+  for (let i = 0; i < 5000 && getScenePhase(state, 'boss') === 'exiting'; i++) updateBoss(state, 1, services);
+  assert.notEqual(getScenePhase(state, 'boss'), 'exiting');
 });
 
 test('boss squirrel trails the dog without catching it (peak stays behind hitbox)', () => {
@@ -269,11 +267,11 @@ test('boss squirrel trails the dog without catching it (peak stays behind hitbox
   // not the squirrel itself. Pin that down so tuning changes don't break it.
   const state = createState(() => 0.5);
   state.gameState = 'running';
-  state.bossPending = true;
+  setScenePhase(state, 'boss', 'pending');
   state.obstacles = [];
   const services = createTestServices();
   updateBoss(state, 1, services); // start chase
-  for (let i = 0; i < 5000 && state.bossChasing; i++) {
+  for (let i = 0; i < 5000 && getScenePhase(state, 'boss') === 'active'; i++) {
     updateBoss(state, 1, services);
     assert.ok(state.bossSquirrelX + 30 <= state.dog.x + 23, 'squirrel stays behind the dog hitbox');
   }
@@ -331,13 +329,13 @@ test('killDog clears all encounter modes', () => {
   state.gameState = 'running';
   state.highScores = [500, 400, 300, 200, 100].map(s => ({ name: 'X', score: s }));
   state.score = 1;
-  state.chaseActive = true;
-  state.bossChasing = true;
-  state.giantActive = true;
+  setScenePhase(state, 'chase', 'active');
+  setScenePhase(state, 'boss', 'active');
+  setGiantPhase(state, 'active');
   killDog(state, createTestServices());
-  assert.equal(state.chaseActive, false);
-  assert.equal(state.bossChasing, false);
-  assert.equal(state.giantActive, false);
+  assert.equal(getScenePhase(state, 'chase'), 'idle');
+  assert.equal(getScenePhase(state, 'boss'), 'idle');
+  assert.equal(getGiantPhase(state), 'off');
 });
 
 // --- Controls ---
@@ -388,4 +386,26 @@ test('duck only applies while running and grounded', () => {
   state.dog.jumping = true;
   duck(state, true, services);
   assert.equal(state.dog.ducking, false, 'airborne: no duck');
+});
+
+test('phase accessors round-trip and keep each lifecycle to a single phase', () => {
+  const state = createState(() => 0.5);
+  const phases = {
+    chase: ['pending', 'entering', 'active', 'exiting'],
+    boss: ['pending', 'active', 'exiting'],
+    tramp: ['pending', 'active'],
+  };
+  for (const [id, list] of Object.entries(phases)) {
+    assert.equal(getScenePhase(state, id), 'idle');
+    for (const phase of list) {
+      setScenePhase(state, id, phase);
+      assert.equal(getScenePhase(state, id), phase);
+    }
+    setScenePhase(state, id, 'idle');
+    assert.equal(getScenePhase(state, id), 'idle');
+  }
+  for (const phase of ['growing', 'active', 'shrinking', 'off']) {
+    setGiantPhase(state, phase);
+    assert.equal(getGiantPhase(state), phase);
+  }
 });

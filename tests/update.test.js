@@ -9,6 +9,7 @@ import { jump } from '../js/systems/control.js';
 import {
   GROUND_Y, DT_BASELINE, GIANT_DURATION, BIRD_JUMP_BONUS,
 } from '../js/config.js';
+import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { createTestServices } from './helpers.js';
 
 const DT = DT_BASELINE; // one baseline tick per update
@@ -79,12 +80,11 @@ test('running into an obstacle kills the dog', () => {
 test('giant mode expires after GIANT_DURATION', () => {
   const state = runningState();
   const services = createTestServices();
-  state.giantActive = true;
+  setGiantPhase(state, 'active');
   state.giantStartTime = 0;
   state.giantScoreMultiplier = 2;
   update(state, DT, services, () => 0.99, GIANT_DURATION + 1);
-  assert.equal(state.giantActive, false);
-  assert.equal(state.giantShrinking, true);
+  assert.equal(getGiantPhase(state), 'shrinking');
   assert.equal(state.giantScoreMultiplier, 1);
 });
 

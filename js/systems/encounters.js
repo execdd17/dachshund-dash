@@ -23,6 +23,37 @@ export function trampBusy(state) {
   return state.trampPending || state.trampActive;
 }
 
+// Phase accessors: the one place that knows which state fields encode each
+// scene's lifecycle, so callers (and tests) never touch the flags directly.
+const SCENE_PHASE_FLAGS = {
+  chase: { pending: 'chasePending', entering: 'chaseEntering', active: 'chaseActive', exiting: 'chaseEscaping' },
+  boss: { pending: 'bossPending', active: 'bossChasing', exiting: 'bossLosing' },
+  tramp: { pending: 'trampPending', active: 'trampActive' },
+};
+
+export function getScenePhase(state, id) {
+  const flags = SCENE_PHASE_FLAGS[id];
+  return Object.keys(flags).find(phase => state[flags[phase]]) ?? 'idle';
+}
+
+export function setScenePhase(state, id, phase) {
+  for (const [p, flag] of Object.entries(SCENE_PHASE_FLAGS[id])) state[flag] = p === phase;
+}
+
+// Giant mode: 'off' | 'growing' | 'active' | 'shrinking'. Growing counts as
+// active (score multiplier and edible obstacles apply during the grow).
+export function getGiantPhase(state) {
+  if (state.giantShrinking) return 'shrinking';
+  if (!state.giantActive) return 'off';
+  return state.giantGrowing ? 'growing' : 'active';
+}
+
+export function setGiantPhase(state, phase) {
+  state.giantActive = phase === 'growing' || phase === 'active';
+  state.giantGrowing = phase === 'growing';
+  state.giantShrinking = phase === 'shrinking';
+}
+
 // A golden pickup on the field means giant mode is imminent — score-armed
 // encounters must not arm behind it, or they'd activate mid-giant once the
 // field clears.
