@@ -7,6 +7,7 @@ import {
   BIRD_SPRITE_W, BIRD_SPRITE_FEET_FRAC,
 } from '../config.js';
 import { roundRect, drawSparkle } from './primitives.js';
+import { isImageReady } from '../assets/images.js';
 
 export function drawHotDog(ctx, x, y) {
   const hw = 36;
@@ -436,7 +437,7 @@ function drawBirdShadow(ctx, cx) {
 export function drawBirdSprite(ctx, sprites, o) {
   const frames = sprites?.birdSprites?.fly;
   const img = frames && frames[sprites.birdSpriteFrame % frames.length];
-  if (!sprites?.birdSpritesReady || !img || !img.complete || !img.naturalWidth) return false;
+  if (!sprites?.birdSpritesReady || !isImageReady(img)) return false;
 
   const dw = BIRD_SPRITE_W;
   const dh = dw * img.naturalHeight / img.naturalWidth;

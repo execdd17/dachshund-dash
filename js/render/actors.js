@@ -7,10 +7,12 @@ import {
   SQUIRREL_SPRITE_SCALE, SQUIRREL_SPRITE_GROUND_OFFSET,
 } from '../config.js';
 import { getDogSpriteAnim, getDogJumpFrameIndex } from '../assets/sprites.js';
+import { DOG_BITE_FRAMES, DOG_FRAME_W, DOG_FRAME_H, resolveDogFrame } from '../assets/dogFrames.js';
+import { isImageReady } from '../assets/images.js';
 import { COSMETIC_DRAW_ORDER, getItemAnchorOffset, getHeadAnchor, getOverlayFrame } from '../cosmetics/cosmetics.js';
 
 export function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, groundOffset) {
-  if (!img || !img.complete || !img.naturalWidth) return;
+  if (!isImageReady(img)) return;
   const sw = img.naturalWidth, sh = img.naturalHeight;
   const dw = sw * scale, dh = sh * scale;
   const dx = anchorX - dw / 2;
@@ -19,18 +21,17 @@ export function drawSpriteFrameLayer(targetCtx, img, anchorX, groundY, scale, gr
 }
 
 export function drawSpriteSheetLayer(targetCtx, sheet, frameIdx, anchorX, groundY, scale, groundOffset) {
-  if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-  const frameW = 512, frameH = 1024;
-  const dw = frameW * scale, dh = frameH * scale;
+  if (!isImageReady(sheet)) return;
+  const dw = DOG_FRAME_W * scale, dh = DOG_FRAME_H * scale;
   const dx = anchorX - dw / 2;
   const dy = groundY - dh + groundOffset;
-  const sx = (frameIdx % 3) * frameW;
-  targetCtx.drawImage(sheet, sx, 0, frameW, frameH, dx, dy, dw, dh);
+  const sx = (frameIdx % DOG_BITE_FRAMES) * DOG_FRAME_W;
+  targetCtx.drawImage(sheet, sx, 0, DOG_FRAME_W, DOG_FRAME_H, dx, dy, dw, dh);
 }
 
 export function drawCosmeticOverlay(targetCtx, img, anchor, offset, anchorX, groundY, scale, groundOffset) {
-  if (!img || !img.complete || !img.naturalWidth) return;
-  const dw = 512 * scale, dh = 1024 * scale;
+  if (!isImageReady(img)) return;
+  const dw = DOG_FRAME_W * scale, dh = DOG_FRAME_H * scale;
   const dx = anchorX - dw / 2;
   const dy = groundY - dh + groundOffset;
   const px = dx + (anchor.x + offset.dx) * scale;
@@ -72,7 +73,7 @@ function drawDachshundSprite(ctx, state, sprites, cosmetics, x, y) {
   // Bite animation: 3-frame horizontal sprite sheet, source-rect slicing
   if (anim === 'bite' && dogSprites.bite && dogSprites.bite[0]) {
     const sheet = dogSprites.bite[0];
-    if (!sheet.complete || !sheet.naturalWidth) return false;
+    if (!isImageReady(sheet)) return false;
     drawSpriteSheetLayer(ctx, sheet, sprites.dogSpriteFrame, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
     drawEquippedCosmetics(ctx, cosmetics, 'bite', sprites.dogSpriteFrame, anchorX, y);
     return true;
@@ -82,8 +83,9 @@ function drawDachshundSprite(ctx, state, sprites, cosmetics, x, y) {
   const frameIdx = (anim === 'jump' || anim === 'doublejump')
     ? getDogJumpFrameIndex(state.dog)
     : (sprites.dogSpriteFrame % (baseFrames?.length || 1));
-  const baseImg = (anim === 'doublejump' && frameIdx === 2) ? dogSprites.jump[2] : (baseFrames && baseFrames[frameIdx]);
-  if (!baseImg || !baseImg.complete || !baseImg.naturalWidth) return false;
+  const source = resolveDogFrame(anim, frameIdx);
+  const baseImg = dogSprites[source.anim]?.[source.frameIdx];
+  if (!isImageReady(baseImg)) return false;
   drawSpriteFrameLayer(ctx, baseImg, anchorX, y, DOG_SPRITE_SCALE, DOG_SPRITE_GROUND_OFFSET);
   drawEquippedCosmetics(ctx, cosmetics, anim, frameIdx, anchorX, y);
   return true;
@@ -97,7 +99,7 @@ function drawSquirrelSprite(ctx, sprites, x, y, flipHorizontal) {
   const frames = sprites.squirrelSprites.run;
   const frameIdx = sprites.squirrelSpriteFrame % (frames?.length || 1);
   const img = frames && frames[frameIdx];
-  if (!img || !img.complete || !img.naturalWidth) return false;
+  if (!isImageReady(img)) return false;
   const sw = img.naturalWidth;
   const sh = img.naturalHeight;
   const dw = sw * SQUIRREL_SPRITE_SCALE;

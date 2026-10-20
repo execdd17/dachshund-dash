@@ -5,23 +5,16 @@
 // full-size transparent overlay PNG per frame, drawn with the same geometry
 // as the base frame, so alignment is pixel-perfect in every pose.
 // Usage: node gen-tutu.cjs <repoDir> [previewDir]
-const fs = require('fs');
 const path = require('path');
-const { decodePng, writePng } = require('./pnglib.cjs');
+const { writePng } = require('./pnglib.cjs');
+const { scanRadius, paintDogOverlays } = require('./spritelib.cjs');
 
 const repo = process.argv[2] || '.';
 const previewDir = process.argv[3] || null;
 const dir = p => path.join(repo, p);
 
-const ALPHA = 60;
-// Same silhouette test as gen-shoes: opaque, and not the gray ground shadow /
-// gradient backdrop (the flip frames have opaque low-saturation backgrounds).
-function isBody(img, x, y, xOff = 0) {
-  const i = ((y * img.w) + x + xOff) * 4;
-  const [r, g, b, a] = [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], img.rgba[i + 3]];
-  if (a <= 150) return false;
-  return !(Math.max(r, g, b) - Math.min(r, g, b) < 30 && r > 60);
-}
+// Waist-sized radii; the clamp keeps glow in the flip frames from ballooning the fit.
+const WAIST_SCAN = { maxT: 140, maxGap: 10, min: 35, max: 95, fallback: 55 };
 
 const STYLE = {
   band:      [214, 51, 108],
@@ -62,22 +55,6 @@ const SPECS = {
   'bite_2': { cx: 283, cy: 555, angle: 5, reachBelly: 14 },
 };
 
-// March from the waist center along the spine-perpendicular to find the body
-// edge (small gaps tolerated for highlight seams); clamped so glow effects in
-// the flip frames can't balloon the fit.
-function scanRadius(img, xOff, sliceW, cx, cy, px, py, sign) {
-  const W = sliceW ?? img.w;
-  let last = 0, gap = 0;
-  for (let t = 0; t <= 140; t++) {
-    const x = Math.round(cx + px * t * sign);
-    const y = Math.round(cy + py * t * sign);
-    if (x < 0 || x >= W || y < 0 || y >= img.h) break;
-    if (isBody(img, x, y, xOff)) { last = t; gap = 0; }
-    else if (++gap > 10) break;
-  }
-  return Math.min(95, Math.max(35, last || 55));
-}
-
 const tri = x => Math.abs(x - Math.floor(x) - 0.5) * 2; // triangle wave 0..1
 
 // Paint one tutu into `out` (full-image RGBA buffer); returns painted px count.
@@ -87,8 +64,8 @@ function paintTutu(img, out, xOff, sliceW, spec) {
   const rad = p.angle * Math.PI / 180;
   const ax = Math.cos(rad), ay = Math.sin(rad);   // spine axis, toward head
   const px = -Math.sin(rad), py = Math.cos(rad);  // perpendicular, belly side +
-  const rBack = p.rBack ?? scanRadius(img, xOff, sliceW, p.cx, p.cy, px, py, -1);
-  const rBelly = p.rBelly ?? scanRadius(img, xOff, sliceW, p.cx, p.cy, px, py, 1);
+  const rBack = p.rBack ?? scanRadius(img, xOff, sliceW, p.cx, p.cy, px, py, -1, WAIST_SCAN);
+  const rBelly = p.rBelly ?? scanRadius(img, xOff, sliceW, p.cx, p.cy, px, py, 1, WAIST_SCAN);
   const reachOf = dv => (dv < 0 ? p.reach : (p.reachBelly ?? p.reach));
   const rOf = dv => (dv < 0 ? rBack : rBelly);
 
@@ -157,56 +134,11 @@ function paintTutu(img, out, xOff, sliceW, spec) {
   return count;
 }
 
-function compositePreview(base, overlay, file) {
-  let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-  for (let y = 0; y < base.h; y++) for (let x = 0; x < base.w; x++) {
-    if (base.rgba[(y * base.w + x) * 4 + 3] > ALPHA) {
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-    }
-  }
-  const W = maxX - minX + 1, H = maxY - minY + 1;
-  const out = Buffer.alloc(W * H * 4);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const si = ((y + minY) * base.w + x + minX) * 4;
-    const di = (y * W + x) * 4;
-    const src = overlay[si + 3] > 0 ? overlay : base.rgba;
-    out[di] = src[si]; out[di + 1] = src[si + 1]; out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3];
-  }
-  writePng(file, W, H, out);
-}
-
-const frames = {
-  run: ['dachshund_run_00.png', 'dachshund_run_01.png', 'dachshund_run_02.png'],
-  jump: ['dachshund_jump_00.png', 'dachshund_jump_01.png', 'dachshund_jump_02.png'],
-  doublejump: ['dachshund_flip_00.png', 'dachshund_flip_01.png', 'dachshund_flip_02.png'],
-  slide: ['dachshund_pancake_00.png', 'dachshund_pancake_01.png', 'dachshund_pancake_02.png'],
-};
-
 const outDir = dir('png/body/tutu-pink');
-fs.mkdirSync(outDir, { recursive: true });
-if (previewDir) fs.mkdirSync(previewDir, { recursive: true });
-
-for (const files of Object.values(frames)) {
-  for (const f of files) {
-    const img = decodePng(dir('png/dachshund/' + f));
-    const out = Buffer.alloc(img.w * img.h * 4);
-    const n = paintTutu(img, out, 0, null, SPECS[f]);
-    writePng(path.join(outDir, f), img.w, img.h, out);
-    console.log(`tutu-pink/${f}: ${n} px`);
-    if (previewDir) compositePreview(img, out, path.join(previewDir, `prev-${f}`));
-  }
-}
-
-// bite sheet: 3 frames side by side
-const bite = decodePng(dir('png/dachshund/bite_3_image_sequence.png'));
-const biteOut = Buffer.alloc(bite.w * bite.h * 4);
-for (let i = 0; i < 3; i++) {
-  const n = paintTutu(bite, biteOut, i * 512, 512, SPECS['bite_' + i]);
-  console.log(`tutu-pink/bite[${i}]: ${n} px`);
-}
-writePng(path.join(outDir, 'bite_3_image_sequence.png'), bite.w, bite.h, biteOut);
-if (previewDir) compositePreview(bite, biteOut, path.join(previewDir, 'prev-bite.png'));
+paintDogOverlays({
+  repo, outDir, previewDir, label: 'tutu-pink',
+  paint: (img, out, xOff, sliceW, key) => paintTutu(img, out, xOff, sliceW, SPECS[key]),
+});
 
 // menu tile icon: a standalone upright tutu (human orientation, band on top)
 {

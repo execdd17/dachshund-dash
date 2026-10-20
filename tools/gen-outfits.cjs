@@ -5,39 +5,16 @@
 // a menu icon), drawn with the base frame's exact geometry so alignment is
 // pixel-perfect in every pose.
 // Usage: node gen-outfits.cjs <repoDir> [previewDir]
-const fs = require('fs');
 const path = require('path');
-const { decodePng, writePng } = require('./pnglib.cjs');
+const { writePng } = require('./pnglib.cjs');
+const { isBody, scanRadius, paintDogOverlays } = require('./spritelib.cjs');
 
 const repo = process.argv[2] || '.';
 const previewDir = process.argv[3] || null;
 const dir = p => path.join(repo, p);
 
-const ALPHA = 60;
-// Same silhouette test as gen-shoes/gen-tutu: opaque, and not the gray ground
-// shadow / low-saturation gradient backdrop of the flip frames.
-function isBody(img, x, y, xOff = 0) {
-  const i = ((y * img.w) + x + xOff) * 4;
-  const [r, g, b, a] = [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], img.rgba[i + 3]];
-  if (a <= 150) return false;
-  return !(Math.max(r, g, b) - Math.min(r, g, b) < 30 && r > 60);
-}
-
-// March from the neck center along the neck-perpendicular to find the body
-// edge (small gaps tolerated for highlight seams); clamped to neck-ish radii
-// so ears/legs crossing the scan line can't balloon the fit.
-function scanRadius(img, xOff, sliceW, cx, cy, px, py, sign) {
-  const W = sliceW ?? img.w;
-  let last = 0, gap = 0;
-  for (let t = 0; t <= 110; t++) {
-    const x = Math.round(cx + px * t * sign);
-    const y = Math.round(cy + py * t * sign);
-    if (x < 0 || x >= W || y < 0 || y >= img.h) break;
-    if (isBody(img, x, y, xOff)) { last = t; gap = 0; }
-    else if (++gap > 8) break;
-  }
-  return Math.min(62, Math.max(26, last || 45));
-}
+// Neck-ish radii; the clamp keeps ears/legs crossing the scan line from ballooning the fit.
+const NECK_SCAN = { maxT: 110, maxGap: 8, min: 26, max: 62, fallback: 45 };
 
 const tri = x => Math.abs(x - Math.floor(x) - 0.5) * 2; // triangle wave 0..1
 
@@ -114,8 +91,8 @@ function neckFrame(img, xOff, sliceW, spec) {
   const ax = Math.cos(rad), ay = Math.sin(rad);
   let px = -Math.sin(rad), py = Math.cos(rad);
   if (spec.flip) { px = -px; py = -py; } // belly-up pose: throat side is inverted
-  const rTop = spec.rTop ?? scanRadius(img, xOff, sliceW, spec.cx, spec.cy, px, py, -1);
-  const rBot = spec.rBot ?? scanRadius(img, xOff, sliceW, spec.cx, spec.cy, px, py, 1);
+  const rTop = spec.rTop ?? scanRadius(img, xOff, sliceW, spec.cx, spec.cy, px, py, -1, NECK_SCAN);
+  const rBot = spec.rBot ?? scanRadius(img, xOff, sliceW, spec.cx, spec.cy, px, py, 1, NECK_SCAN);
   return { ax, ay, px, py, rTop, rBot };
 }
 
@@ -282,62 +259,18 @@ const ITEMS = {
   'collar-green': { classify: collarClassify,  colors: COLLAR_COLORS,  outline: COLLAR_OUTLINE,  S: 130, clamp: new Set([1, 2]) },
 };
 
-function compositePreview(base, overlay, file) {
-  let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-  for (let y = 0; y < base.h; y++) for (let x = 0; x < base.w; x++) {
-    if (base.rgba[(y * base.w + x) * 4 + 3] > ALPHA) {
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-    }
-  }
-  const W = maxX - minX + 1, H = maxY - minY + 1;
-  const out = Buffer.alloc(W * H * 4);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const si = ((y + minY) * base.w + x + minX) * 4;
-    const di = (y * W + x) * 4;
-    const src = overlay[si + 3] > 0 ? overlay : base.rgba;
-    out[di] = src[si]; out[di + 1] = src[si + 1]; out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3];
-  }
-  writePng(file, W, H, out);
-}
-
-const frames = {
-  run: ['dachshund_run_00.png', 'dachshund_run_01.png', 'dachshund_run_02.png'],
-  jump: ['dachshund_jump_00.png', 'dachshund_jump_01.png', 'dachshund_jump_02.png'],
-  doublejump: ['dachshund_flip_00.png', 'dachshund_flip_01.png', 'dachshund_flip_02.png'],
-  slide: ['dachshund_pancake_00.png', 'dachshund_pancake_01.png', 'dachshund_pancake_02.png'],
-};
-
 for (const [itemId, item] of Object.entries(ITEMS)) {
-  const outDir = dir(`png/body/${itemId}`);
-  fs.mkdirSync(outDir, { recursive: true });
-  const prevDir = previewDir ? path.join(previewDir, itemId) : null;
-  if (prevDir) fs.mkdirSync(prevDir, { recursive: true });
-
-  for (const files of Object.values(frames)) {
-    for (const f of files) {
-      const img = decodePng(dir('png/dachshund/' + f));
-      const out = Buffer.alloc(img.w * img.h * 4);
-      const spec = SPECS[f];
-      const n = paintRegions(img, out, 0, null, spec.cx, spec.cy, item.S,
-        item.classify(img, 0, null, spec), item.colors, item.outline, item.clamp);
-      writePng(path.join(outDir, f), img.w, img.h, out);
-      console.log(`${itemId}/${f}: ${n} px`);
-      if (prevDir) compositePreview(img, out, path.join(prevDir, `prev-${f}`));
-    }
-  }
-
-  // bite sheet: 3 frames side by side
-  const bite = decodePng(dir('png/dachshund/bite_3_image_sequence.png'));
-  const biteOut = Buffer.alloc(bite.w * bite.h * 4);
-  for (let i = 0; i < 3; i++) {
-    const spec = SPECS['bite_' + i];
-    const n = paintRegions(bite, biteOut, i * 512, 512, spec.cx, spec.cy, item.S,
-      item.classify(bite, i * 512, 512, spec), item.colors, item.outline, item.clamp);
-    console.log(`${itemId}/bite[${i}]: ${n} px`);
-  }
-  writePng(path.join(outDir, 'bite_3_image_sequence.png'), bite.w, bite.h, biteOut);
-  if (prevDir) compositePreview(bite, biteOut, path.join(prevDir, 'prev-bite.png'));
+  paintDogOverlays({
+    repo,
+    outDir: dir(`png/body/${itemId}`),
+    previewDir: previewDir ? path.join(previewDir, itemId) : null,
+    label: itemId,
+    paint: (img, out, xOff, sliceW, key) => {
+      const spec = SPECS[key];
+      return paintRegions(img, out, xOff, sliceW, spec.cx, spec.cy, item.S,
+        item.classify(img, xOff, sliceW, spec), item.colors, item.outline, item.clamp);
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

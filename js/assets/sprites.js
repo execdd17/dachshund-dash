@@ -3,6 +3,8 @@
 // (getDogSpriteAnim, getDogJumpFrameIndex) are pure and unit-testable.
 
 import { GROUND_Y, DOG_SPRITE_FPS, SQUIRREL_SPRITE_FPS, BIRD_SPRITE_FPS } from '../config.js';
+import { DOG_SPRITE_DIR, DOG_BITE_SHEET, DOG_BITE_FRAMES, DOG_FRAME_FILES } from './dogFrames.js';
+import { loadImages } from './images.js';
 
 export function createSpriteStore() {
   return {
@@ -26,70 +28,24 @@ export function createSpriteStore() {
 
 export function loadDogSprites(store) {
   const sprites = store.dogSprites;
-  const runPaths = ['png/dachshund/dachshund_run_00.png', 'png/dachshund/dachshund_run_01.png', 'png/dachshund/dachshund_run_02.png'];
-  const pancakePaths = ['png/dachshund/dachshund_pancake_00.png', 'png/dachshund/dachshund_pancake_01.png', 'png/dachshund/dachshund_pancake_02.png'];
-  const jumpPaths = ['png/dachshund/dachshund_jump_00.png', 'png/dachshund/dachshund_jump_01.png', 'png/dachshund/dachshund_jump_02.png'];
-  const doublejumpPaths = ['png/dachshund/dachshund_flip_00.png', 'png/dachshund/dachshund_flip_01.png', 'png/dachshund/dachshund_flip_02.png'];
-  let pending = runPaths.length + pancakePaths.length + jumpPaths.length + doublejumpPaths.length + 1; // +1 for bite sheet
-  const onLoad = () => { pending--; if (pending === 0) store.dogSpritesReady = true; };
-  runPaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    sprites.run[i] = img;
-  });
-  pancakePaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    sprites.slide[i] = img;
-  });
-  jumpPaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    sprites.jump[i] = img;
-  });
-  doublejumpPaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    sprites.doublejump[i] = img;
-  });
+  const anims = Object.keys(DOG_FRAME_FILES);
+  const paths = anims.flatMap(anim => DOG_FRAME_FILES[anim].map(f => `${DOG_SPRITE_DIR}/${f}`));
+  const images = loadImages([...paths, `${DOG_SPRITE_DIR}/${DOG_BITE_SHEET}`], () => { store.dogSpritesReady = true; });
+  let i = 0;
+  for (const anim of anims) sprites[anim] = DOG_FRAME_FILES[anim].map(() => images[i++]);
+  sprites.bite = [images[i]];
   sprites.idle = sprites.run.slice(0, 1);
   sprites.dead = sprites.run.slice(0, 1);
-  // Bite sprite sheet (3 horizontal frames in one image)
-  const biteSheet = new Image();
-  biteSheet.onload = biteSheet.onerror = onLoad;
-  biteSheet.src = 'png/dachshund/bite_3_image_sequence.png';
-  sprites.bite = [biteSheet];
 }
 
+const numbered = (prefix, count) => Array.from({ length: count }, (_, i) => `${prefix}_${String(i).padStart(2, '0')}.png`);
+
 export function loadSquirrelSprites(store) {
-  const runPaths = ['png/squirrel/squirrel_run_00.png', 'png/squirrel/squirrel_run_01.png', 'png/squirrel/squirrel_run_02.png'];
-  let pending = runPaths.length;
-  const onLoad = () => { pending--; if (pending === 0) store.squirrelSpritesReady = true; };
-  runPaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    store.squirrelSprites.run[i] = img;
-  });
+  store.squirrelSprites.run = loadImages(numbered('png/squirrel/squirrel_run', 3), () => { store.squirrelSpritesReady = true; });
 }
 
 export function loadBirdSprites(store) {
-  const flyPaths = [
-    'png/bird/bird_fly_00.png', 'png/bird/bird_fly_01.png', 'png/bird/bird_fly_02.png',
-    'png/bird/bird_fly_03.png', 'png/bird/bird_fly_04.png', 'png/bird/bird_fly_05.png',
-  ];
-  let pending = flyPaths.length;
-  const onLoad = () => { pending--; if (pending === 0) store.birdSpritesReady = true; };
-  flyPaths.forEach((path, i) => {
-    const img = new Image();
-    img.onload = img.onerror = onLoad;
-    img.src = path;
-    store.birdSprites.fly[i] = img;
-  });
+  store.birdSprites.fly = loadImages(numbered('png/bird/bird_fly', 6), () => { store.birdSpritesReady = true; });
 }
 
 // Which animation set the dog should be showing, given game state.
@@ -111,45 +67,36 @@ export function getDogJumpFrameIndex(dog) {
   return 1;
 }
 
+// True (and stamps the time) once a frame period has passed for this sprite.
+function frameDue(store, lastKey, fps, now) {
+  if (now - store[lastKey] < 1000 / fps) return false;
+  store[lastKey] = now;
+  return true;
+}
+
+const nextLoopFrame = (frame, frames) => (frames?.length ? (frame + 1) % frames.length : frame);
+
 export function advanceDogSpriteFrame(store, state, now = performance.now()) {
-  const frameDuration = 1000 / DOG_SPRITE_FPS;
-  if (now - store.dogSpriteLastAdvance >= frameDuration) {
-    store.dogSpriteLastAdvance = now;
-    const anim = getDogSpriteAnim(state, now);
-    if (anim !== store.dogSpriteAnim) {
-      store.dogSpriteAnim = anim;
-      store.dogSpriteFrame = 0;
-    } else {
-      if (store.dogSpriteAnim === 'bite') {
-        store.dogSpriteFrame = Math.min(store.dogSpriteFrame + 1, 2); // cap at 3 frames, hold last
-      } else {
-        const frames = store.dogSprites[store.dogSpriteAnim];
-        if (frames && frames.length > 0) {
-          store.dogSpriteFrame = (store.dogSpriteFrame + 1) % frames.length;  // loop
-        }
-      }
-    }
+  if (!frameDue(store, 'dogSpriteLastAdvance', DOG_SPRITE_FPS, now)) return;
+  const anim = getDogSpriteAnim(state, now);
+  if (anim !== store.dogSpriteAnim) {
+    store.dogSpriteAnim = anim;
+    store.dogSpriteFrame = 0;
+  } else if (anim === 'bite') {
+    store.dogSpriteFrame = Math.min(store.dogSpriteFrame + 1, DOG_BITE_FRAMES - 1);  // play once, hold the last frame
+  } else {
+    store.dogSpriteFrame = nextLoopFrame(store.dogSpriteFrame, store.dogSprites[anim]);
   }
 }
 
 export function advanceBirdSpriteFrame(store, now = performance.now()) {
-  const frameDuration = 1000 / BIRD_SPRITE_FPS;
-  if (now - store.birdSpriteLastAdvance >= frameDuration) {
-    store.birdSpriteLastAdvance = now;
-    const frames = store.birdSprites.fly;
-    if (frames && frames.length > 0) {
-      store.birdSpriteFrame = (store.birdSpriteFrame + 1) % frames.length;
-    }
+  if (frameDue(store, 'birdSpriteLastAdvance', BIRD_SPRITE_FPS, now)) {
+    store.birdSpriteFrame = nextLoopFrame(store.birdSpriteFrame, store.birdSprites.fly);
   }
 }
 
 export function advanceSquirrelSpriteFrame(store, now = performance.now()) {
-  const frameDuration = 1000 / SQUIRREL_SPRITE_FPS;
-  if (now - store.squirrelSpriteLastAdvance >= frameDuration) {
-    store.squirrelSpriteLastAdvance = now;
-    const frames = store.squirrelSprites.run;
-    if (frames && frames.length > 0) {
-      store.squirrelSpriteFrame = (store.squirrelSpriteFrame + 1) % frames.length;
-    }
+  if (frameDue(store, 'squirrelSpriteLastAdvance', SQUIRREL_SPRITE_FPS, now)) {
+    store.squirrelSpriteFrame = nextLoopFrame(store.squirrelSpriteFrame, store.squirrelSprites.run);
   }
 }

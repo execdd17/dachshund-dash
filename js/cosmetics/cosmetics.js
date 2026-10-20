@@ -6,6 +6,8 @@
 // injected, so it runs under Node for tests.
 
 import { EQUIPPED_COSMETICS_KEY } from '../config.js';
+import { DOG_BITE_SHEET, DOG_FRAME_FILES, resolveDogFrame } from '../assets/dogFrames.js';
+import { loadImage } from '../assets/images.js';
 
 export const COSMETIC_SLOTS = ['hat', 'sunglasses', 'clothes', 'body']; // canonical slot list + menu tab order
 export const COSMETIC_DRAW_ORDER = ['clothes', 'body', 'hat', 'sunglasses']; // back-to-front compositing order
@@ -55,14 +57,6 @@ export const COSMETIC_DEFS = {
   ],
 };
 
-// Frame files for per-frame overlay items, matching loadDogSprites().
-export const OVERLAY_FRAME_FILES = {
-  run: ['dachshund_run_00.png', 'dachshund_run_01.png', 'dachshund_run_02.png'],
-  jump: ['dachshund_jump_00.png', 'dachshund_jump_01.png', 'dachshund_jump_02.png'],
-  doublejump: ['dachshund_flip_00.png', 'dachshund_flip_01.png', 'dachshund_flip_02.png'],
-  slide: ['dachshund_pancake_00.png', 'dachshund_pancake_01.png', 'dachshund_pancake_02.png'],
-};
-
 // Where the dog's head is in each pose, in the same local 512x1024 sprite-pixel
 // space as the base dachshund frames. Live-calibrated against the actual
 // running game (screenshots + a static-render harness reproducing the exact
@@ -70,7 +64,7 @@ export const OVERLAY_FRAME_FILES = {
 export const HEAD_ANCHORS = {
   run:        [{ x: 340, y: 400, angle: -6 },  { x: 318, y: 402, angle: -3 },  { x: 303, y: 406, angle: -8 }],
   jump:       [{ x: 353, y: 330, angle: -15 }, { x: 343, y: 357, angle: -8 }, { x: 278, y: 387, angle: -3 }],
-  doublejump: [{ x: 418, y: 482, angle: 20 },  { x: 313, y: 482, angle: -150 }], // index 2 reuses jump[2], see getHeadAnchor
+  doublejump: [{ x: 418, y: 482, angle: 20 },  { x: 313, y: 482, angle: -150 }], // frame 2 borrows jump[2] (resolveDogFrame)
   slide:      [{ x: 343, y: 462, angle: -4 },  { x: 318, y: 477, angle: -2 },  { x: 303, y: 482, angle: -4 }],
   bite:       [{ x: 338, y: 467, angle: -6 },  { x: 263, y: 367, angle: -25 }, { x: 343, y: 532, angle: -6 }],
 };
@@ -90,25 +84,20 @@ export function getItemAnchorOffset(slot, itemId) {
   return item?.offset ? { ...base, ...item.offset } : base;
 }
 
-// anim/frameIdx use the exact same values as getDogSpriteAnim()/dogSpriteFrame
-// (or getDogJumpFrameIndex() for jump/doublejump) that drawDachshundSprite computes.
+// anim/frameIdx are the same values drawDachshundSprite draws the base frame with.
 export function getHeadAnchor(anim, frameIdx) {
-  if (anim === 'idle' || anim === 'dead') return HEAD_ANCHORS.run[0];
-  if (anim === 'doublejump' && frameIdx === 2) return HEAD_ANCHORS.jump[2];
-  const frames = HEAD_ANCHORS[anim];
-  return frames[frameIdx % frames.length];
+  const source = resolveDogFrame(anim, frameIdx);
+  const frames = HEAD_ANCHORS[source.anim];
+  return frames[source.frameIdx % frames.length];
 }
 
-// Which overlay a per-frame item shows for a given base anim/frame; mirrors
-// the base-sprite selection in drawDachshundSprite (idle/dead reuse run[0],
-// doublejump frame 2 reuses jump[2], bite uses the sheet).
+// Which overlay image a per-frame item shows for a base anim/frame. Bite
+// returns null: callers draw entry.biteSheet with the sheet geometry instead.
 export function getOverlayFrame(entry, anim, frameIdx) {
-  if (!entry || !entry.frames) return null;
-  if (anim === 'bite') return null; // callers use entry.biteSheet + sheet drawing
-  if (anim === 'idle' || anim === 'dead') return entry.frames.run[0];
-  if (anim === 'doublejump' && frameIdx === 2) return entry.frames.jump[2];
-  const frames = entry.frames[anim];
-  return frames ? frames[frameIdx % frames.length] : null;
+  if (!entry?.frames || anim === 'bite') return null;
+  const source = resolveDogFrame(anim, frameIdx);
+  const frames = entry.frames[source.anim];
+  return frames ? frames[source.frameIdx % frames.length] : null;
 }
 
 export function loadEquippedCosmetics(storage) {
@@ -149,20 +138,12 @@ export function createCosmetics(storage) {
       COSMETIC_SLOTS.forEach(slot => {
         COSMETIC_DEFS[slot].forEach(item => {
           if (item.frames) {
-            const load = file => {
-              const img = new Image();
-              img.src = `${item.frames}/${file}`;
-              return img;
-            };
+            const load = file => loadImage(`${item.frames}/${file}`);
             const frames = {};
-            Object.entries(OVERLAY_FRAME_FILES).forEach(([anim, files]) => {
-              frames[anim] = files.map(load);
-            });
-            imageById[slot][item.id] = { frames, biteSheet: load('bite_3_image_sequence.png') };
+            for (const [anim, files] of Object.entries(DOG_FRAME_FILES)) frames[anim] = files.map(load);
+            imageById[slot][item.id] = { frames, biteSheet: load(DOG_BITE_SHEET) };
           } else {
-            const img = new Image();
-            img.src = item.image;
-            imageById[slot][item.id] = img;
+            imageById[slot][item.id] = loadImage(item.image);
           }
         });
       });

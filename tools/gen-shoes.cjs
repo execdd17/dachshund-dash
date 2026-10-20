@@ -3,23 +3,13 @@
 // recolored as sneakers. Drawn with the same geometry as the base frame,
 // so alignment is pixel-perfect in every pose.
 // Usage: node gen-shoes.js <repoDir> [previewDir]
-const fs = require('fs');
 const path = require('path');
-const { decodePng, writePng } = require('./pnglib.cjs');
+const { writePng } = require('./pnglib.cjs');
+const { isBody, paintDogOverlays } = require('./spritelib.cjs');
 
 const repo = process.argv[2] || '.';
 const previewDir = process.argv[3] || null;
 const dir = p => path.join(repo, p);
-
-const ALPHA = 60;
-function isBody(img, x, y, xOff = 0) {
-  const i = ((y * img.w) + x + xOff) * 4;
-  const [r, g, b, a] = [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], img.rgba[i + 3]];
-  if (a <= 150) return false;
-  // exclude the gray ground shadow (incl. its anti-aliased edges); the dog's
-  // own blacks are darker (r < 60) and everything else is saturated
-  return !(Math.max(r, g, b) - Math.min(r, g, b) < 30 && r > 60);
-}
 
 // Paw detection: paws are SMALL isolated tan blobs. The chest, belly stripe
 // and snout are also tan but much larger, and the paw blobs are separated
@@ -177,13 +167,6 @@ function paintShoes(img, out, xOff, sliceW, styleName, opts) {
   return count;
 }
 
-const frames = {
-  run: ['dachshund_run_00.png', 'dachshund_run_01.png', 'dachshund_run_02.png'],
-  jump: ['dachshund_jump_00.png', 'dachshund_jump_01.png', 'dachshund_jump_02.png'],
-  doublejump: ['dachshund_flip_00.png', 'dachshund_flip_01.png', 'dachshund_flip_02.png'],
-  slide: ['dachshund_pancake_00.png', 'dachshund_pancake_01.png', 'dachshund_pancake_02.png'],
-};
-
 // Hand-picked paw bounding boxes per frame [x0,y0,x1,y1] in sprite px,
 // chosen by eyeballing tan-blob candidates over every frame (the body's tan
 // stripes and snout are paw-sized, so no automatic filter was reliable).
@@ -205,68 +188,30 @@ const OVERRIDES = {
   'bite_2': { boxes: [[116, 558, 159, 599], [203, 587, 256, 610], [275, 595, 325, 626]] },
 };
 
-function compositePreview(base, overlay, file) {
-  // overlay on top of base, cropped to the dog bbox for eyeballing
+// Menu tile icon: the front shoe cropped out of the run_00 overlay.
+function writeIcon(outDir, img, out) {
   let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-  for (let y = 0; y < base.h; y++) for (let x = 0; x < base.w; x++) {
-    if (base.rgba[(y * base.w + x) * 4 + 3] > ALPHA) {
+  for (let y = 0; y < img.h; y++) for (let x = 270; x <= 365; x++) {
+    if (out[(y * img.w + x) * 4 + 3] > 0) {
       minX = Math.min(minX, x); maxX = Math.max(maxX, x);
       minY = Math.min(minY, y); maxY = Math.max(maxY, y);
     }
   }
-  const W = maxX - minX + 1, H = maxY - minY + 1;
-  const out = Buffer.alloc(W * H * 4);
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    const si = ((y + minY) * base.w + x + minX) * 4;
-    const di = (y * W + x) * 4;
-    const src = overlay[si + 3] > 0 ? overlay : base.rgba;
-    out[di] = src[si]; out[di + 1] = src[si + 1]; out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3];
+  const IW = maxX - minX + 1, IH = maxY - minY + 1;
+  const icon = Buffer.alloc(IW * IH * 4);
+  for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
+    const si = ((y + minY) * img.w + x + minX) * 4, di = (y * IW + x) * 4;
+    for (let k = 0; k < 4; k++) icon[di + k] = out[si + k];
   }
-  writePng(file, W, H, out);
+  writePng(path.join(outDir, 'icon.png'), IW, IH, icon);
 }
 
 for (const styleName of Object.keys(STYLES)) {
   const outDir = dir(`png/clothes/${styleName}`);
-  fs.mkdirSync(outDir, { recursive: true });
-  for (const [anim, files] of Object.entries(frames)) {
-    files.forEach((f, i) => {
-      const img = decodePng(dir('png/dachshund/' + f));
-      const out = Buffer.alloc(img.w * img.h * 4);
-      const n = paintShoes(img, out, 0, null, styleName, OVERRIDES[f] || {});
-      const outFile = path.join(outDir, f);
-      writePng(outFile, img.w, img.h, out);
-      console.log(`${styleName}/${f}: ${n} shoe px`);
-      if (f === 'dachshund_run_00.png') {
-        // menu tile icon: crop the front shoe out of the run_00 overlay
-        let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1;
-        for (let y = 0; y < img.h; y++) for (let x = 270; x <= 365; x++) {
-          if (out[(y * img.w + x) * 4 + 3] > 0) {
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
-          }
-        }
-        const IW = maxX - minX + 1, IH = maxY - minY + 1;
-        const icon = Buffer.alloc(IW * IH * 4);
-        for (let y = 0; y < IH; y++) for (let x = 0; x < IW; x++) {
-          const si = ((y + minY) * img.w + x + minX) * 4, di = (y * IW + x) * 4;
-          for (let k = 0; k < 4; k++) icon[di + k] = out[si + k];
-        }
-        writePng(path.join(outDir, 'icon.png'), IW, IH, icon);
-      }
-      if (previewDir && styleName === 'sneakers-red') {
-        compositePreview(img, out, path.join(previewDir, `prev-${f}`));
-      }
-    });
-  }
-  // bite sheet: 3 frames side by side
-  const bite = decodePng(dir('png/dachshund/bite_3_image_sequence.png'));
-  const out = Buffer.alloc(bite.w * bite.h * 4);
-  for (let i = 0; i < 3; i++) {
-    const n = paintShoes(bite, out, i * 512, 512, styleName, OVERRIDES['bite_' + i] || {});
-    console.log(`${styleName}/bite[${i}]: ${n} shoe px`);
-  }
-  writePng(path.join(outDir, 'bite_3_image_sequence.png'), bite.w, bite.h, out);
-  if (previewDir && styleName === 'sneakers-red') {
-    compositePreview(bite, out, path.join(previewDir, 'prev-bite.png'));
-  }
+  paintDogOverlays({
+    repo, outDir, label: styleName,
+    previewDir: styleName === 'sneakers-red' ? previewDir : null,
+    paint: (img, out, xOff, sliceW, key) => paintShoes(img, out, xOff, sliceW, styleName, OVERRIDES[key] || {}),
+    onFrame: (f, img, out) => { if (f === 'dachshund_run_00.png') writeIcon(outDir, img, out); },
+  });
 }
