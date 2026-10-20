@@ -18,6 +18,7 @@ export function createDog() {
     jumping: false,
     doubleJumped: false,
     ducking: false,
+    fastFalling: false,  // Down pressed mid-air (systems/control.js)
     legFrame: 0,
   };
 }

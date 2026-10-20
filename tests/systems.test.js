@@ -18,7 +18,7 @@ import {
   W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
   BOSS_MILESTONE, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
-  SCENE_MIN_GAP, TRAMP_FIRST_AT, GROUND_Y,
+  SCENE_MIN_GAP, TRAMP_FIRST_AT, GROUND_Y, DT_BASELINE, FAST_FALL_VY,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -383,6 +383,57 @@ test('duck held through a jump ducks on the landing frame', () => {
 
   duck(state, false, services);
   assert.equal(state.dog.ducking, false, 'release stands up');
+});
+
+// Frames from a jump's apex to landing; `atApex(state)` runs once when the rise ends.
+function airtime(atApex = () => {}) {
+  const state = createState(() => 0.5);
+  const services = createTestServices();
+  state.gameState = 'running';
+  state.nextObstacleIn = 1e9;
+  jump(state, services, 0);
+  let frames = 0, apexAt = null;
+  while (state.dog.jumping) {
+    if (apexAt === null && state.dog.vy >= 0) { apexAt = frames; atApex(state, services); }
+    update(state, DT_BASELINE, services, () => 0.5, ++frames * DT_BASELINE);
+    if (frames > 1000) assert.fail('never landed');
+  }
+  return { fall: frames - apexAt, state };
+}
+
+test('fast-fall: Down pressed mid-air drops the dog, and it lands ducking', () => {
+  const normal = airtime().fall;
+  const { fall, state } = airtime((s, services) => duck(s, true, services));
+  assert.ok(fall < normal * 0.7, `fast-fall comes down well sooner (${fall} vs ${normal} frames)`);
+  assert.equal(state.dog.fastFalling, false, 'cleared on landing');
+  assert.equal(state.dog.ducking, true, 'still held: lands ducking');
+});
+
+test('fast-fall cuts a rise short, ends on release or double jump', () => {
+  const state = createState(() => 0.5);
+  const services = createTestServices();
+  state.gameState = 'running';
+  jump(state, services, 0);
+  duck(state, true, services);  // still rising
+  assert.equal(state.dog.fastFalling, true);
+  assert.equal(state.dog.vy, FAST_FALL_VY, 'rise cancelled');
+  duck(state, false, services);
+  assert.equal(state.dog.fastFalling, false, 'release ends it');
+  duck(state, true, services);
+  jump(state, services, 0);
+  assert.equal(state.dog.fastFalling, false, 'a double jump ends it');
+  assert.equal(state.dog.vy, DOUBLE_JUMP_FORCE);
+});
+
+test('fast-fall needs a press made in the air: a duck held into a bounce keeps the bounce', () => {
+  const state = createState(() => 0.5);
+  const services = createTestServices();
+  state.gameState = 'running';
+  duck(state, true, services);  // held on the ground
+  Object.assign(state.dog, { jumping: true, ducking: false, vy: -14 });  // as a trampoline bounce launches it
+  duck(state, true, services);  // key auto-repeat
+  assert.equal(state.dog.fastFalling, false);
+  assert.equal(state.dog.vy, -14, 'bounce untouched');
 });
 
 test('a held duck clears a duck-height obstacle met on the landing frame', () => {

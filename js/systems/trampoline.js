@@ -55,6 +55,7 @@ function checkTrampolineBounce(state, services, now) {
     state.dog.jumping = true;
     state.dog.doubleJumped = false;
     state.dog.ducking = false;
+    state.dog.fastFalling = false;
     state.score += TRAMP_BOUNCE_BONUS;
     addEffect(state, 'trampBounce', now, { x: tramp.x + tramp.width / 2, y: tramp.y });
     tramp.squashUntil = now + TRAMP_SQUASH_MS;

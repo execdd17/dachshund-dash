@@ -13,6 +13,11 @@ export const GROUND_Y = 200;
 export const GRAVITY = 0.5;
 export const JUMP_FORCE = -11;
 export const DOUBLE_JUMP_FORCE = -7;
+// Fast-fall (Down pressed mid-air): any rise is cut to at least this downward
+// speed, and gravity is multiplied until landing or release. From the apex
+// it lands in ~92ms instead of ~175ms.
+export const FAST_FALL_VY = 4;
+export const FAST_FALL_GRAVITY_MULT = 2.5;
 export const RESTART_LOCKOUT_MS = 1000;   // input ignored this long after death
 export const DEATH_SHAKE_MS = 250;
 export const DEATH_SHAKE_PX = 6;

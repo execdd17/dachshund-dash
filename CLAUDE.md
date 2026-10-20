@@ -103,3 +103,4 @@ Game logic never touches the DOM, canvas, or Web Audio — everything effectful 
 - Desktop: Space/Up jump (twice for a double jump), Down/S duck, click jumps.
 - Touch: the right side jumps, holding the left `DUCK_ZONE_RATIO` (40%) ducks (tracked per finger, so a jump tap doesn't end it); the speaker icon top-left toggles music.
 - Duck is a held input (`state.duckHeld`), applied every frame by `applyDuck`: the dog ducks whenever duck is held and it's grounded, so holding it through a jump ducks on the landing frame, before collision.
+- Fast-fall: a duck *pressed* mid-air cuts any rise to `FAST_FALL_VY` and multiplies gravity by `FAST_FALL_GRAVITY_MULT` until landing, release, a double jump, or a trampoline bounce (`dog.fastFalling`). A duck held since the ground (into a bounce) doesn't trigger it.

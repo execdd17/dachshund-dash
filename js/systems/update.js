@@ -5,7 +5,7 @@
 // effectful is injected so this whole layer runs under Node for tests.
 
 import {
-  W, GROUND_Y, GRAVITY, DT_BASELINE,
+  W, GROUND_Y, GRAVITY, FAST_FALL_GRAVITY_MULT, DT_BASELINE,
   INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   BOSS_OBSTACLE_GAP_MULTIPLIER,
@@ -34,13 +34,14 @@ export function update(state, dt, services, rng = Math.random, now = performance
   // Dog physics (scale by dt for frame-rate independence)
   const dog = state.dog;
   const wasInAir = dog.y < GROUND_Y;
-  dog.vy += GRAVITY * scale;
+  dog.vy += GRAVITY * (dog.fastFalling ? FAST_FALL_GRAVITY_MULT : 1) * scale;
   dog.y += dog.vy * scale;
   if (dog.y >= GROUND_Y) {
     dog.y = GROUND_Y;
     dog.vy = 0;
     dog.jumping = false;
     dog.doubleJumped = false;
+    dog.fastFalling = false;
     // Dust puffs on landing (only when actually coming down from a jump)
     if (wasInAir && state.gameState === 'running') {
       const n = 3 + Math.floor(rng() * 3);
