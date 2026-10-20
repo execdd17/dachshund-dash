@@ -6,6 +6,8 @@ import { getDogSpriteAnim } from '../js/assets/sprites.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
 import { createState, resetRun } from '../js/core/state.js';
 import { difficultyAt, isDifficultyLabel, DEFAULT_DIFFICULTY } from '../js/core/difficulty.js';
+import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
+import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import {
   INITIAL_SPEED, GROUND_Y, DOG_BASE_X,
   DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
@@ -61,9 +63,9 @@ test('resetRun restores a dirty state to run defaults', () => {
   s.dog.x = 210;
   s.dog.y = 50;
   s.dog.jumping = true;
-  s.chaseActive = true;
-  s.bossChasing = true;
-  s.giantActive = true;
+  setScenePhase(s, 'chase', 'active');
+  setScenePhase(s, 'boss', 'active');
+  setGiantPhase(s, 'active');
   s.giantScoreMultiplier = 2;
   s.weatherRain = true;
   s.lastTimeStage = 'night';
@@ -79,9 +81,9 @@ test('resetRun restores a dirty state to run defaults', () => {
   assert.equal(s.dog.x, DOG_BASE_X);
   assert.equal(s.dog.y, GROUND_Y);
   assert.equal(s.dog.jumping, false);
-  assert.equal(s.chaseActive, false);
-  assert.equal(s.bossChasing, false);
-  assert.equal(s.giantActive, false);
+  assert.notEqual(getScenePhase(s, 'chase'), 'active');
+  assert.notEqual(getScenePhase(s, 'boss'), 'active');
+  assert.equal(getGiantPhase(s), 'off');
   assert.equal(s.giantScoreMultiplier, 1);
   assert.equal(s.weatherRain, false);
   assert.equal(s.lastTimeStage, 'day');

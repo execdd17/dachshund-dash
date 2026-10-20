@@ -26,8 +26,7 @@ test('every spawnable obstacle type is registered', () => {
   }
   for (let rep = 0; rep < TRAMP_REPS.length; rep++) {
     const state = createState(() => 0.5);
-    state.trampRep = rep;
-    spawnTrampRep(state);
+    spawnTrampRep(state, rep);
     state.obstacles.forEach(o => seen.add(o.type));
   }
   assert.deepEqual([...seen].sort(), Object.keys(OBSTACLE_TYPES).sort());

@@ -5,6 +5,9 @@ import { W, H, DUCK_ZONE_RATIO } from '../config.js';
 import { jump, duck } from '../systems/control.js';
 import { initRain } from '../systems/weather.js';
 import { makeObstacle } from '../systems/obstacleTypes.js';
+import { forceScene } from '../systems/scenes.js';
+
+const DEBUG_SCENE_KEYS = { KeyC: 'chase', KeyB: 'boss', KeyT: 'tramp' };
 
 export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -50,23 +53,11 @@ export function wireInput(deps) {
       e.preventDefault();
       cosmetics.toggleDefaultHat();
     }
-    // Debug: C = trigger squirrel chase (when running)
-    if (e.code === 'KeyC' && state.gameState === 'running' && !state.chaseActive && !state.chaseEntering && !state.chaseEscaping) {
+    // Debug: C / B / T = start the chase / boss / trampoline scene now
+    const debugScene = DEBUG_SCENE_KEYS[e.code];
+    if (debugScene && state.gameState === 'running') {
       e.preventDefault();
-      state.chasePending = true;
-      state.obstacles = [];  // clear obstacles so chase starts immediately
-    }
-    // Debug: B = trigger boss chase (when running)
-    if (e.code === 'KeyB' && state.gameState === 'running' && !state.bossChasing && !state.bossLosing) {
-      e.preventDefault();
-      state.bossPending = true;
-      state.obstacles = [];  // clear obstacles so boss starts immediately
-    }
-    // Debug: T = trigger trampoline scene (when running)
-    if (e.code === 'KeyT' && state.gameState === 'running' && !state.trampActive && !state.trampPending) {
-      e.preventDefault();
-      state.trampPending = true;
-      state.obstacles = [];  // clear field so the scene starts immediately
+      forceScene(state, debugScene);
     }
     // Debug: G = spawn a golden hot dog right in front of the dog
     if (e.code === 'KeyG' && state.gameState === 'running' && !state.giantActive) {

@@ -2,7 +2,7 @@
 // explicitly to every system and renderer — no module-level game globals.
 
 import {
-  W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X, BOSS_SQUIRREL_START_X, SQUIRREL_RUN_SPEED,
+  W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X,
 } from '../config.js';
 import { DEFAULT_DIFFICULTY } from './difficulty.js';
 
@@ -82,30 +82,11 @@ export function createState(rng = Math.random) {
     lastObstacleType: 'hotdog',
     activeSpawnPattern: null,  // { id, beats, index } — multi-beat close-gap sequence
 
-    // --- Scenes (shared) ---
-    lastSceneEndAt: -Infinity,  // ms timestamp when the last scene (chase/boss/tramp) fully ended; -Infinity = none yet
-    sceneQueue: [],  // scene ids ('chase'|'boss'|'tramp') waiting for a turn, FIFO, one entry per scene
-
-    // --- Chase mode ---
-    chaseActive: false,
-    chasePending: false,   // waiting for obstacles to clear before chase starts
-    chaseEntering: false,  // squirrel running in from right when chase starts
-    chaseEscaping: false,  // squirrel running off-screen after chase ends
-    chaseStartedFrame: 0,
-    lastChaseEndScore: 0,
-    squirrelEnterX: 0,
-    squirrelEnterSpeed: SQUIRREL_RUN_SPEED,
-    squirrelEscapeX: 0,
-    squirrelEscapeSpeed: SQUIRREL_RUN_SPEED,
-
-    // --- Boss chase ---
-    bossPending: false,
-    bossChasing: false,
-    bossLosing: false,
-    lastBossMilestone: 0,
-    bossSquirrelX: BOSS_SQUIRREL_START_X,
-    bossChaseFrames: 0,
-    bossDogShift: 0,
+    // --- Scenes (chase, boss, trampoline; see systems/encounters.js) ---
+    scene: null,                // the running scene: { id, phase, ...its data }
+    sceneQueue: [],             // scene ids waiting for a turn, FIFO, one entry per scene
+    sceneMemory: {},            // per-scene trigger bookkeeping that outlives each run of it
+    lastSceneEndAt: -Infinity,  // ms timestamp when the last scene fully ended; -Infinity = none yet
 
     // --- Giant mode ---
     giantActive: false,
@@ -119,12 +100,6 @@ export function createState(rng = Math.random) {
     giantBonkEffects: [],   // [{x, y, width, height, vx, vy, rotation, rotSpeed, startTime, type, skin}]
     birdJumpEffects: [],    // [{x, y, startTime}]
 
-    // --- Trampoline scene ---
-    trampPending: false,        // waiting for obstacles to clear
-    trampActive: false,         // scene running (spawns its own field)
-    trampRep: 0,                // reps spawned so far (0..TRAMP_BOUNCES)
-    trampBreatherFrames: 0,     // countdown between reps
-    lastTrampEndScore: 0,       // 0 = never run (gates TRAMP_FIRST_AT vs cooldown)
     trampBounceEffects: [],     // [{x, y, startTime}] "+50" popups
 
     // --- Weather ---
@@ -164,20 +139,10 @@ export function resetRun(state) {
   state.dog.doubleJumped = false;
   state.dog.ducking = false;
 
-  state.lastSceneEndAt = -Infinity;
+  state.scene = null;
   state.sceneQueue = [];
-
-  state.chaseActive = false;
-  state.chasePending = false;
-  state.chaseEntering = false;
-  state.chaseEscaping = false;
-  state.lastChaseEndScore = 0;
-
-  state.bossPending = false;
-  state.bossChasing = false;
-  state.bossLosing = false;
-  state.lastBossMilestone = 0;
-  state.bossDogShift = 0;
+  state.sceneMemory = {};
+  state.lastSceneEndAt = -Infinity;
 
   state.giantActive = false;
   state.giantGrowing = false;
@@ -188,11 +153,6 @@ export function resetRun(state) {
   state.birdJumpEffects = [];
   state.lastGoldenSpawnScore = 0;
 
-  state.trampPending = false;
-  state.trampActive = false;
-  state.trampRep = 0;
-  state.trampBreatherFrames = 0;
-  state.lastTrampEndScore = 0;
   state.trampBounceEffects = [];
 
   state.weatherRain = false;

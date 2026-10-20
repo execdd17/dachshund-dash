@@ -21,7 +21,8 @@ import {
   CHASE_FIRST_AT, BOSS_MILESTONE, GIANT_FIRST_AT,
   INITIAL_SPEED, SPEED_INCREMENT,
 } from '../js/config.js';
-import { getScenePhase, setScenePhase, setGiantPhase } from '../js/systems/encounters.js';
+import { setGiantPhase, sceneMemory } from '../js/systems/encounters.js';
+import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
 import { createTestServices } from './helpers.js';
 
 const DT = DT_BASELINE;
@@ -74,12 +75,12 @@ test('scene arms past TRAMP_FIRST_AT, waits for a clear field, then spawns rep 0
   updateTrampoline(state, 1, services, 0);
   assert.notEqual(getScenePhase(state, 'tramp'), 'pending');
   assert.equal(getScenePhase(state, 'tramp'), 'active');
-  assert.equal(state.trampRep, 0);
-  assert.equal(state.trampBreatherFrames, TRAMP_BREATHER);
+  assert.equal(state.scene.rep, 0);
+  assert.equal(state.scene.breatherFrames, TRAMP_BREATHER);
 
   // Run the breather down in one big step: rep 0 spawns
   updateTrampoline(state, TRAMP_BREATHER, services, 0);
-  assert.equal(state.trampRep, 1);
+  assert.equal(state.scene.rep, 1);
   const thorns = state.obstacles.filter(o => o.type === 'thorns');
   const tramps = state.obstacles.filter(o => o.type === 'trampoline');
   assert.equal(tramps.length, 1, 'exactly one trampoline');
@@ -126,43 +127,43 @@ test('a golden hot dog on the field blocks arming, and giant mode drops a pendin
   // Giant mode starting while pending (debug G / race): stand down…
   const pendingState = runningState();
   pendingState.score = TRAMP_FIRST_AT + 10;
-  pendingState.trampPending = true;
-  pendingState.giantActive = true;
+  setScenePhase(pendingState, 'tramp', 'pending');
+  setGiantPhase(pendingState, 'active');
   pendingState.obstacles = [];
   updateTrampoline(pendingState, 1, services, 0);
-  assert.equal(pendingState.trampPending, false, 'pending dropped when giant mode starts');
-  assert.equal(pendingState.trampActive, false, 'scene must not activate mid-giant');
+  assert.notEqual(getScenePhase(pendingState, 'tramp'), 'pending', 'pending dropped when giant mode starts');
+  assert.notEqual(getScenePhase(pendingState, 'tramp'), 'active', 'scene must not activate mid-giant');
 
   // …through the shrink transition too…
-  pendingState.trampPending = true;
-  pendingState.giantActive = false;
+  setScenePhase(pendingState, 'tramp', 'pending');
+  setGiantPhase(pendingState, 'off');
   pendingState.giantShrinking = true;
   updateTrampoline(pendingState, 1, services, 0);
-  assert.equal(pendingState.trampPending, false);
+  assert.notEqual(getScenePhase(pendingState, 'tramp'), 'pending');
 
   // …then re-arm once giant mode has fully ended (score gate still holds)
   pendingState.giantShrinking = false;
   updateTrampoline(pendingState, 1, services, 0);
-  assert.equal(pendingState.trampPending, true, 're-arms after giant mode ends');
+  assert.equal(getScenePhase(pendingState, 'tramp'), 'pending', 're-arms after giant mode ends');
 });
 
 test('active scene blocks chase, boss, goldens, and regular spawning', () => {
   const services = createTestServices();
 
   const chaseState = runningState();
-  chaseState.trampActive = true;
+  setScenePhase(chaseState, 'tramp', 'active');
   chaseState.score = CHASE_FIRST_AT + 10;
   updateChase(chaseState, 1);
-  assert.equal(chaseState.chasePending, false, 'chase must not arm mid-scene');
+  assert.notEqual(getScenePhase(chaseState, 'chase'), 'pending', 'chase must not arm mid-scene');
 
   const bossState = runningState();
-  bossState.trampActive = true;
+  setScenePhase(bossState, 'tramp', 'active');
   bossState.score = BOSS_MILESTONE + 10;
   updateBoss(bossState, 1, services);
-  assert.equal(bossState.bossPending, false, 'boss must not arm mid-scene');
+  assert.notEqual(getScenePhase(bossState, 'boss'), 'pending', 'boss must not arm mid-scene');
 
   const goldenState = runningState();
-  goldenState.trampActive = true;
+  setScenePhase(goldenState, 'tramp', 'active');
   goldenState.score = GIANT_FIRST_AT + 10;
   spawnObstacle(goldenState, () => 0);  // rng 0 always favors golden when eligible
   assert.ok(
@@ -171,8 +172,8 @@ test('active scene blocks chase, boss, goldens, and regular spawning', () => {
   );
 
   const spawnState = runningState();
-  spawnState.trampActive = true;
-  spawnState.trampBreatherFrames = 10000;  // keep the scene itself from spawning
+  setScenePhase(spawnState, 'tramp', 'active');
+  spawnState.scene.breatherFrames = 10000;  // keep the scene itself from spawning
   spawnState.nextObstacleIn = -1;
   update(spawnState, DT, services, () => 0.99, 0);
   assert.equal(spawnState.obstacles.length, 0, 'regular spawning suppressed mid-scene');
@@ -187,7 +188,7 @@ test('descending onto the trampoline launches, resets double jump, scores, and b
   services.sfx = { ...services.sfx, playBoing: () => { boings++; } };
 
   setScenePhase(state, 'tramp', 'active');
-  state.trampRep = 1;
+  state.scene.rep = 1;
   const tramp = { x: 60, y: GROUND_Y - 12, width: 84, height: 12, type: 'trampoline', squashUntil: 0 };
   state.obstacles = [tramp];
 
@@ -218,13 +219,13 @@ test('a jump onto the island carries the dog across the whole patch unharmed', (
   // the bounce alone clears the exit. Below that band the post-bounce double
   // jump is required, which this single-jump script doesn't model.
   state.score = (3.5 - INITIAL_SPEED) / SPEED_INCREMENT;
-  state.lastBossMilestone = 99;  // keep the boss milestone check out of this scene
+  sceneMemory(state, 'boss').lastMilestone = 99;  // keep the boss milestone check out of this scene
   const speed = INITIAL_SPEED + state.score * SPEED_INCREMENT;
 
   setScenePhase(state, 'tramp', 'active');
   state.speed = speed;
-  spawnTrampRep(state);          // rep 0 at x = W + 10
-  state.trampRep = TRAMP_BOUNCES;  // no further reps; scene ends when field clears
+  spawnTrampRep(state, 0);       // rep 0 at x = W + 10
+  state.scene.rep = TRAMP_BOUNCES;  // no further reps; scene ends when field clears
 
   const heartsBefore = state.hearts;
   let jumped = false;
@@ -277,11 +278,11 @@ test('thorn contact spends one heart, keeps the patch, and i-frames cover the re
   assert.equal(state.hearts, 2);
 
   // Scene proceeds: patch scrolls off, next rep spawns after the breather
-  state.trampRep = 1;
+  state.scene.rep = 1;
   state.obstacles = [];
-  state.trampBreatherFrames = 1;
+  state.scene.breatherFrames = 1;
   updateTrampoline(state, 1, services, 5000);
-  assert.equal(state.trampRep, 2);
+  assert.equal(state.scene.rep, 2);
   assert.ok(state.obstacles.some(o => o.type === 'trampoline'), 'rep 1 spawned');
 });
 
@@ -337,9 +338,8 @@ test('scene runs three reps, ends cleanly, and respects the cooldown before re-a
   }
 
   assert.equal(spawns, TRAMP_BOUNCES, 'three reps spawned');
-  assert.equal(state.trampRep, TRAMP_BOUNCES);
   assert.notEqual(getScenePhase(state, 'tramp'), 'active');
-  assert.equal(state.lastTrampEndScore, state.score);
+  assert.equal(state.sceneMemory.tramp.lastEndScore, state.score);
   assert.equal(state.nextObstacleIn, MIN_OBSTACLE_GAP, 'spawn gap reset on scene end');
 
   // Normal spawning resumes through update() once the gap elapses
@@ -350,31 +350,29 @@ test('scene runs three reps, ends cleanly, and respects the cooldown before re-a
 
   // No re-arm before the cooldown, re-arms after
   const cooldownState = runningState();
-  cooldownState.lastTrampEndScore = 1000;
+  sceneMemory(cooldownState, 'tramp').lastEndScore = 1000;
   cooldownState.score = 1000 + TRAMP_COOLDOWN - 1;
   updateTrampoline(cooldownState, 1, services, 0);
-  assert.equal(cooldownState.trampPending, false, 'still cooling down');
+  assert.notEqual(getScenePhase(cooldownState, 'tramp'), 'pending', 'still cooling down');
   cooldownState.score = 1000 + TRAMP_COOLDOWN;
   updateTrampoline(cooldownState, 1, services, 0);
-  assert.equal(cooldownState.trampPending, true, 'cooldown elapsed');
+  assert.equal(getScenePhase(cooldownState, 'tramp'), 'pending', 'cooldown elapsed');
 });
 
 // --- 10. resetRun clears every scene field ---
 
-test('resetRun restores all six trampoline fields to defaults', () => {
+test('resetRun clears the running scene, its memory, and its effects', () => {
   const state = createState(() => 0.5);
   setScenePhase(state, 'tramp', 'active');
-  state.trampRep = 2;
-  state.trampBreatherFrames = 55;
-  state.lastTrampEndScore = 777;
+  state.scene.rep = 2;
+  state.scene.breatherFrames = 55;
+  sceneMemory(state, 'tramp').lastEndScore = 777;
   state.trampBounceEffects = [{ x: 1, y: 2, startTime: 3 }];
 
   resetRun(state);
 
-  assert.equal(getScenePhase(state, 'tramp'), 'idle');
-  assert.equal(state.trampRep, 0);
-  assert.equal(state.trampBreatherFrames, 0);
-  assert.equal(state.lastTrampEndScore, 0);
+  assert.equal(state.scene, null);
+  assert.deepEqual(state.sceneMemory, {});
   assert.deepEqual(state.trampBounceEffects, []);
 });
 

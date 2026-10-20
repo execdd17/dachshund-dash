@@ -1,5 +1,5 @@
-// Trampoline scene: thorn patch with a trampoline island. Three reps per
-// scene, mutually exclusive with chase/boss/giant.
+// Trampoline scene: a thorn patch with a trampoline island, TRAMP_BOUNCES reps
+// per scene: pending → active.
 
 import {
   W, MIN_OBSTACLE_GAP,
@@ -9,7 +9,7 @@ import {
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
 import { makeObstacle } from './obstacleTypes.js';
-import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
+import { sceneMemory, scoreCooldownTrigger, stepScene } from './encounters.js';
 
 export function getTrampLayout(rep, speed) {
   const spec = TRAMP_REPS[rep];
@@ -26,8 +26,8 @@ export function getTrampLayout(rep, speed) {
 }
 
 // One rep: entry thorns, the trampoline island, exit thorns.
-export function spawnTrampRep(state) {
-  const layout = getTrampLayout(state.trampRep, state.speed);
+export function spawnTrampRep(state, rep) {
+  const layout = getTrampLayout(rep, state.speed);
   let x = W + 10;
   const pushThorns = count => {
     for (let i = 0; i < count; i++, x += TRAMP_TILE_W) {
@@ -61,46 +61,43 @@ function checkTrampolineBounce(state, services, now) {
   }
 }
 
-export function updateTrampoline(state, scale, services, now) {
-  if (state.trampActive) {
-    checkTrampolineBounce(state, services, now);
+const isTrampScenery = o => o.type === 'thorns' || o.type === 'trampoline';
 
-    const sceneObstacles = state.obstacles.some(o => o.type === 'thorns' || o.type === 'trampoline');
-    if (!sceneObstacles) {
-      if (state.trampRep >= TRAMP_BOUNCES) {
-        state.trampActive = false;
-        state.lastTrampEndScore = state.score;
-        markSceneEnd(state, now);
+export const trampScene = {
+  id: 'tramp',
+  quietPhases: ['active'],  // the scene spawns its own field
+  initialData: () => ({ rep: 0, breatherFrames: 0 }),
+  wantsTurn: (state, memory) => scoreCooldownTrigger(state, memory, TRAMP_FIRST_AT, TRAMP_COOLDOWN),
+
+  start(state, scene) {
+    scene.phase = 'active';
+    scene.rep = 0;
+    scene.breatherFrames = TRAMP_BREATHER;
+  },
+
+  phases: {
+    // TRAMP_BOUNCES reps, each spawned once the previous one has scrolled off
+    // and a breather has passed. The bounce runs before collision resolves
+    // thorns on the same frame.
+    active(state, scene, { scale, services, now }) {
+      checkTrampolineBounce(state, services, now);
+      if (state.obstacles.some(isTrampScenery)) return undefined;
+      if (scene.rep >= TRAMP_BOUNCES) {
+        sceneMemory(state, 'tramp').lastEndScore = state.score;
         state.nextObstacleIn = MIN_OBSTACLE_GAP;
-      } else {
-        state.trampBreatherFrames -= scale;
-        if (state.trampBreatherFrames <= 0) {
-          spawnTrampRep(state);
-          state.trampRep++;
-          state.trampBreatherFrames = TRAMP_BREATHER;
-        }
+        return 'done';
       }
-    }
-  } else if (state.trampPending) {
-    // Giant mode won the race (e.g. a golden eaten via debug G after we
-    // armed): stand down so giant mode keeps its normal field of edible
-    // obstacles. The queued turn is kept — we go back to the queue head and
-    // re-arm right after the giant ends.
-    if (giantBusy(state)) {
-      state.trampPending = false;
-      requeueSceneFront(state, 'tramp');
-    } else if (state.obstacles.length === 0) {
-      state.trampPending = false;
-      state.trampActive = true;
-      state.trampRep = 0;
-      state.trampBreatherFrames = TRAMP_BREATHER;
-    }
-  } else {
-    const wantsTurn = (state.lastTrampEndScore === 0 && state.score >= TRAMP_FIRST_AT)
-      || (state.lastTrampEndScore > 0 && state.score >= state.lastTrampEndScore + TRAMP_COOLDOWN);
-    if (wantsTurn) requestScene(state, 'tramp');
-    if (tryStartScene(state, 'tramp', now)) {
-      state.trampPending = true;
-    }
-  }
+      scene.breatherFrames -= scale;
+      if (scene.breatherFrames <= 0) {
+        spawnTrampRep(state, scene.rep);
+        scene.rep++;
+        scene.breatherFrames = TRAMP_BREATHER;
+      }
+      return undefined;
+    },
+  },
+};
+
+export function updateTrampoline(state, scale, services, now) {
+  stepScene(state, trampScene, { scale, services, now });
 }

@@ -4,6 +4,7 @@
 import {
   GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
 } from '../config.js';
+import { isChaseActive } from './chase.js';
 
 export function activateGiantMode(state, { sfx, music }, now = performance.now()) {
   state.giantActive = true;
@@ -68,6 +69,6 @@ export function triggerBonkEffect(state, obs, now = performance.now(), rng = Mat
     rotSpeed: 0.3 + rng() * 0.3,
     startTime: now,
     type: obs.type,
-    skin: obs.skin ?? (state.chaseActive ? 'chase' : 'normal'),
+    skin: obs.skin ?? (isChaseActive(state) ? 'chase' : 'normal'),
   });
 }

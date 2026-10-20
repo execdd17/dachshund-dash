@@ -10,6 +10,7 @@ import {
   PATTERN_FIRST_AT, PATTERN_CHANCE, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT, SPAWN_MIX,
 } from '../config.js';
 import { giantBusy, anySceneBusy } from './encounters.js';
+import { isChaseActive } from './chase.js';
 import { makeObstacle } from './obstacleTypes.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
@@ -135,14 +136,14 @@ function spawnSingleton(state, spawnX, skin, rng) {
     const r2 = rng();
     if (r2 < aerialSplit.birdStack) type = 'birdStack';
     else if (r2 < aerialSplit.birdTriangle) type = 'birdTriangle';
-    else if (!state.chaseActive && r2 < aerialSplit.bird) type = 'bird';
+    else if (!isChaseActive(state) && r2 < aerialSplit.bird) type = 'bird';
     else type = 'frisbee';
   } else if (state.score > frisbee.after && r < frisbee.below) {
     type = 'frisbee';
   }
 
   if (type === 'frisbee') {
-    const asBird = !state.chaseActive && rng() < SPAWN_MIX.frisbeeAsBird;
+    const asBird = !isChaseActive(state) && rng() < SPAWN_MIX.frisbeeAsBird;
     spawnKind(state, spawnX, skin, asBird ? 'bird' : 'frisbeePair');
   } else {
     spawnKind(state, spawnX, skin, type);
@@ -169,8 +170,8 @@ export function spawnObstacle(state, rng = Math.random) {
     return;
   }
 
-  const spawnX = state.chaseActive ? (state.dog.x + SQUIRREL_OFFSET) : (W + 10);
-  const skin = state.chaseActive ? 'chase' : undefined;
+  const spawnX = isChaseActive(state) ? (state.dog.x + SQUIRREL_OFFSET) : (W + 10);
+  const skin = isChaseActive(state) ? 'chase' : undefined;
 
   if (!state.activeSpawnPattern) {
     const picked = tryStartPattern(state, rng);

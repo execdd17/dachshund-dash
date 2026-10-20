@@ -21,6 +21,29 @@ import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale } from '../systems/giant.js';
 
+// Per-scene actors, keyed by scene id (scenes with none, like the trampoline, are absent).
+const SCENE_ACTORS = {
+  // Comically oversized squirrel closing in from the left — scaled about its
+  // feet so it stays grounded; it turns tail once the dog escapes.
+  boss(ctx, state, scene, sprites) {
+    advanceSquirrelSpriteFrame(sprites);
+    const retreating = scene.phase === 'exiting';
+    ctx.save();
+    scaleAbout(ctx, scene.squirrelX + 10, GROUND_Y + 24, BOSS_SQUIRREL_SCALE);
+    drawSquirrel(ctx, state, sprites, scene.squirrelX, GROUND_Y + 4, retreating, retreating);
+    ctx.restore();
+  },
+  // Squirrel ahead of the dog: runs in (facing left), taunts, runs off.
+  chase(ctx, state, scene, sprites) {
+    advanceSquirrelSpriteFrame(sprites);
+    if (scene.phase === 'active') {
+      drawSquirrel(ctx, state, sprites, state.dog.x + SQUIRREL_OFFSET, GROUND_Y + 4, false);
+    } else {
+      drawSquirrel(ctx, state, sprites, scene.squirrelX, GROUND_Y + 4, true, scene.phase === 'entering');
+    }
+  },
+};
+
 // deps: { canvas, ctx, state, sprites, cosmetics, music, view, globalScores, onIdleFrame }
 export function draw(deps) {
   const { canvas, ctx, state, sprites, cosmetics, music, view } = deps;
@@ -53,33 +76,9 @@ export function draw(deps) {
   advanceBirdSpriteFrame(sprites);
   state.obstacles.forEach(o => drawObstacle(ctx, state, o, sprites));
 
-  // Boss squirrel (behind the dog, drawn first so it appears on left)
-  // Comically oversized — scale around feet so it stays grounded
-  if (state.bossChasing || state.bossLosing) {
-    advanceSquirrelSpriteFrame(sprites);
-    const pivotX = state.bossSquirrelX + 10;
-    const pivotY = GROUND_Y + 24;
-    ctx.save();
-    scaleAbout(ctx, pivotX, pivotY, BOSS_SQUIRREL_SCALE);
-    if (state.bossChasing) {
-      drawSquirrel(ctx, state, sprites, state.bossSquirrelX, GROUND_Y + 4, false, false);
-    } else {
-      drawSquirrel(ctx, state, sprites, state.bossSquirrelX, GROUND_Y + 4, true, true);
-    }
-    ctx.restore();
-  }
-
-  // Chase squirrel (during chase, entering, or escaping; ahead of the dog)
-  if (state.chaseActive && !state.bossChasing && !state.bossLosing) {
-    advanceSquirrelSpriteFrame(sprites);
-    drawSquirrel(ctx, state, sprites, state.dog.x + SQUIRREL_OFFSET, GROUND_Y + 4, false);
-  } else if (state.chaseEntering && !state.bossChasing && !state.bossLosing) {
-    advanceSquirrelSpriteFrame(sprites);
-    drawSquirrel(ctx, state, sprites, state.squirrelEnterX, GROUND_Y + 4, true, true);  // running left (flip)
-  } else if (state.chaseEscaping && !state.bossChasing && !state.bossLosing) {
-    advanceSquirrelSpriteFrame(sprites);
-    drawSquirrel(ctx, state, sprites, state.squirrelEscapeX, GROUND_Y + 4, true);
-  }
+  // The running scene's actors, behind the dog
+  const scene = state.scene;
+  if (scene && scene.phase !== 'pending') SCENE_ACTORS[scene.id]?.(ctx, state, scene, sprites);
 
   // Dachshund (with giant-mode scaling and golden glow)
   advanceDogSpriteFrame(sprites, state);

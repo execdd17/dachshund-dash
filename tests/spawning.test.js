@@ -9,7 +9,7 @@ import {
   BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
   PATTERN_CHANCE,
 } from '../js/config.js';
-import { setScenePhase } from '../js/systems/encounters.js';
+import { setScenePhase } from '../js/systems/scenes.js';
 import { createSequenceRng } from './helpers.js';
 
 test('early game spawns only hotdogs regardless of roll', () => {
@@ -76,7 +76,7 @@ test('golden hot dog respects cooldown and encounter exclusions', () => {
 
   const state2 = createState(() => 0.5);
   state2.score = GIANT_FIRST_AT + 700;
-  state2.bossChasing = true;
+  setScenePhase(state2, 'boss', 'active');
   spawnObstacle(state2, createSequenceRng([0.0, 0.99]));
   assert.notEqual(state2.obstacles[0].type, 'golden');
 });

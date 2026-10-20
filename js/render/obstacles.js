@@ -7,6 +7,7 @@ import {
   BIRD_SPRITE_W, BIRD_SPRITE_FEET_FRAC,
 } from '../config.js';
 import { chaseAcornY } from '../systems/obstacleTypes.js';
+import { isChaseActive } from '../systems/chase.js';
 import { roundRect, drawSparkle } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 
@@ -804,7 +805,7 @@ export function drawObstacleLook(ctx, o, skin, view) {
 }
 
 export function drawObstacle(ctx, state, o, sprites) {
-  const chase = (o.skin ?? (state.chaseActive ? 'chase' : 'normal')) === 'chase';
+  const chase = (o.skin ?? (isChaseActive(state) ? 'chase' : 'normal')) === 'chase';
   const skin = chase ? 'chase' : (state.giantActive || state.giantGrowing) ? 'giant' : 'normal';
   drawObstacleLook(ctx, o, skin, { frameCount: state.frameCount, sprites, now: performance.now(), acornY: chaseAcornY(o) });
 }

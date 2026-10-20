@@ -1,9 +1,17 @@
-// Shared mutual-exclusion predicates. Encounters (giant, chase, boss,
-// trampoline) never overlap: each one's arming check must see every other
-// encounter as fully idle — including transition phases like the giant
-// grow/shrink, the chase squirrel's enter/escape runs, and the boss retreat.
-// Centralizing the flag lists here means a new encounter (or a new phase on
-// an existing one) only has to be registered once.
+// Encounter exclusion and the generic scene runner. Encounters (giant mode
+// and the scenes: chase, boss, trampoline) never overlap, including their
+// transition phases. Scenes share one slot, state.scene = { id, phase, …data },
+// so "is any scene busy" is just whether the slot is taken.
+//
+// A scene is a definition object (see chase.js, boss.js, trampoline.js):
+//   id                         — 'chase' | 'boss' | 'tramp'
+//   initialData()              — fresh per-run data merged into state.scene
+//   wantsTurn(state, memory)   — score trigger; memory (state.sceneMemory[id])
+//                                outlives each run of the scene
+//   start(state, scene)        — the field is clear: set the first real phase + data
+//   phases[phase](state, scene, ctx) — one frame of that phase; returns the
+//                                next phase name, 'done', or nothing to stay
+//   quietPhases                — phases (besides 'pending') with no normal spawning
 
 import { SCENE_MIN_GAP } from '../config.js';
 
@@ -11,33 +19,13 @@ export function giantBusy(state) {
   return state.giantActive || state.giantGrowing || state.giantShrinking;
 }
 
-export function chaseBusy(state) {
-  return state.chasePending || state.chaseEntering || state.chaseActive || state.chaseEscaping;
+export function anySceneBusy(state) {
+  return state.scene !== null;
 }
 
-export function bossBusy(state) {
-  return state.bossPending || state.bossChasing || state.bossLosing;
-}
-
-export function trampBusy(state) {
-  return state.trampPending || state.trampActive;
-}
-
-// Phase accessors: the one place that knows which state fields encode each
-// scene's lifecycle, so callers (and tests) never touch the flags directly.
-const SCENE_PHASE_FLAGS = {
-  chase: { pending: 'chasePending', entering: 'chaseEntering', active: 'chaseActive', exiting: 'chaseEscaping' },
-  boss: { pending: 'bossPending', active: 'bossChasing', exiting: 'bossLosing' },
-  tramp: { pending: 'trampPending', active: 'trampActive' },
-};
-
-export function getScenePhase(state, id) {
-  const flags = SCENE_PHASE_FLAGS[id];
-  return Object.keys(flags).find(phase => state[flags[phase]]) ?? 'idle';
-}
-
-export function setScenePhase(state, id, phase) {
-  for (const [p, flag] of Object.entries(SCENE_PHASE_FLAGS[id])) state[flag] = p === phase;
+// True while scene `id` runs (in `phase`, when given).
+export function inScene(state, id, phase) {
+  return state.scene?.id === id && (phase === undefined || state.scene.phase === phase);
 }
 
 // Giant mode: 'off' | 'growing' | 'active' | 'shrinking'. Growing counts as
@@ -61,11 +49,10 @@ export function goldenOnField(state) {
   return state.obstacles.some(o => o.type === 'golden');
 }
 
-// Scenes (chase, boss, trampoline) additionally guarantee SCENE_MIN_GAP ms of
-// normal gameplay between one another: each scene stamps state.lastSceneEndAt
-// when its final transition phase finishes, and every scene's start check
-// requires the gap to have elapsed. Per-scene score cooldowns still apply on
-// top. Giant mode is a reward power-up, not a scene, so it doesn't stamp.
+// Scenes additionally guarantee SCENE_MIN_GAP ms of normal gameplay between
+// one another, measured from the end of one scene's last phase. Per-scene
+// score cooldowns still apply on top. Giant mode is a reward power-up, not a
+// scene, so it doesn't count.
 export function sceneGapElapsed(state, now) {
   return now - state.lastSceneEndAt >= SCENE_MIN_GAP;
 }
@@ -78,20 +65,16 @@ export function markSceneEnd(state, now) {
 // A scene *requests* a turn once its own score condition is met (at most one
 // outstanding request per scene); turns are granted strictly in request order
 // once the shared field rules allow a scene to start. Without the queue,
-// update()'s fixed call order breaks ties, and chase's short cooldown lets it
-// win nearly every one — starving the trampoline scene.
-
-export function anySceneBusy(state) {
-  return chaseBusy(state) || bossBusy(state) || trampBusy(state);
-}
+// the fixed update order breaks ties, and chase's short cooldown lets it win
+// nearly every one — starving the trampoline scene.
 
 export function requestScene(state, id) {
   if (!state.sceneQueue.includes(id)) state.sceneQueue.push(id);
 }
 
-// A dispatched scene that stood down (giant mode won the race while it was
-// pending) goes back to the head of the queue: it keeps its turn for after
-// the giant ends instead of rejoining behind everyone else.
+// A pending scene that stood down (giant mode won the race) goes back to the
+// head of the queue: it keeps its turn for after the giant ends instead of
+// rejoining behind everyone else.
 export function requeueSceneFront(state, id) {
   if (!state.sceneQueue.includes(id)) state.sceneQueue.unshift(id);
 }
@@ -104,4 +87,54 @@ export function tryStartScene(state, id, now) {
   if (!sceneGapElapsed(state, now)) return false;
   state.sceneQueue.shift();
   return true;
+}
+
+export function sceneMemory(state, id) {
+  state.sceneMemory[id] ??= {};
+  return state.sceneMemory[id];
+}
+
+// The common trigger: first at `firstAt`, then `cooldown` points after the
+// scene last ended (memory.lastEndScore, which the scene sets as it winds down).
+export function scoreCooldownTrigger(state, memory, firstAt, cooldown) {
+  const last = memory.lastEndScore ?? 0;
+  return last === 0 ? state.score >= firstAt : state.score >= last + cooldown;
+}
+
+// No normal obstacle spawns while a scene waits for a clear field or is in
+// one of its quiet phases.
+export function sceneBlocksSpawning(state, def) {
+  return state.scene?.id === def.id
+    && (state.scene.phase === 'pending' || def.quietPhases.includes(state.scene.phase));
+}
+
+// One frame of one scene: run its current phase if it's the scene in the
+// slot; otherwise check its trigger and whether its queued turn can start.
+export function stepScene(state, def, ctx) {
+  const scene = state.scene;
+  if (scene?.id === def.id) {
+    if (scene.phase === 'pending') {
+      // Giant mode won the race (a golden eaten after we armed): stand down
+      // so giant mode keeps its normal edible field, keeping the queued turn.
+      if (giantBusy(state)) {
+        state.scene = null;
+        requeueSceneFront(state, def.id);
+      } else if (state.obstacles.length === 0) {
+        def.start(state, scene);
+      }
+      return;
+    }
+    const next = def.phases[scene.phase](state, scene, ctx);
+    if (next === 'done') {
+      state.scene = null;
+      markSceneEnd(state, ctx.now);
+    } else if (next) {
+      scene.phase = next;
+    }
+    return;
+  }
+  if (def.wantsTurn(state, sceneMemory(state, def.id))) requestScene(state, def.id);
+  if (tryStartScene(state, def.id, ctx.now)) {
+    state.scene = { id: def.id, phase: 'pending', ...def.initialData() };
+  }
 }

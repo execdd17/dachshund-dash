@@ -9,15 +9,7 @@ export function killDog(state, services) {
   services.sfx.playDeath();
 
   state.sceneQueue = [];
-  state.chaseActive = false;
-  state.chasePending = false;
-  state.chaseEntering = false;
-  state.chaseEscaping = false;
-  state.bossPending = false;
-  state.bossChasing = false;
-  state.bossLosing = false;
-  state.trampPending = false;
-  state.trampActive = false;
+  state.scene = null;
   state.giantActive = false;
   state.giantGrowing = false;
   state.giantShrinking = false;

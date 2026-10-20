@@ -1,5 +1,5 @@
 // Per-frame simulation step. Orchestrates physics, scrolling, spawning,
-// scoring, weather, and the giant/chase/boss subsystems.
+// scoring, weather, giant mode, and the scenes.
 //
 // services: { sfx, music, globalScores, recordScore } — everything
 // effectful is injected so this whole layer runs under Node for tests.
@@ -8,16 +8,15 @@ import {
   W, GROUND_Y, GRAVITY, DT_BASELINE,
   INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
-  BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, BOSS_OBSTACLE_GAP_MULTIPLIER, BOSS_APPROACH_FRAC,
+  BOSS_OBSTACLE_GAP_MULTIPLIER,
   DOG_HITBOX_STAND,
   GIANT_DURATION, BIRD_JUMP_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS,
 } from '../config.js';
 import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
 import { deactivateGiantMode } from './giant.js';
-import { updateChase } from './chase.js';
-import { updateBoss } from './boss.js';
-import { updateTrampoline } from './trampoline.js';
+import { bossSpeedMultiplier, isBossChasing } from './boss.js';
+import { updateScenes, scenesBlockSpawning } from './scenes.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
 import { killDog } from './death.js';
 
@@ -28,11 +27,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
   state.frameCount++;
   state.speed = Math.min(MAX_SPEED, INITIAL_SPEED + state.score * SPEED_INCREMENT);
 
-  // Boss speed ramps up over the approach, then drops back once the dog escapes
-  const bossSpeedMult = state.bossChasing
-    ? 1 + (BOSS_SPEED_MULTIPLIER - 1) * Math.min(1, state.bossChaseFrames / (BOSS_CHASE_DURATION * BOSS_APPROACH_FRAC))
-    : 1;
-  const effectiveSpeed = state.speed * bossSpeedMult;
+  const effectiveSpeed = state.speed * bossSpeedMultiplier(state);
 
   // Dog physics (scale by dt for frame-rate independence)
   const dog = state.dog;
@@ -78,12 +73,10 @@ export function update(state, dt, services, rng = Math.random, now = performance
 
   // Obstacles
   state.nextObstacleIn -= effectiveSpeed * scale;
-  if (state.nextObstacleIn <= 0 && !state.chasePending && !state.chaseEntering
-    && !state.bossPending && !state.bossLosing
-    && !state.trampPending && !state.trampActive) {
+  if (state.nextObstacleIn <= 0 && !scenesBlockSpawning(state)) {
     spawnObstacle(state, rng);
     if (state.nextObstacleIn <= 0) {
-      const gap = state.bossChasing
+      const gap = isBossChasing(state)
         ? MIN_OBSTACLE_GAP * BOSS_OBSTACLE_GAP_MULTIPLIER
         : MIN_OBSTACLE_GAP;
       state.nextObstacleIn = gap + rng() * MAX_OBSTACLE_GAP;
@@ -141,14 +134,9 @@ export function update(state, dt, services, rng = Math.random, now = performance
   state.birdJumpEffects = state.birdJumpEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
   state.trampBounceEffects = state.trampBounceEffects.filter(e => now - e.startTime < SCORE_POPUP_MS);
 
-  // Chase mode
-  updateChase(state, scale, now);
-
-  // Boss chase state machine (may kill the dog)
-  updateBoss(state, scale, services, now);
-
-  // Trampoline scene (bounce before collision resolves thorns on the same frame)
-  updateTrampoline(state, scale, services, now);
+  // Scenes (the boss may kill the dog; the trampoline bounce must run before
+  // collision resolves thorns on the same frame)
+  updateScenes(state, scale, services, now);
 
   // Chime at 100-point milestones
   const milestone = Math.floor(state.score / 100);
