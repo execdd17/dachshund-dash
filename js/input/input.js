@@ -49,14 +49,16 @@ export function wireInput(deps) {
     }
   });
 
-  function getLogicalCoords(e) {
-    const cx = ('touches' in e ? e.touches[0].clientX : e.clientX);
-    const cy = ('touches' in e ? e.touches[0].clientY : e.clientY);
-    if (view) return view.toWorld(cx, cy);
+  // A held key's keyup never arrives once the window loses focus.
+  window.addEventListener('blur', () => duck(state, false, services));
+
+  // point: a MouseEvent or Touch (anything with clientX/clientY).
+  function getLogicalCoords(point) {
+    if (view) return view.toWorld(point.clientX, point.clientY);
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (cx - rect.left) / rect.width * W,
-      y: (cy - rect.top) / rect.height * H,
+      x: (point.clientX - rect.left) / rect.width * W,
+      y: (point.clientY - rect.top) / rect.height * H,
     };
   }
 
@@ -68,22 +70,34 @@ export function wireInput(deps) {
     return p.x < 38 + safe.left && p.y < top + 32;
   }
 
+  // The finger holding the duck zone: only lifting that one ends the duck,
+  // so a jump tap with another finger doesn't.
+  let duckTouchId = null;
+
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    const p = getLogicalCoords(e);
-    if (inMusicZone(p)) { music.toggle(); return; }
-    if (touchDevice && p.x < W * DUCK_ZONE_RATIO) {
-      duck(state, true, services);
-    } else {
-      jump(state, services);
+    for (const touch of e.changedTouches) {
+      const p = getLogicalCoords(touch);
+      if (inMusicZone(p)) {
+        music.toggle();
+      } else if (touchDevice && p.x < W * DUCK_ZONE_RATIO) {
+        duckTouchId = touch.identifier;
+        duck(state, true, services);
+      } else {
+        jump(state, services);
+      }
     }
   });
 
-  canvas.addEventListener('touchend', () => {
-    if (touchDevice && state.dog.ducking) {
+  const releaseDuckTouch = e => {
+    for (const touch of e.changedTouches) {
+      if (touch.identifier !== duckTouchId) continue;
+      duckTouchId = null;
       duck(state, false, services);
     }
-  });
+  };
+  canvas.addEventListener('touchend', releaseDuckTouch);
+  canvas.addEventListener('touchcancel', releaseDuckTouch);
 
   canvas.addEventListener('click', e => {
     const p = getLogicalCoords(e);

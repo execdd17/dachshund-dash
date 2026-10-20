@@ -101,4 +101,5 @@ Game logic never touches the DOM, canvas, or Web Audio — everything effectful 
 ### Input
 
 - Desktop: Space/Up jump (twice for a double jump), Down/S duck, click jumps.
-- Touch: the right side jumps, holding the left `DUCK_ZONE_RATIO` (40%) ducks; the speaker icon top-left toggles music.
+- Touch: the right side jumps, holding the left `DUCK_ZONE_RATIO` (40%) ducks (tracked per finger, so a jump tap doesn't end it); the speaker icon top-left toggles music.
+- Duck is a held input (`state.duckHeld`), applied every frame by `applyDuck`: the dog ducks whenever duck is held and it's grounded, so holding it through a jump ducks on the landing frame, before collision.

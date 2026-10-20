@@ -12,6 +12,7 @@ import {
   DOG_HITBOX_STAND,
   GIANT_DURATION, BIRD_JUMP_BONUS,
 } from '../config.js';
+import { applyDuck } from './control.js';
 import { spawnObstacle } from './spawning.js';
 import { checkCollision } from './collision.js';
 import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGiant } from './giant.js';
@@ -55,6 +56,9 @@ export function update(state, dt, services, rng = Math.random, now = performance
       }
     }
   }
+
+  // Before collision, so a duck held through the jump counts on the landing frame
+  applyDuck(state, services);
 
   dog.legFrame += effectiveSpeed * 0.06 * scale;
 

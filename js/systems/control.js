@@ -26,12 +26,17 @@ export function jump(state, services, now = performance.now()) {
   }
 }
 
+// Duck is a held input, not a one-shot press: holding it through a jump
+// ducks on the landing frame (applyDuck runs every frame from update()).
 export function duck(state, active, services) {
+  state.duckHeld = active;
+  applyDuck(state, services);
+}
+
+// The dog ducks while duck is held and it's on the ground.
+export function applyDuck(state, services) {
   if (state.gameState !== 'running') return;
-  if (active && !state.dog.jumping) {
-    if (!state.dog.ducking) services.sfx.playDuck();
-    state.dog.ducking = true;
-  } else {
-    state.dog.ducking = false;
-  }
+  const ducking = state.duckHeld && !state.dog.jumping;
+  if (ducking && !state.dog.ducking) services.sfx.playDuck();
+  state.dog.ducking = ducking;
 }

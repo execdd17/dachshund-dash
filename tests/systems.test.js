@@ -12,11 +12,13 @@ import { markSceneEnd, getGiantPhase, setGiantPhase, sceneMemory } from '../js/s
 import { getScenePhase, setScenePhase, forceScene, scenesBlockSpawning, SCENES } from '../js/systems/scenes.js';
 import { killDog } from '../js/systems/death.js';
 import { jump, duck } from '../js/systems/control.js';
+import { update } from '../js/systems/update.js';
+import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import {
   W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
   BOSS_MILESTONE, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
-  SCENE_MIN_GAP, TRAMP_FIRST_AT,
+  SCENE_MIN_GAP, TRAMP_FIRST_AT, GROUND_Y,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -360,6 +362,44 @@ test('duck only applies while running and grounded', () => {
   state.dog.jumping = true;
   duck(state, true, services);
   assert.equal(state.dog.ducking, false, 'airborne: no duck');
+});
+
+test('duck held through a jump ducks on the landing frame', () => {
+  const state = createState(() => 0.5);
+  const played = [];
+  const services = createTestServices({ sfx: { ...createTestServices().sfx, playDuck: () => played.push('duck') } });
+  state.gameState = 'running';
+  state.nextObstacleIn = 1e9;
+  jump(state, services, 0);
+  duck(state, true, services);  // pressed mid-air, in anticipation
+  let now = 0, frames = 0;
+  while (state.dog.jumping) {
+    assert.equal(state.dog.ducking, false, 'no duck while airborne');
+    update(state, 8, services, () => 0.5, now += 8);
+    if (++frames > 1000) assert.fail('never landed');
+  }
+  assert.equal(state.dog.ducking, true, 'ducking on the landing frame');
+  assert.deepEqual(played, ['duck'], 'duck sound once, on touchdown');
+
+  duck(state, false, services);
+  assert.equal(state.dog.ducking, false, 'release stands up');
+});
+
+test('a held duck clears a duck-height obstacle met on the landing frame', () => {
+  const landOnAcorn = holdDuck => {
+    const state = createState(() => 0.5);
+    const services = createTestServices();
+    state.gameState = 'running';
+    state.nextObstacleIn = 1e9;
+    state.hearts = 1;
+    Object.assign(state.dog, { jumping: true, y: GROUND_Y - 1, vy: 2 });  // lands this frame
+    duck(state, holdDuck, services);
+    state.obstacles = [makeObstacle('frisbee', state.dog.x + 30, { skin: 'chase' })];  // acorn at duck height
+    update(state, 8, services, () => 0.5, 8);
+    return state.gameState;
+  };
+  assert.equal(landOnAcorn(false), 'dead', 'standing up, the acorn hits');
+  assert.equal(landOnAcorn(true), 'running', 'the held duck counts before collision');
 });
 
 test('phase accessors round-trip and keep each lifecycle to a single phase', () => {

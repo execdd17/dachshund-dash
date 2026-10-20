@@ -102,6 +102,7 @@ export function createState(rng = Math.random) {
     touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
     difficulty: DEFAULT_DIFFICULTY.label,  // label of the session difficulty; recorded with global scores
     startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
+    duckHeld: false,  // duck key/touch is down; outlives runs so a held key carries into a restart
 
     groundOffset: 0,
     clouds: createClouds(),
