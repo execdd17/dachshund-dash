@@ -4,8 +4,8 @@
 
 import { qualifiesLocally } from '../leaderboard/local.js';
 
-export function killDog(state, services) {
-  state.deathTime = Date.now();
+export function killDog(state, services, now = performance.now()) {
+  state.deathTime = now;
   services.sfx.playDeath();
 
   state.sceneQueue = [];

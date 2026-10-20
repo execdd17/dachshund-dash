@@ -370,11 +370,10 @@ test('restart from dead is locked out for 1s after death', () => {
   const state = createState(() => 0.5);
   const services = createTestServices();
   state.gameState = 'dead';
-  state.deathTime = Date.now();
-  jump(state, services);
+  state.deathTime = 5000;
+  jump(state, services, 5999);
   assert.equal(state.gameState, 'dead', 'too soon to restart');
-  state.deathTime = Date.now() - 1500;
-  jump(state, services);
+  jump(state, services, 6000);
   assert.equal(state.gameState, 'running');
 });
 

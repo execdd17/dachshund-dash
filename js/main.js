@@ -95,10 +95,10 @@ function gameLoop(now) {
   now = now ?? performance.now();
   const dt = lastFrameTime ? Math.min(now - lastFrameTime, 100) : 16.67;
   lastFrameTime = now;
-  update(state, dt, services);
+  update(state, dt, services, Math.random, now);
   cosmeticsMenu.updateCustomizeButtonVisibility();
   draw({
-    canvas, ctx, state, sprites, cosmetics, music, view,
+    canvas, ctx, state, sprites, cosmetics, music, view, now,
     // Periodic global score refresh while sitting on the idle screen
     onIdleFrame: () => globalScores.maybeRefresh(),
   });

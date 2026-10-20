@@ -44,7 +44,7 @@ export const bossScene = {
   phases: {
     // The squirrel closes in from the left while the dog is pushed right
     // (less reaction time); if it catches the dog, game over.
-    active(state, scene, { scale, services }) {
+    active(state, scene, { scale, services, now }) {
       // Frame-based timer: the encounter lasts the same regardless of game speed
       scene.chaseFrames += scale;
       const progress = Math.min(1, scene.chaseFrames / BOSS_CHASE_DURATION);
@@ -67,7 +67,7 @@ export const bossScene = {
       scene.squirrelX = BOSS_SQUIRREL_START_X + (peakX - BOSS_SQUIRREL_START_X) * approachCurve;
 
       const squirrelBox = { x: scene.squirrelX, y: GROUND_Y + 4, w: 30, h: 20 };
-      if (rectsOverlap(squirrelBox, getDogHitbox(state.dog, false))) killDog(state, services);
+      if (rectsOverlap(squirrelBox, getDogHitbox(state.dog, false))) killDog(state, services, now);
       return scene.chaseFrames >= BOSS_CHASE_DURATION ? 'exiting' : undefined;
     },
     // The squirrel falls back; the dog eases home, but only while grounded.

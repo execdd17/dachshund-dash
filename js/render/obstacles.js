@@ -805,8 +805,8 @@ export function drawObstacleLook(ctx, o, skin, view) {
   (looks[skin] ?? looks.normal)(ctx, o, view);
 }
 
-export function drawObstacle(ctx, state, o, sprites) {
+export function drawObstacle(ctx, state, o, sprites, now = performance.now()) {
   const chase = (o.skin ?? (isChaseActive(state) ? 'chase' : 'normal')) === 'chase';
   const skin = chase ? 'chase' : isGiant(state) ? 'giant' : 'normal';
-  drawObstacleLook(ctx, o, skin, { frameCount: state.frameCount, sprites, now: performance.now(), acornY: chaseAcornY(o) });
+  drawObstacleLook(ctx, o, skin, { frameCount: state.frameCount, sprites, now, acornY: chaseAcornY(o) });
 }

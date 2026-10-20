@@ -3,9 +3,9 @@
 import { JUMP_FORCE, DOUBLE_JUMP_FORCE, RESTART_LOCKOUT_MS } from '../config.js';
 import { resetRun } from '../core/state.js';
 
-export function jump(state, services) {
+export function jump(state, services, now = performance.now()) {
   const canStart = state.gameState === 'idle'
-    || (state.gameState === 'dead' && Date.now() - state.deathTime >= RESTART_LOCKOUT_MS);
+    || (state.gameState === 'dead' && now - state.deathTime >= RESTART_LOCKOUT_MS);
   if (canStart) {
     state.gameState = 'running';
     resetRun(state);
