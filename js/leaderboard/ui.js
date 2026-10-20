@@ -3,6 +3,7 @@
 // is the pure getFilteredScores() in global.js.
 
 import { GLOBAL_PAGE_SIZE, DIFFICULTY_LEVELS } from '../config.js';
+import { isDifficultyLabel } from '../core/difficulty.js';
 import { getFilteredScores } from './global.js';
 
 export function createLeaderboardUi(globalScores) {
@@ -30,28 +31,18 @@ export function createLeaderboardUi(globalScores) {
     if (!body) return;
     renderTabs();
 
-    if (!difficulty) {
-      body.innerHTML = '<tr><td colspan="3" class="lb-status">Start the game to load the leaderboard</td></tr>';
+    // A single full-width message row in place of the table, paging disabled.
+    const showMessage = (cls, text) => {
+      body.innerHTML = `<tr><td colspan="3" class="${cls}">${text}</td></tr>`;
       pageInfo.textContent = '';
       prevBtn.disabled = true;
       nextBtn.disabled = true;
-      return;
-    }
+    };
 
-    if (!globalScores.loaded && !globalScores.error) {
-      body.innerHTML = '<tr><td colspan="3" class="lb-status">Loading...</td></tr>';
-      pageInfo.textContent = '';
-      prevBtn.disabled = true;
-      nextBtn.disabled = true;
-      return;
-    }
-
+    if (!difficulty) return showMessage('lb-status', 'Start the game to load the leaderboard');
+    if (!globalScores.loaded && !globalScores.error) return showMessage('lb-status', 'Loading...');
     if (globalScores.error && globalScores.scores.length === 0) {
-      body.innerHTML = '<tr><td colspan="3" class="lb-status">Leaderboard unavailable (offline)</td></tr>';
-      pageInfo.textContent = '';
-      prevBtn.disabled = true;
-      nextBtn.disabled = true;
-      return;
+      return showMessage('lb-status', 'Leaderboard unavailable (offline)');
     }
 
     const filtered = currentBoard();
@@ -63,13 +54,7 @@ export function createLeaderboardUi(globalScores) {
     const pageScores = filtered.slice(start, start + GLOBAL_PAGE_SIZE);
 
     if (pageScores.length === 0) {
-      body.innerHTML = searchTerm
-        ? '<tr><td colspan="3" class="lb-empty">No matching scores</td></tr>'
-        : `<tr><td colspan="3" class="lb-empty">No ${difficulty} scores yet — be the first!</td></tr>`;
-      pageInfo.textContent = '';
-      prevBtn.disabled = true;
-      nextBtn.disabled = true;
-      return;
+      return showMessage('lb-empty', searchTerm ? 'No matching scores' : `No ${difficulty} scores yet — be the first!`);
     }
 
     body.innerHTML = pageScores.map(entry => {
@@ -86,7 +71,7 @@ export function createLeaderboardUi(globalScores) {
   // Called when the player picks a difficulty on the start overlay — sets the
   // session board and the visible tab together.
   function setSessionDifficulty(label) {
-    if (!DIFFICULTY_LEVELS.some(l => l.label === label)) return;
+    if (!isDifficultyLabel(label)) return;
     difficulty = label;
     page = 0;
     searchTerm = '';
@@ -97,7 +82,7 @@ export function createLeaderboardUi(globalScores) {
 
   // User clicked a different difficulty tab in the HTML leaderboard.
   function setDifficulty(label) {
-    if (!DIFFICULTY_LEVELS.some(l => l.label === label) || label === difficulty) return;
+    if (!isDifficultyLabel(label) || label === difficulty) return;
     difficulty = label;
     page = 0;
     globalScores.loadView(label);

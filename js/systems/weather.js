@@ -1,6 +1,6 @@
 // Weather: rain rolls happen on dawn→day and sunset→night transitions.
 
-import { W, H } from '../config.js';
+import { W, H, RAIN_CHANCE, RAIN_DROPS } from '../config.js';
 import { getTimeOfDay } from '../core/timeOfDay.js';
 
 export function initRain(state, rng = Math.random) {
@@ -8,7 +8,7 @@ export function initRain(state, rng = Math.random) {
   // extends the sky above the world (see render/view.js).
   const skyTop = state.skyTop ?? 0;
   state.rainDrops = [];
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < RAIN_DROPS; i++) {
     state.rainDrops.push({
       x: rng() * W,
       y: skyTop + rng() * (H - skyTop),
@@ -31,13 +31,13 @@ export function updateRain(state, weatherScale, rng = Math.random) {
   });
 }
 
-// Check for day/night stage transitions and roll for rain (25% chance).
+// On each dawn→day / sunset→night change, roll whether it rains for the next stretch.
 export function rollWeatherOnStageChange(state, rng = Math.random) {
   const currentStage = getTimeOfDay(state.score).stage;
   if (currentStage !== state.lastTimeStage) {
     if ((currentStage === 'day' || currentStage === 'night') &&
         (state.lastTimeStage === 'dawn' || state.lastTimeStage === 'sunset')) {
-      if (rng() < 0.25) {
+      if (rng() < RAIN_CHANCE) {
         if (!state.weatherRain) { state.weatherRain = true; initRain(state, rng); }
       } else {
         if (state.weatherRain) { state.weatherRain = false; state.rainDrops = []; }

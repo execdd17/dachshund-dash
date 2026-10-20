@@ -5,7 +5,7 @@ import {
   W, GROUND_Y, MIN_OBSTACLE_GAP,
   TRAMP_FIRST_AT, TRAMP_COOLDOWN, TRAMP_BOUNCES, TRAMP_BOUNCE_VY,
   TRAMP_BOUNCE_BONUS, TRAMP_BREATHER, TRAMP_TILE_W, TRAMP_HITBOX_PAD,
-  TRAMP_REPS,
+  TRAMP_REPS, TRAMP_SQUASH_MS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
 import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
@@ -78,7 +78,7 @@ function checkTrampolineBounce(state, services, now) {
     state.dog.ducking = false;
     state.score += TRAMP_BOUNCE_BONUS;
     state.trampBounceEffects.push({ x: tramp.x + tramp.width / 2, y: tramp.y, startTime: now });
-    tramp.squashUntil = now + 250;
+    tramp.squashUntil = now + TRAMP_SQUASH_MS;
     services.sfx.playBoing();
   }
 }

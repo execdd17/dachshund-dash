@@ -1,14 +1,12 @@
 // Central mutable game state. One object, created by createState(), passed
 // explicitly to every system and renderer — no module-level game globals.
-// Field names match the original single-file implementation to keep the
-// gameplay code recognizable.
 
 import {
-  W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X, BOSS_SQUIRREL_START_X,
-  DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
+  W, GROUND_Y, INITIAL_SPEED, DOG_BASE_X, BOSS_SQUIRREL_START_X, SQUIRREL_RUN_SPEED,
 } from '../config.js';
+import { DEFAULT_DIFFICULTY } from './difficulty.js';
 
-const DEFAULT_HEARTS = DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].hearts;
+const DEFAULT_HEARTS = DEFAULT_DIFFICULTY.hearts;
 
 export function createDog() {
   return {
@@ -69,7 +67,7 @@ export function createState(rng = Math.random) {
     dog: createDog(),
 
     // --- Hearts (extra lives) ---
-    difficulty: DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label,  // label of the session difficulty; recorded with global scores
+    difficulty: DEFAULT_DIFFICULTY.label,  // label of the session difficulty; recorded with global scores
     startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
     hearts: DEFAULT_HEARTS,
     invulnUntil: 0,   // timestamp: collisions are ignored until then (post-hit i-frames)
@@ -96,9 +94,9 @@ export function createState(rng = Math.random) {
     chaseStartedFrame: 0,
     lastChaseEndScore: 0,
     squirrelEnterX: 0,
-    squirrelEnterSpeed: 1.5,
+    squirrelEnterSpeed: SQUIRREL_RUN_SPEED,
     squirrelEscapeX: 0,
-    squirrelEscapeSpeed: 1.5,
+    squirrelEscapeSpeed: SQUIRREL_RUN_SPEED,
 
     // --- Boss chase ---
     bossPending: false,

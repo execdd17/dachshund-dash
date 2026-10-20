@@ -13,6 +13,13 @@ export const GROUND_Y = 200;
 export const GRAVITY = 0.5;
 export const JUMP_FORCE = -11;
 export const DOUBLE_JUMP_FORCE = -7;
+export const RESTART_LOCKOUT_MS = 1000;   // input ignored this long after death
+export const DEATH_SHAKE_MS = 250;
+export const DEATH_SHAKE_PX = 6;
+
+// Dog hitbox, relative to dog.x / dog.y (ducking is a lower, flatter box).
+export const DOG_HITBOX_STAND = { dx: 23, dy: -8, w: 50, h: 22 };
+export const DOG_HITBOX_DUCK = { dx: 23, dy: 10, w: 50, h: 8 };
 export const INITIAL_SPEED = 3.0;
 export const MAX_SPEED = 6.5;
 export const SPEED_INCREMENT = 0.0005;
@@ -58,6 +65,10 @@ export const CHASE_FIRST_AT = 200;
 export const CHASE_COOLDOWN = 700;
 export const CHASE_DURATION_FRAMES = 16 * 60;  // 16 seconds at 60fps
 export const SQUIRREL_OFFSET = 580;
+export const SQUIRREL_RUN_SPEED = 1.5;       // px/frame when entering/escaping, accelerating…
+export const SQUIRREL_RUN_ACCEL = 0.004;     // …by this per frame…
+export const SQUIRREL_MAX_RUN_SPEED = 3.5;   // …up to this
+export const SQUIRREL_OFFSCREEN_PAD = 80;    // enter from / escape to this far past the right edge
 
 // --- Boss chase ---
 export const BOSS_MILESTONE = 1000;
@@ -70,6 +81,11 @@ export const BOSS_SQUIRREL_LOSE_SPEED = 3.0;       // px/frame when losing (retr
 export const BOSS_CHASE_DURATION = 1600;           // frames total (~26.7s): fixed duration regardless of speed
 export const BOSS_SPEED_MULTIPLIER = 1.25;         // max speed multiplier during boss
 export const BOSS_OBSTACLE_GAP_MULTIPLIER = 1.5;   // fewer obstacles (larger gaps)
+export const BOSS_APPROACH_FRAC = 0.15;            // share of the chase spent closing in (speed ramps up over it too)
+export const BOSS_RETREAT_FRAC = 0.10;             // share spent falling back at the end
+export const BOSS_TAIL_GAP = 70;                   // px between squirrel and dog at peak approach
+export const BOSS_EXIT_PAD = 60;                   // px past its start x before the retreating squirrel is gone
+export const BOSS_SQUIRREL_SCALE = 2.5;            // drawn size vs the chase squirrel
 
 // --- Giant mode ---
 export const GIANT_FIRST_AT = 500;                  // golden hot dog can't appear before this score
@@ -105,16 +121,19 @@ export const TRAMP_BOUNCE_BONUS = 50;     // points per clean bounce
 export const TRAMP_BREATHER = 120;        // baseline frames of empty field between reps (~1s)
 export const TRAMP_TILE_W = 32;           // thorn tile width
 export const TRAMP_HITBOX_PAD = 12;       // horizontal forgiveness on the trampoline surface (both sides)
-// exitFactor 26 everywhere (plan said 30): exit tiles are ceil'd to 32px
-// widths, and at factor 30 the rounded-up exit was too wide to clear on the
-// bounce alone — playtesting showed a post-bounce double jump was mandatory.
-// At 26 the bounce always clears by itself; the double-jump reset stays as a
-// bonus correction for mistimed landings, not a requirement.
+export const TRAMP_SQUASH_MS = 250;       // trampoline squash animation after a bounce
+// exitFactor 26 keeps the exit (ceil'd to whole 32px tiles) narrow enough for
+// the bounce alone to clear; the double-jump reset is only a correction for
+// mistimed landings, never a requirement.
 export const TRAMP_REPS = [
   { islandOffsetFactor: 22, trampWidth: 84, exitFactor: 26 },  // rep 0: close, wide
   { islandOffsetFactor: 26, trampWidth: 78, exitFactor: 26 },  // rep 1
   { islandOffsetFactor: 30, trampWidth: 72, exitFactor: 26 },  // rep 2: deep, still landable
 ];
+
+// --- Weather ---
+export const RAIN_CHANCE = 0.25;   // rolled at each dawn→day and sunset→night change
+export const RAIN_DROPS = 120;
 
 // --- Hearts (extra lives) ---
 // Difficulty is picked once on the start overlay (slider index into this

@@ -3,25 +3,18 @@
 
 import {
   GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
+  DOG_HITBOX_STAND, DOG_HITBOX_DUCK,
   ACORN_W, ACORN_H, CHASE_ACORN_Y,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect } from './giant.js';
 
-// Dog hitbox changes when ducking (lower profile avoids frisbees);
-// when giant, it expands proportionally.
+// Ducking lowers the profile (frisbees pass over); giant mode expands it.
 export function getDogHitbox(dog, giantActive) {
-  let dx, dy, dw, dh;
-  if (dog.ducking) {
-    dx = dog.x + 23;
-    dy = dog.y + 10;
-    dw = 50;
-    dh = 8;
-  } else {
-    dx = dog.x + 23;
-    dy = dog.y - 8;
-    dw = 50;
-    dh = 22;
-  }
+  const box = dog.ducking ? DOG_HITBOX_DUCK : DOG_HITBOX_STAND;
+  let dx = dog.x + box.dx;
+  let dy = dog.y + box.dy;
+  let dw = box.w;
+  let dh = box.h;
 
   if (giantActive) {
     const expansion = (GIANT_SCALE - 1) * 0.5;

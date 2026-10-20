@@ -6,7 +6,9 @@ import {
   GROUND_Y, DOG_BASE_X,
   BOSS_MILESTONE, BOSS_MAX_DOG_SHIFT, BOSS_DOG_SHIFT_SPEED, BOSS_DOG_RETURN_SPEED,
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
+  BOSS_APPROACH_FRAC, BOSS_RETREAT_FRAC, BOSS_TAIL_GAP, BOSS_EXIT_PAD,
 } from '../config.js';
+import { getDogHitbox, rectsOverlap } from './collision.js';
 import { killDog } from './death.js';
 import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
 
@@ -15,16 +17,17 @@ export function updateBoss(state, scale, services, now = 0) {
     // Frame-based timer: encounter duration is constant regardless of game speed
     state.bossChaseFrames += scale;
     const escapeProgress = Math.min(1, state.bossChaseFrames / BOSS_CHASE_DURATION);
-    // Asymmetric curve: approach (15%), long hold at peak (75%), quick retreat (10%)
+    // Ease in, hold right on the dog's tail, then ease back out.
+    const retreatAt = 1 - BOSS_RETREAT_FRAC;
     let approachCurve;
-    if (escapeProgress < 0.15) {
-      const t = escapeProgress / 0.15;
-      approachCurve = t * t;  // ease-in approach
-    } else if (escapeProgress < 0.90) {
-      approachCurve = 1;      // hold at peak — squirrel right on the dog's tail
+    if (escapeProgress < BOSS_APPROACH_FRAC) {
+      const t = escapeProgress / BOSS_APPROACH_FRAC;
+      approachCurve = t * t;
+    } else if (escapeProgress < retreatAt) {
+      approachCurve = 1;
     } else {
-      const t = (escapeProgress - 0.90) / 0.10;
-      approachCurve = 1 - t * t;  // ease-out retreat
+      const t = (escapeProgress - retreatAt) / BOSS_RETREAT_FRAC;
+      approachCurve = 1 - t * t;
     }
 
     // Dog shifts right (less reaction time to obstacles)
@@ -32,7 +35,7 @@ export function updateBoss(state, scale, services, now = 0) {
     state.dog.x = DOG_BASE_X + state.bossDogShift;
 
     // Squirrel follows behind the shifted dog
-    const peakX = state.dog.x - 70;
+    const peakX = state.dog.x - BOSS_TAIL_GAP;
     state.bossSquirrelX = BOSS_SQUIRREL_START_X + (peakX - BOSS_SQUIRREL_START_X) * approachCurve;
 
     // Transition: dog escapes
@@ -40,20 +43,8 @@ export function updateBoss(state, scale, services, now = 0) {
       state.bossLosing = true;
       state.bossChasing = false;
     }
-    // Collision: squirrel catches dog
-    const sqRight = state.bossSquirrelX + 30;
-    const sqLeft = state.bossSquirrelX;
-    const sqTop = GROUND_Y + 4;
-    const sqBottom = sqTop + 20;
-    const dog = state.dog;
-    let dx, dy, dw, dh;
-    if (dog.ducking) {
-      dx = dog.x + 23; dy = dog.y + 10; dw = 50; dh = 8;
-    } else {
-      dx = dog.x + 23; dy = dog.y - 8; dw = 50; dh = 22;
-    }
-    if (sqRight > dx && sqLeft < dx + dw && sqBottom > dy && sqTop < dy + dh) {
-      // Squirrel caught the dog — game over
+    const squirrelBox = { x: state.bossSquirrelX, y: GROUND_Y + 4, w: 30, h: 20 };
+    if (rectsOverlap(squirrelBox, getDogHitbox(state.dog, false))) {
       killDog(state, services);
     }
   } else if (state.bossLosing) {
@@ -65,7 +56,7 @@ export function updateBoss(state, scale, services, now = 0) {
     // Squirrel retreats left
     state.bossSquirrelX -= BOSS_SQUIRREL_LOSE_SPEED * scale;
     // Boss ends only when dog is fully back AND squirrel has exited
-    if (state.bossSquirrelX < BOSS_SQUIRREL_START_X - 60 && state.bossDogShift <= 0) {
+    if (state.bossSquirrelX < BOSS_SQUIRREL_START_X - BOSS_EXIT_PAD && state.bossDogShift <= 0) {
       state.bossLosing = false;
       markSceneEnd(state, now);
     }

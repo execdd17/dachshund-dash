@@ -3,8 +3,11 @@
 
 import {
   W, CHASE_FIRST_AT, CHASE_COOLDOWN, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
+  SQUIRREL_RUN_SPEED, SQUIRREL_RUN_ACCEL, SQUIRREL_MAX_RUN_SPEED, SQUIRREL_OFFSCREEN_PAD,
 } from '../config.js';
 import { giantBusy, markSceneEnd, requestScene, requeueSceneFront, tryStartScene } from './encounters.js';
+
+const accelerate = (speed, scale) => Math.min(SQUIRREL_MAX_RUN_SPEED, speed + SQUIRREL_RUN_ACCEL * scale);
 
 export function updateChase(state, scale, now = 0) {
   if (state.chaseActive) {
@@ -12,19 +15,19 @@ export function updateChase(state, scale, now = 0) {
       state.chaseActive = false;
       state.chaseEscaping = true;
       state.squirrelEscapeX = state.dog.x + SQUIRREL_OFFSET;
-      state.squirrelEscapeSpeed = 1.5;
+      state.squirrelEscapeSpeed = SQUIRREL_RUN_SPEED;
       state.lastChaseEndScore = state.score;
     }
   } else if (state.chaseEscaping) {
     state.squirrelEscapeX += state.squirrelEscapeSpeed * scale;
-    state.squirrelEscapeSpeed = Math.min(3.5, state.squirrelEscapeSpeed + 0.004 * scale);
-    if (state.squirrelEscapeX > W + 80) {
+    state.squirrelEscapeSpeed = accelerate(state.squirrelEscapeSpeed, scale);
+    if (state.squirrelEscapeX > W + SQUIRREL_OFFSCREEN_PAD) {
       state.chaseEscaping = false;
       markSceneEnd(state, now);
     }
   } else if (state.chaseEntering) {
     state.squirrelEnterX -= state.squirrelEnterSpeed * scale;
-    state.squirrelEnterSpeed = Math.min(3.5, state.squirrelEnterSpeed + 0.004 * scale);
+    state.squirrelEnterSpeed = accelerate(state.squirrelEnterSpeed, scale);
     if (state.squirrelEnterX <= state.dog.x + SQUIRREL_OFFSET) {
       state.squirrelEnterX = state.dog.x + SQUIRREL_OFFSET;
       state.chaseEntering = false;
@@ -43,8 +46,8 @@ export function updateChase(state, scale, now = 0) {
     } else if (state.obstacles.length === 0) {
       state.chasePending = false;
       state.chaseEntering = true;
-      state.squirrelEnterX = W + 80;  // start off-screen right
-      state.squirrelEnterSpeed = 1.5;
+      state.squirrelEnterX = W + SQUIRREL_OFFSCREEN_PAD;
+      state.squirrelEnterSpeed = SQUIRREL_RUN_SPEED;
     }
   } else {
     const wantsTurn = (state.lastChaseEndScore === 0 && state.score >= CHASE_FIRST_AT)

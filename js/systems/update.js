@@ -8,7 +8,8 @@ import {
   W, GROUND_Y, GRAVITY, DT_BASELINE,
   INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
-  BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, BOSS_OBSTACLE_GAP_MULTIPLIER,
+  BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, BOSS_OBSTACLE_GAP_MULTIPLIER, BOSS_APPROACH_FRAC,
+  DOG_HITBOX_STAND,
   GIANT_DURATION, BIRD_JUMP_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS,
 } from '../config.js';
 import { spawnObstacle } from './spawning.js';
@@ -27,9 +28,9 @@ export function update(state, dt, services, rng = Math.random, now = performance
   state.frameCount++;
   state.speed = Math.min(MAX_SPEED, INITIAL_SPEED + state.score * SPEED_INCREMENT);
 
-  // Boss speed scaling: ramp over approach phase, drop back to normal during losing
+  // Boss speed ramps up over the approach, then drops back once the dog escapes
   const bossSpeedMult = state.bossChasing
-    ? 1 + (BOSS_SPEED_MULTIPLIER - 1) * Math.min(1, state.bossChaseFrames / (BOSS_CHASE_DURATION * 0.15))
+    ? 1 + (BOSS_SPEED_MULTIPLIER - 1) * Math.min(1, state.bossChaseFrames / (BOSS_CHASE_DURATION * BOSS_APPROACH_FRAC))
     : 1;
   const effectiveSpeed = state.speed * bossSpeedMult;
 
@@ -93,7 +94,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
 
   // Detect jumping over a solo bird (walls are meant to be ducked/jumped through, not bonused).
   state.obstacles.forEach(o => {
-    if (o.type === 'bird' && !o.aerialWall && !o.jumped && dog.jumping && o.x + o.width < dog.x + 23) {
+    if (o.type === 'bird' && !o.aerialWall && !o.jumped && dog.jumping && o.x + o.width < dog.x + DOG_HITBOX_STAND.dx) {
       o.jumped = true;
       state.score += BIRD_JUMP_BONUS;
       state.birdJumpEffects.push({ x: o.x + o.width / 2, y: o.y, startTime: now });

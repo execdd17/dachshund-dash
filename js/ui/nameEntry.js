@@ -4,11 +4,12 @@
 // difficulty is locked for the session (reload the page to change it).
 
 import { normalizeName, insertScore, saveHighScores } from '../leaderboard/local.js';
-import { DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX } from '../config.js';
+import { DEFAULT_DIFFICULTY_INDEX } from '../config.js';
+import { difficultyAt } from '../core/difficulty.js';
 
 export function createNameEntry(state, { storage, globalScores, onDifficultyChosen = () => {} }) {
   function difficultyText(idx) {
-    const level = DIFFICULTY_LEVELS[idx] ?? DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX];
+    const level = difficultyAt(idx);
     return `${level.label} — ${level.hearts} HEART${level.hearts === 1 ? '' : 'S'}`;
   }
 
@@ -32,7 +33,7 @@ export function createNameEntry(state, { storage, globalScores, onDifficultyChos
     if (state.gameState !== 'setup') return;
     state.playerName = normalizeName(document.getElementById('nameInput').value);
     const idx = Number(document.getElementById('difficultySlider').value);
-    const level = DIFFICULTY_LEVELS[idx] ?? DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX];
+    const level = difficultyAt(idx);
     state.difficulty = level.label;
     state.startingHearts = level.hearts;
     state.hearts = level.hearts;

@@ -75,13 +75,11 @@ export function markSceneEnd(state, now) {
 }
 
 // --- Scene queue (fairness between scenes) ---
-// Scenes used to arm independently, with update()'s fixed call order (chase,
-// boss, trampoline) deciding ties. Chase's short score cooldown meant it was
-// almost always re-eligible by the time the field unblocked, so it won every
-// tie and the trampoline scene could starve for an entire run. Instead, a
-// scene *requests* a turn once its own score condition is met — at most one
-// outstanding request per scene — and turns are granted strictly in request
-// order once the shared field rules allow a scene to start.
+// A scene *requests* a turn once its own score condition is met (at most one
+// outstanding request per scene); turns are granted strictly in request order
+// once the shared field rules allow a scene to start. Without the queue,
+// update()'s fixed call order breaks ties, and chase's short cooldown lets it
+// win nearly every one — starving the trampoline scene.
 
 function anySceneBusy(state) {
   return chaseBusy(state) || bossBusy(state) || trampBusy(state);

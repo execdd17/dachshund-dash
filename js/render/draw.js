@@ -4,6 +4,7 @@
 import {
   GROUND_Y, SQUIRREL_OFFSET, DOG_SPRITE_ANCHOR,
   GIANT_DURATION, GIANT_WARN_AT, GIANT_SCALE_TRANSITION,
+  DEATH_SHAKE_MS, DEATH_SHAKE_PX, BOSS_SQUIRREL_SCALE,
 } from '../config.js';
 import {
   drawSky, drawSun, drawClouds, drawFarHills, drawNearHills,
@@ -30,12 +31,11 @@ export function draw(deps) {
   ctx.scale(view?.scale ?? 2, view?.scale ?? 2);
   ctx.translate(view?.offsetX ?? 0, extraTop);
 
-  // Screen shake on death (decaying over ~250ms)
+  // Screen shake on death, decaying to nothing
   if (state.gameState === 'dead' && state.deathTime > 0) {
     const elapsed = Date.now() - state.deathTime;
-    if (elapsed < 250) {
-      const decay = 1 - elapsed / 250;
-      const intensity = 6 * decay;
+    if (elapsed < DEATH_SHAKE_MS) {
+      const intensity = DEATH_SHAKE_PX * (1 - elapsed / DEATH_SHAKE_MS);
       ctx.translate((Math.random() - 0.5) * 2 * intensity, (Math.random() - 0.5) * 2 * intensity);
     }
   }
@@ -57,11 +57,10 @@ export function draw(deps) {
   // Comically oversized — scale around feet so it stays grounded
   if (state.bossChasing || state.bossLosing) {
     advanceSquirrelSpriteFrame(sprites);
-    const bossScale = 2.5;
     const pivotX = state.bossSquirrelX + 10;
     const pivotY = GROUND_Y + 24;
     ctx.save();
-    scaleAbout(ctx, pivotX, pivotY, bossScale);
+    scaleAbout(ctx, pivotX, pivotY, BOSS_SQUIRREL_SCALE);
     if (state.bossChasing) {
       drawSquirrel(ctx, state, sprites, state.bossSquirrelX, GROUND_Y + 4, false, false);
     } else {

@@ -1,17 +1,12 @@
 // Player intents: jump (also starts/restarts a run) and duck.
 
-import { JUMP_FORCE, DOUBLE_JUMP_FORCE } from '../config.js';
+import { JUMP_FORCE, DOUBLE_JUMP_FORCE, RESTART_LOCKOUT_MS } from '../config.js';
 import { resetRun } from '../core/state.js';
 
 export function jump(state, services) {
-  if (state.gameState === 'setup') return;
-  if (state.gameState === 'idle') {
-    state.gameState = 'running';
-    resetRun(state);
-    services.music.resetToNormal();
-  }
-  if (state.gameState === 'dead') {
-    if (Date.now() - state.deathTime < 1000) return;  // brief input lockout after death
+  const canStart = state.gameState === 'idle'
+    || (state.gameState === 'dead' && Date.now() - state.deathTime >= RESTART_LOCKOUT_MS);
+  if (canStart) {
     state.gameState = 'running';
     resetRun(state);
     services.music.resetToNormal();

@@ -5,6 +5,7 @@ import { lerpColor } from '../js/core/color.js';
 import { getDogSpriteAnim } from '../js/assets/sprites.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
 import { createState, resetRun } from '../js/core/state.js';
+import { difficultyAt, isDifficultyLabel, DEFAULT_DIFFICULTY } from '../js/core/difficulty.js';
 import {
   INITIAL_SPEED, GROUND_Y, DOG_BASE_X,
   DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
@@ -112,4 +113,12 @@ test('dog sprite anim per game state: setup and idle stand still, running runs',
   assert.equal(getDogSpriteAnim(s, 0), 'run');
   s.gameState = 'dead';
   assert.equal(getDogSpriteAnim(s, 0), 'dead');
+});
+
+test('difficultyAt falls back to the default level; isDifficultyLabel matches labels only', () => {
+  assert.equal(difficultyAt(0).label, 'VERY EASY');
+  assert.equal(difficultyAt(99), DEFAULT_DIFFICULTY);
+  assert.equal(difficultyAt(Number('x')), DEFAULT_DIFFICULTY);
+  assert.equal(isDifficultyLabel('HARD'), true);
+  assert.equal(isDifficultyLabel('hard'), false);
 });
