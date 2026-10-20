@@ -100,7 +100,7 @@ test('resetRun refills hearts from the session difficulty', () => {
 
 test('difficulty levels map to the expected starting hearts', () => {
   assert.deepEqual(DIFFICULTY_LEVELS.map(l => l.hearts), [6, 4, 3, 2, 1]);
-  assert.equal(DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label, 'NORMAL');
+  assert.equal(DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label, 'EASY');
 });
 
 test('dog sprite anim per game state: setup and idle stand still, running runs', () => {

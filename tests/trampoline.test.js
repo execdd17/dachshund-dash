@@ -264,10 +264,11 @@ test('thorn contact spends one heart, keeps the patch, and i-frames cover the re
   setScenePhase(state, 'tramp', 'active');
   const thorn = { x: 90, y: GROUND_Y - 14, width: 32, height: 30, type: 'thorns', seed: 90 };
   state.obstacles = [thorn];
+  const hearts = state.hearts;
 
   const died = checkCollision(state, services, 1000);
   assert.equal(died, false);
-  assert.equal(state.hearts, 2, 'exactly one heart lost');
+  assert.equal(state.hearts, hearts - 1, 'exactly one heart lost');
   assert.equal(state.invulnUntil, 1000 + HEART_HIT_INVULN);
   assert.equal(state.obstacles.length, 1, 'thorn tile not spliced');
   assert.equal(effectsOfKind(state, 'bonk').length, 0, 'no bonk-fling for terrain');
@@ -275,7 +276,7 @@ test('thorn contact spends one heart, keeps the patch, and i-frames cover the re
   // Further overlap during i-frames costs nothing
   const died2 = checkCollision(state, services, 1000 + HEART_HIT_INVULN - 1);
   assert.equal(died2, false);
-  assert.equal(state.hearts, 2);
+  assert.equal(state.hearts, hearts - 1);
 
   // Scene proceeds: patch scrolls off, next rep spawns after the breather
   state.scene.rep = 1;
