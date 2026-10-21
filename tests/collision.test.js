@@ -7,7 +7,7 @@ import {
 import { createState, createDog } from '../js/core/state.js';
 import { activateGiantMode, deactivateGiantMode, giantScoreMultiplier } from '../js/systems/giant.js';
 import {
-  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y,
+  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y, HEART_FULL_BONUS,
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { effectsOfKind } from '../js/systems/effects.js';
@@ -139,6 +139,28 @@ test('golden hot dog still works during invulnerability', () => {
   const died = checkCollision(state, createTestServices(), 1500);
   assert.equal(died, false);
   assert.equal(getGiantPhase(state), 'growing');
+});
+
+test('a heart pickup restores a spent heart, even during i-frames, and blinks it in', () => {
+  const state = stateWithObstacleAtDog('heart');
+  state.hearts = state.startingHearts - 1;
+  state.invulnUntil = 2000;
+  const died = checkCollision(state, createTestServices(), 1500);
+  assert.equal(died, false);
+  assert.equal(state.hearts, state.startingHearts);
+  assert.equal(state.heartGainedAt, 1500);
+  assert.equal(effectsOfKind(state, 'heartGain').length, 1);
+  assert.deepEqual(state.obstacles, [], 'collected');
+});
+
+test('a heart pickup with every heart full pays a bonus instead', () => {
+  const state = stateWithObstacleAtDog('heart');
+  const before = state.score;
+  checkCollision(state, createTestServices(), 1000);
+  assert.equal(state.hearts, state.startingHearts, 'never above the starting count');
+  assert.equal(state.score, before + HEART_FULL_BONUS);
+  assert.equal(effectsOfKind(state, 'heartBonus').length, 1);
+  assert.equal(state.heartGainedAt, 0, 'no HUD blink: nothing changed there');
 });
 
 test('golden hot dog activates giant mode instead of killing', () => {

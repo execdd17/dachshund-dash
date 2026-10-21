@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 
 import { OBSTACLE_TYPES, makeObstacle, chaseAcornY } from '../js/systems/obstacleTypes.js';
 import { OBSTACLE_LOOKS } from '../js/render/obstacles.js';
+import { COLLECT_ACTIONS } from '../js/systems/collision.js';
 import { spawnObstacle } from '../js/systems/spawning.js';
 import { spawnTrampRep } from '../js/systems/trampoline.js';
 import { tutorialScene, TUTORIAL_STEP_COUNT } from '../js/systems/tutorial.js';
@@ -45,6 +46,7 @@ test('every registered type has a valid contact rule and a normal look', () => {
   for (const [type, def] of Object.entries(OBSTACLE_TYPES)) {
     assert.ok(['hazard', 'terrain', 'pickup', 'none'].includes(def.contact), type);
     if (def.contact === 'hazard') assert.ok(['eat', 'bonk'].includes(def.giant), `${type} giant rule`);
+    if (def.contact === 'pickup') assert.equal(typeof COLLECT_ACTIONS[def.collect], 'function', `${type} collect rule`);
     assert.equal(typeof OBSTACLE_LOOKS[type]?.normal, 'function', `${type} look`);
   }
   assert.deepEqual(Object.keys(OBSTACLE_LOOKS).sort(), Object.keys(OBSTACLE_TYPES).sort());

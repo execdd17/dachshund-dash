@@ -174,10 +174,17 @@ export const TRAMP_SQUASH_MS = 250;       // trampoline squash animation after a
 // exitFactor 26 keeps the exit (ceil'd to whole 32px tiles) narrow enough for
 // the bounce alone to clear; the double-jump reset is only a correction for
 // mistimed landings, never a requirement.
+//
+// A rep with `heart` floats a heart pickup leadFactor * speed past the
+// island's left edge (a fixed time after the bounce), at height y: just above
+// the bounce's apex, so only a second jump pressed near that apex reaches it.
+// Measured by sweeping landing spots and press timings at 60/120/144Hz: from
+// every landing spot the press window is ~100ms at worst, ~150ms typically.
+// Re-sweep if jump physics, TRAMP_BOUNCE_VY, or the hitboxes change.
 export const TRAMP_REPS = [
   { islandOffsetFactor: 22, trampWidth: 84, exitFactor: 26 },  // rep 0: close, wide
   { islandOffsetFactor: 26, trampWidth: 78, exitFactor: 26 },  // rep 1
-  { islandOffsetFactor: 30, trampWidth: 72, exitFactor: 26 },  // rep 2: deep, still landable
+  { islandOffsetFactor: 30, trampWidth: 72, exitFactor: 26, heart: { leadFactor: 48, y: -37 } },  // rep 2: deep, still landable
 ];
 
 // --- Weather ---
@@ -197,7 +204,8 @@ export const DIFFICULTY_LEVELS = [
 ];
 export const DEFAULT_DIFFICULTY_INDEX = 1;          // EASY (the slider's start; keep index.html's initial text in sync)
 export const HEART_HIT_INVULN = 1500;               // ms of invulnerability after losing a heart
-export const HEART_LOSS_FLASH = 800;                // ms the just-lost heart blinks in the HUD
+export const HEART_FLASH_MS = 800;                  // ms a just-lost or just-regained heart blinks in the HUD
+export const HEART_FULL_BONUS = 100;                // points for a heart pickup with every heart already full
 
 // --- Dog sprite animation (PNG from png/dachshund) ---
 export const DOG_SPRITE_FPS = 12;   // 10-14 range: lower = choppier, higher = smoother

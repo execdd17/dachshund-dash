@@ -2,7 +2,7 @@
 // obstacles, plus landing dust particles.
 
 import {
-  BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, BONK_TEXT_MS, SCORE_POPUP_MS,
+  BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS, HEART_FULL_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, BONK_TEXT_MS, SCORE_POPUP_MS,
 } from '../config.js';
 import { drawPopupText } from './primitives.js';
 import { drawObstacleLook } from './obstacles.js';
@@ -56,6 +56,8 @@ export const EFFECT_DRAWERS = {
   },
   birdJump: drawScorePopup('NICE! +' + BIRD_JUMP_BONUS, '#3B7DD8'),
   trampBounce: drawScorePopup('BOING! +' + TRAMP_BOUNCE_BONUS, '#7A4FBF'),
+  heartGain: drawScorePopup('+1 HEART!', '#FF4D6D'),
+  heartBonus: drawScorePopup('FULL! +' + HEART_FULL_BONUS, '#FF4D6D'),
 };
 
 export function drawEffects(ctx, state, sprites, now = performance.now()) {

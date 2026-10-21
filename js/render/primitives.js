@@ -36,6 +36,32 @@ export function scaleAbout(ctx, px, py, sx, sy = sx) {
   ctx.translate(-px, -py);
 }
 
+// Pixel-art heart bitmap: R = fill, W = highlight, . = transparent.
+const HEART_PIXELS = [
+  '.RR.RR.',
+  'RWRRRRR',
+  'RRRRRRR',
+  '.RRRRR.',
+  '..RRR..',
+  '...R...',
+];
+const HEART_COLORS = { R: '#FF4D6D', W: '#FFD9E0' };
+export const HEART_BITMAP_W = HEART_PIXELS[0].length;
+export const HEART_BITMAP_H = HEART_PIXELS.length;
+
+// The heart with its top-left at (x, y), `px` canvas px per bitmap pixel;
+// unfilled draws the dim silhouette of a spent HUD heart.
+export function drawPixelHeart(ctx, x, y, { px, filled = true }) {
+  for (let row = 0; row < HEART_PIXELS.length; row++) {
+    for (let col = 0; col < HEART_PIXELS[row].length; col++) {
+      const ch = HEART_PIXELS[row][col];
+      if (ch === '.') continue;
+      ctx.fillStyle = filled ? HEART_COLORS[ch] : 'rgba(255,255,255,0.25)';
+      ctx.fillRect(x + col * px, y + row * px, px, px);
+    }
+  }
+}
+
 // One frame of a centered popup label (CHOMP!, BONK!, NICE! +50…).
 export function drawPopupText(ctx, text, x, y, { color, size, alpha }) {
   ctx.save();

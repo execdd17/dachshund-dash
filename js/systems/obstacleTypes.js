@@ -6,8 +6,9 @@
 // contact:
 //   'hazard'  — costs a heart and is knocked away (or eaten/bonked in giant mode)
 //   'terrain' — costs a heart but stays put; a rising dog passes over it
-//   'pickup'  — collected on touch, even during i-frames (golden → giant mode)
+//   'pickup'  — collected on touch, even during i-frames
 //   'none'    — never harmful
+// collect: what a pickup does — 'giant' (giant mode) or 'heart' (restores a heart); see collision.js.
 // giant: what giant mode does to a hazard — 'eat' (+GIANT_EAT_BONUS) or 'bonk' (+GIANT_BONK_BONUS).
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
 
@@ -35,7 +36,9 @@ export const OBSTACLE_TYPES = {
   hotdog: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'hazard', giant: 'eat' },
   frisbee: { width: 44, height: 14, y: GROUND_Y - 12, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
   bird: { width: BIRD_W, height: BIRD_H, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
-  golden: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'pickup' },
+  golden: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'pickup', collect: 'giant' },
+  // Floats in the sky over the last trampoline rep, at TRAMP_REPS[].heart.y.
+  heart: { width: 21, height: 18, inset: { dx: 1, dy: 1, dw: 3, dh: 2 }, contact: 'pickup', collect: 'heart' },
   // Top inset (+14) puts the hitbox top exactly at ground level, which is
   // also the trampoline bounce-trigger height: on any frame where thorns
   // could hurt a descending dog, a bounce in range has already fired

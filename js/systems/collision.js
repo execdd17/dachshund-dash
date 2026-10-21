@@ -1,11 +1,12 @@
 // Collision: dog hitbox math + the effectful resolution pass (eat/bonk in
-// giant mode, golden pickup, heart loss, or death).
+// giant mode, pickups, heart loss, or death).
 
 import {
-  GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS, HEART_HIT_INVULN,
+  GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS,
   DOG_HITBOX_STAND, DOG_HITBOX_DUCK,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect, isGiant } from './giant.js';
+import { spendHeart, gainHeart } from './hearts.js';
 import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
 
 export { getObstacleHitbox };
@@ -32,15 +33,11 @@ export function rectsOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// Spends a heart and starts the post-hit i-frames. False when it was the last one.
-function spendHeart(state, services, now) {
-  state.hearts--;
-  if (state.hearts <= 0) return false;
-  state.heartLostAt = now;
-  state.invulnUntil = now + HEART_HIT_INVULN;
-  services.sfx.playBonk();
-  return true;
-}
+// What each pickup's `collect` rule (OBSTACLE_TYPES) does when touched.
+export const COLLECT_ACTIONS = {
+  giant: (state, obs, services, now) => activateGiantMode(state, services, now),
+  heart: (state, obs, services, now) => gainHeart(state, services, now, { x: obs.x + obs.width / 2, y: obs.y }),
+};
 
 // Walk obstacles, resolving overlaps by each type's contact rule
 // (OBSTACLE_TYPES). Returns true if the dog died.
@@ -53,7 +50,7 @@ export function checkCollision(state, services, now = performance.now()) {
     const def = OBSTACLE_TYPES[obs.type];
 
     if (def.contact === 'pickup') {
-      activateGiantMode(state, services, now);
+      COLLECT_ACTIONS[def.collect](state, obs, services, now);
       state.obstacles.splice(i, 1);
     } else if (def.contact === 'terrain') {
       // A rising dog (fresh jump or trampoline bounce) is leaving the

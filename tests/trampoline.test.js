@@ -360,6 +360,65 @@ test('scene runs three reps, ends cleanly, and respects the cooldown before re-a
   assert.equal(getScenePhase(cooldownState, 'tramp'), 'pending', 'cooldown elapsed');
 });
 
+// --- 9. The last rep's heart: a double jump off the bounce reaches it ---
+
+test('only the last rep floats a heart, past the island, above the bounce', () => {
+  for (let rep = 0; rep < TRAMP_REPS.length; rep++) {
+    const state = runningState();
+    spawnTrampRep(state, rep);
+    const hearts = state.obstacles.filter(o => o.type === 'heart');
+    assert.equal(hearts.length, rep === TRAMP_BOUNCES - 1 ? 1 : 0, `rep ${rep}`);
+    if (!hearts.length) continue;
+    const tramp = state.obstacles.find(o => o.type === 'trampoline');
+    assert.equal(hearts[0].x, tramp.x + TRAMP_REPS[rep].heart.leadFactor * state.speed);
+    assert.ok(hearts[0].y + hearts[0].height < 0, 'up in the sky, above the play field');
+  }
+});
+
+// Plays the last rep at `speed`: one jump at frame `jumpAt` (onto the island,
+// for the jumps that matter), then a second jump `secondJumpDelay` frames
+// after the bounce (or none). Reports whether the dog bounced off a jump
+// (rather than walking on or jumping after) and whether it got the heart.
+function playLastRep(speed, jumpAt, secondJumpDelay = null) {
+  const state = runningState();
+  const services = createTestServices();
+  state.score = (speed - INITIAL_SPEED) / SPEED_INCREMENT;
+  state.startingHearts = 99;
+  state.hearts = 98;  // room for the heart; thorn misses can't end the run
+  setScenePhase(state, 'tramp', 'active');
+  Object.assign(state.scene, { rep: TRAMP_BOUNCES - 1, breatherFrames: 0 });
+  let bounceFrame = null, bouncedFromJump = false;
+  for (let f = 0, now = 0; f < 1000 && state.scene; f++) {
+    if (f === jumpAt) jump(state, services, now);
+    if (secondJumpDelay !== null && bounceFrame !== null && f === bounceFrame + secondJumpDelay) jump(state, services, now);
+    const airborne = state.dog.jumping && f > jumpAt;
+    const bounces = effectsOfKind(state, 'trampBounce').length;
+    update(state, DT, services, () => 0.99, now += DT);
+    if (bounceFrame === null && effectsOfKind(state, 'trampBounce').length > bounces) {
+      bounceFrame = f;
+      bouncedFromJump = airborne;
+    }
+  }
+  return { bouncedFromJump, gotHeart: state.heartGainedAt > 0 };
+}
+
+test('the heart takes the bounce plus a double jump near its apex, from any landing spot', () => {
+  for (const speed of [3.4, 5, 6.5]) {
+    let landings = 0;
+    for (let jumpAt = 0; jumpAt < 400; jumpAt += 3) {
+      const bounceOnly = playLastRep(speed, jumpAt);
+      if (!bounceOnly.bouncedFromJump) continue;
+      landings++;
+      assert.equal(bounceOnly.gotHeart, false, `speed ${speed}, jump at ${jumpAt}: the bounce alone falls short`);
+      let window = 0;
+      for (let delay = 1; delay < 60; delay++) if (playLastRep(speed, jumpAt, delay).gotHeart) window++;
+      // 8 frames at the 120Hz baseline: a skilled press, not a pixel-perfect one
+      assert.ok(window >= 8, `speed ${speed}, jump at ${jumpAt}: second-jump window ${window} frames`);
+    }
+    assert.ok(landings >= 3, `speed ${speed}: swept ${landings} landing spots`);
+  }
+});
+
 // --- 10. resetRun clears every scene field ---
 
 test('resetRun clears the running scene, its memory, and its effects', () => {

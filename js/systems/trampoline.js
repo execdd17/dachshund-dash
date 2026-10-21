@@ -1,5 +1,6 @@
 // Trampoline scene: a thorn patch with a trampoline island, TRAMP_BOUNCES reps
-// per scene: pending → active.
+// per scene: pending → active. The last rep floats a heart that only a double
+// jump off the bounce reaches.
 
 import {
   W, MIN_OBSTACLE_GAP,
@@ -26,7 +27,8 @@ export function getTrampLayout(rep, speed) {
   };
 }
 
-// One rep: entry thorns, the trampoline island, exit thorns.
+// One rep: entry thorns, the trampoline island, exit thorns, and the rep's
+// heart, if it has one.
 export function spawnTrampRep(state, rep) {
   const layout = getTrampLayout(rep, state.speed);
   let x = W + 10;
@@ -37,9 +39,13 @@ export function spawnTrampRep(state, rep) {
   };
 
   pushThorns(layout.entryTiles);
-  state.obstacles.push(makeObstacle('trampoline', x, { width: layout.trampWidth, squashUntil: 0 }));
+  const islandX = x;
+  state.obstacles.push(makeObstacle('trampoline', islandX, { width: layout.trampWidth, squashUntil: 0 }));
   x += layout.trampWidth;
   pushThorns(layout.exitTiles);
+
+  const heart = TRAMP_REPS[rep].heart;
+  if (heart) state.obstacles.push(makeObstacle('heart', islandX + heart.leadFactor * state.speed, { y: heart.y }));
 }
 
 function checkTrampolineBounce(state, services, now) {
@@ -63,7 +69,7 @@ function checkTrampolineBounce(state, services, now) {
   }
 }
 
-const isTrampScenery = o => o.type === 'thorns' || o.type === 'trampoline';
+const isTrampScenery = o => o.type === 'thorns' || o.type === 'trampoline' || o.type === 'heart';
 
 export const trampScene = {
   id: 'tramp',

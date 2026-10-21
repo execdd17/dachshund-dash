@@ -21,6 +21,7 @@ const TONES = {
     { type: 'sine', from: 150, to: 600, sweep: 0.25, gain: 0.2, dur: 0.3 },
     { type: 'triangle', from: 300, to: 1200, sweep: 0.2, gain: 0.08, dur: 0.22 },
   ],
+  playHeart: [523, 659, 784, 1047].map((from, i) => ({ type: 'sine', from, gain: 0.12, dur: 0.14, at: i * 0.06 })),
   playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
   playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),
 };

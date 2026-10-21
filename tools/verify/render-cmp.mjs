@@ -55,13 +55,15 @@ async function renderFrames() {
   add('setup', s => { s.gameState = 'setup'; });
   add('idle', s => { s.gameState = 'idle'; });
   for (const score of [0, 300, 450, 650, 1000]) add(`score-${score}`, s => { s.score = score; });
-  Object.keys(OBSTACLE_TYPES).forEach(type => add(`obstacle-${type}`, s => { s.obstacles = [makeObstacle(type, 260), makeObstacle(type, 520)]; }));
+  // Types without a default height (birds, the trampoline's heart) are placed by their spawner.
+  const placed = type => (OBSTACLE_TYPES[type].y === undefined ? { y: 120 } : {});
+  Object.keys(OBSTACLE_TYPES).forEach(type => add(`obstacle-${type}`, s => { s.obstacles = [makeObstacle(type, 260, placed(type)), makeObstacle(type, 520, placed(type))]; }));
   for (const def of SCENES) {
     for (const phase of ['pending', ...Object.keys(def.phases)]) {
       add(`scene-${def.id}-${phase}`, s => {
         setScenePhase(s, def.id, phase);
         s.obstacles = def.id === 'tramp'
-          ? [makeObstacle('trampoline', 300), makeObstacle('thorns', 400), makeObstacle('thorns', 432)]
+          ? [makeObstacle('trampoline', 300), makeObstacle('thorns', 400), makeObstacle('thorns', 432), makeObstacle('heart', 470, { y: -37 })]
           : [makeObstacle('bird', 400), makeObstacle('frisbee', 600)];
       });
     }
@@ -74,7 +76,10 @@ async function renderFrames() {
     addEffect(s, 'bonk', NOW - 200, { x: 300, y: 120, width: 36, height: 22, vx: 0, vy: 0, rotation: 0.7, rotSpeed: 0, type: 'hotdog', skin: 'normal' });
     addEffect(s, 'birdJump', NOW - 150, { x: 400, y: 160 });
     addEffect(s, 'trampBounce', NOW - 50, { x: 500, y: 170 });
+    addEffect(s, 'heartGain', NOW - 100, { x: 600, y: 60 });
+    addEffect(s, 'heartBonus', NOW - 100, { x: 700, y: 100 });
   });
+  add('hearts-regained', s => { s.startingHearts = 4; s.hearts = 3; s.heartGainedAt = NOW - 10; });
   add('rain', s => { s.weatherRain = true; initRain(s, rng); });
   add('dead', s => { s.gameState = 'dead'; s.deathTime = NOW - 5000; });
   add('invulnerable', s => { s.invulnUntil = NOW + 1000; });

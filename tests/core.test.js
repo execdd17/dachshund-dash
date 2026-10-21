@@ -71,6 +71,7 @@ test('resetRun restores a dirty state to run defaults', () => {
   s.hearts = 1;
   s.invulnUntil = 9999;
   s.heartLostAt = 5555;
+  s.heartGainedAt = 6666;
 
   resetRun(s);
 
@@ -88,6 +89,7 @@ test('resetRun restores a dirty state to run defaults', () => {
   assert.equal(s.hearts, DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].hearts);
   assert.equal(s.invulnUntil, 0);
   assert.equal(s.heartLostAt, 0);
+  assert.equal(s.heartGainedAt, 0);
 });
 
 test('resetRun refills hearts from the session difficulty', () => {

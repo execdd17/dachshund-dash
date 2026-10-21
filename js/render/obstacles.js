@@ -9,7 +9,7 @@ import {
 import { chaseAcornY } from '../systems/obstacleTypes.js';
 import { isChaseActive } from '../systems/chase.js';
 import { isGiant } from '../systems/giant.js';
-import { roundRect, drawSparkle } from './primitives.js';
+import { roundRect, drawSparkle, drawPixelHeart, HEART_BITMAP_W } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 
 const HOTDOG_W = 36;
@@ -190,8 +190,7 @@ export function drawGoldenHotDog(ctx, x, y, frameCount) {
   ctx.lineJoin = 'miter';
 }
 
-// Two items piled on the ground with a wobbling "!" warning above.
-// The bobbing "!" above a pile.
+// The bobbing "!" above a tower.
 function drawAlertMark(ctx, x, y, frameCount) {
   const wobble = Math.sin(frameCount * 0.15) * 2;
   ctx.fillStyle = '#FF1493';
@@ -590,6 +589,29 @@ export function drawAcorn(ctx, x, y, rotation) {
   if (rotation !== undefined) ctx.restore();
 }
 
+// The trampoline's heart pickup: a beating pixel heart in a pink glow,
+// with sparkles orbiting it. The beat only scales the drawing; the hitbox
+// stays put.
+function drawFloatingHeart(ctx, x, y, width, height, frameCount) {
+  const beat = Math.max(0, Math.sin(frameCount * 0.12)) ** 4;
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1 + beat * 0.2, 1 + beat * 0.2);
+  ctx.shadowColor = '#FF4D6D';
+  ctx.shadowBlur = 6 + beat * 8;
+  drawPixelHeart(ctx, -width / 2, -height / 2, { px: width / HEART_BITMAP_W });
+  ctx.restore();
+
+  for (let i = 0; i < 2; i++) {
+    const angle = frameCount * 0.06 + i * Math.PI;
+    ctx.fillStyle = `rgba(255, 217, 224, ${0.6 + beat * 0.4})`;
+    drawSparkle(ctx, cx + Math.cos(angle) * (width / 2 + 7), cy + Math.sin(angle) * (height / 2 + 5), 2.5 + beat * 1.5);
+  }
+}
+
 // Trampoline island: splayed legs, red-padded frame bar, blue membrane with
 // a constant idle wobble so it reads as bouncy on first sight.
 export function drawTrampoline(ctx, x, y, width, frameCount, squashed) {
@@ -785,6 +807,7 @@ export const OBSTACLE_LOOKS = {
     chase: drawAerialAcorn,
   },
   golden: { normal: (ctx, o, v) => drawGoldenHotDog(ctx, o.x, o.y, v.frameCount) },
+  heart: { normal: (ctx, o, v) => drawFloatingHeart(ctx, o.x, o.y, o.width, o.height, v.frameCount) },
   trampoline: { normal: (ctx, o, v) => drawTrampoline(ctx, o.x, o.y, o.width, v.frameCount, v.now < (o.squashUntil ?? 0)) },
   thorns: { normal: (ctx, o) => drawThorns(ctx, o.x, o.y, o.seed ?? 0) },
 };

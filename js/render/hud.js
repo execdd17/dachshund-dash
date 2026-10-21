@@ -3,9 +3,9 @@
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
-  HEART_LOSS_FLASH,
+  HEART_FLASH_MS,
 } from '../config.js';
-import { roundRect } from './primitives.js';
+import { roundRect, drawPixelHeart, HEART_BITMAP_W } from './primitives.js';
 import { formatOrdinal } from '../leaderboard/global.js';
 import { isGiant } from '../systems/giant.js';
 import { TUTORIAL_STEP_COUNT } from '../systems/tutorial.js';
@@ -57,43 +57,23 @@ export function drawScore(ctx, state, view, now = performance.now()) {
   }
 }
 
-// Pixel-art heart bitmap: R = fill, W = highlight, . = transparent.
-const HEART_PIXELS = [
-  '.RR.RR.',
-  'RWRRRRR',
-  'RRRRRRR',
-  '.RRRRR.',
-  '..RRR..',
-  '...R...',
-];
-const HEART_COLORS = { R: '#FF4D6D', W: '#FFD9E0' };
-const HEART_PX = 2;                                     // canvas px per bitmap pixel
-const HEART_W = HEART_PIXELS[0].length * HEART_PX;      // 14
-
-function drawPixelHeart(ctx, x, y, filled) {
-  for (let row = 0; row < HEART_PIXELS.length; row++) {
-    for (let col = 0; col < HEART_PIXELS[row].length; col++) {
-      const ch = HEART_PIXELS[row][col];
-      if (ch === '.') continue;
-      ctx.fillStyle = filled ? HEART_COLORS[ch] : 'rgba(255,255,255,0.25)';
-      ctx.fillRect(x + col * HEART_PX, y + row * HEART_PX, HEART_PX, HEART_PX);
-    }
-  }
-}
+const HEART_PX = 2;                       // canvas px per bitmap pixel
+const HEART_W = HEART_BITMAP_W * HEART_PX;  // 14
 
 // Hearts sit under the giant-mode timer bar slot (top-left, below the speaker).
 // Remaining hearts are filled; spent slots stay as dim silhouettes, and the
-// just-lost heart blinks briefly.
+// just-lost or just-regained heart blinks briefly.
 export function drawHearts(ctx, state, view, now = performance.now()) {
   const hud = hudOrigin(view);
   const y = hud.top + 62;
+  const blinking = since => now - since < HEART_FLASH_MS;
   for (let i = 0; i < state.startingHearts; i++) {
     const x = hud.left + i * (HEART_W + 6);
     let filled = i < state.hearts;
-    if (i === state.hearts && now - state.heartLostAt < HEART_LOSS_FLASH) {
+    if ((i === state.hearts && blinking(state.heartLostAt)) || (i === state.hearts - 1 && blinking(state.heartGainedAt))) {
       filled = Math.sin(now * 0.03) > 0;
     }
-    drawPixelHeart(ctx, x, y, filled);
+    drawPixelHeart(ctx, x, y, { px: HEART_PX, filled });
   }
 }
 

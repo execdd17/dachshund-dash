@@ -19,6 +19,8 @@ export const EFFECT_KINDS = {
   },
   birdJump: { ttl: SCORE_POPUP_MS },
   trampBounce: { ttl: SCORE_POPUP_MS },
+  heartGain: { ttl: SCORE_POPUP_MS },
+  heartBonus: { ttl: SCORE_POPUP_MS },
 };
 
 export function addEffect(state, kind, now, props) {

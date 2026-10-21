@@ -60,6 +60,7 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     hearts: startingHearts,
     invulnUntil: 0,   // timestamp: collisions are ignored until then (post-hit i-frames)
     heartLostAt: 0,   // timestamp of the last heart loss (drives the HUD blink)
+    heartGainedAt: 0, // timestamp of the last heart regained (systems/hearts.js; same blink)
 
     landingParticles: [],
 
