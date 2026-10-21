@@ -2,6 +2,7 @@
 
 import { JUMP_FORCE, DOUBLE_JUMP_FORCE, FAST_FALL_VY, RESTART_LOCKOUT_MS } from '../config.js';
 import { resetRun } from '../core/state.js';
+import { jumpOutOfTunnel } from './burrow.js';
 
 export function jump(state, services, now = performance.now()) {
   const canStart = state.gameState === 'idle'
@@ -12,6 +13,10 @@ export function jump(state, services, now = performance.now()) {
     services.music.resetToNormal();
   }
   if (state.gameState !== 'running') return;
+  if (state.dog.underground) {
+    jumpOutOfTunnel(state, services, now, JUMP_FORCE);
+    return;
+  }
   if (state.dog.ducking) return;
 
   if (!state.dog.jumping) {
@@ -44,10 +49,11 @@ export function duck(state, active, services) {
   applyDuck(state, services);
 }
 
-// The dog ducks while duck is held and it's on the ground.
+// The dog ducks while duck is held and it's on the ground, and always while
+// it crawls through the tunnel.
 export function applyDuck(state, services) {
   if (state.gameState !== 'running') return;
-  const ducking = state.duckHeld && !state.dog.jumping;
+  const ducking = (state.duckHeld || state.dog.underground) && !state.dog.jumping;
   if (ducking && !state.dog.ducking) services.sfx.playDuck();
   state.dog.ducking = ducking;
 }

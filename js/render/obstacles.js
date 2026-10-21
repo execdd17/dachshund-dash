@@ -11,6 +11,7 @@ import { isChaseActive } from '../systems/chase.js';
 import { isGiant } from '../systems/giant.js';
 import { roundRect, drawSparkle, drawPixelHeart, HEART_BITMAP_W } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
+import { TUNNEL_LOOKS } from './tunnel.js';
 
 const HOTDOG_W = 36;
 const HOTDOG_H = 22;
@@ -810,6 +811,7 @@ export const OBSTACLE_LOOKS = {
   heart: { normal: (ctx, o, v) => drawFloatingHeart(ctx, o.x, o.y, o.width, o.height, v.frameCount) },
   trampoline: { normal: (ctx, o, v) => drawTrampoline(ctx, o.x, o.y, o.width, v.frameCount, v.now < (o.squashUntil ?? 0)) },
   thorns: { normal: (ctx, o) => drawThorns(ctx, o.x, o.y, o.seed ?? 0) },
+  ...TUNNEL_LOOKS,
 };
 
 export function drawObstacleLook(ctx, o, skin, view) {

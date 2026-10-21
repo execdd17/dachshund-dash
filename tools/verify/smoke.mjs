@@ -1,6 +1,6 @@
 // End-to-end smoke run in headless Chromium: the start overlay, every sound,
 // the cosmetics menu, the controls tutorial, each encounter via its debug
-// key, a death, and the restart lockout. Fails on page errors, console errors/warnings, and failed
+// key, a dig into the tunnel, a death, and the restart lockout. Fails on page errors, console errors/warnings, and failed
 // requests; screenshots key moments for eyeballing.
 //
 // Usage: node tools/verify/smoke.mjs [url]
@@ -120,6 +120,22 @@ try {
     }
     await page.close();
   }
+
+  // The tunnel: HOLD ↓ over the first hole, then holding duck drops the dog
+  // in; letting go pops it back up at the next hole.
+  page = await newGame(browser, 'tunnel', VERY_EASY);
+  await page.click('#game');
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('KeyU');
+  await page.waitForTimeout(1200);
+  await shot(page, 'tunnel-hint.png');
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1400);
+  await shot(page, 'tunnel-underground.png');
+  await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(2500);
+  await shot(page, 'tunnel-popped-up.png');
+  await page.close();
 
   // Death (never jump), then the restart lockout: Space right after death is
   // ignored, Space a second later restarts.

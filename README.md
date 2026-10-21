@@ -24,6 +24,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 - Squirrel chases and a boss encounter
 - Giant mode — grab a golden hot dog and become unstoppable
 - Trampoline scenes — thorn patches where a super-bounce off a trampoline island is the only way through
+- Badger-dog tunnels — duck into a row of holes to crawl under hedges, pop back up before the rocks
 - Global high score leaderboard (plus a local best shown as `HI` in the HUD)
 
 ## Run It Locally
@@ -109,7 +110,7 @@ Pass a name to target something else: `node firebase/delete-scores-by-name.mjs T
 
 - `index.html` — thin HTML shell
 - `css/style.css` — all styles
-- `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, giant mode, and the chase/boss/trampoline scenes, which take turns via a fair scene queue), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
+- `js/` — ES modules: `config.js` (tuning constants), `core/` (state, day/night cycle), `systems/` (physics, spawning, collision, giant mode, and the chase/boss/trampoline/tunnel scenes, which take turns via a fair scene queue), `render/` (canvas drawing), `audio/`, `assets/`, `cosmetics/`, `leaderboard/`, `input/`, and `main.js` (wires it all together)
 - `tests/` — unit tests for the game logic
 - `firebase/` — Firestore admin scripts (Admin SDK); rules/indexes at repo root
 

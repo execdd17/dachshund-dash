@@ -5,14 +5,15 @@ import { chaseScene } from './chase.js';
 import { bossScene } from './boss.js';
 import { trampScene } from './trampoline.js';
 import { tutorialScene } from './tutorial.js';
+import { tunnelScene } from './tunnel.js';
 import { stepScene, sceneBlocksSpawning } from './encounters.js';
 
-export const SCENES = [tutorialScene, chaseScene, bossScene, trampScene];
+export const SCENES = [tutorialScene, chaseScene, bossScene, trampScene, tunnelScene];
 const SCENE_BY_ID = Object.fromEntries(SCENES.map(def => [def.id, def]));
 const runningDef = state => SCENE_BY_ID[state.scene?.id];
 
-export function updateScenes(state, scale, services, now) {
-  for (const def of SCENES) stepScene(state, def, { scale, services, now });
+export function updateScenes(state, scale, services, now, rng) {
+  for (const def of SCENES) stepScene(state, def, { scale, services, now, rng });
 }
 
 export function scenesBlockSpawning(state) {

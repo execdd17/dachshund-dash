@@ -197,6 +197,27 @@ export const TRAMP_REPS = [
   { islandOffsetFactor: 30, trampWidth: 72, exitFactor: 26, heart: { leadFactor: 48, y: -37 } },  // rep 2: deep, still landable
 ];
 
+// --- Tunnel scene ---
+// A tunnel under the path with a hole every TUNNEL_BEAT_FRAMES * speed px,
+// so holes come a fixed time apart at any speed (90 frames was too quick for
+// kids). Each layout is a sequence of stretches, one per gap between holes
+// (TUNNEL_STRETCHES in systems/tunnel.js says what fills each one); a scene
+// plays one layout, never the same as the scene before.
+export const TUNNEL_FIRST_AT = 500;      // score before the first scene can arm
+export const TUNNEL_COOLDOWN = 700;      // score between scenes (from its lastEndScore)
+export const TUNNEL_BEAT_FRAMES = 130;   // baseline frames between holes (~1.1s)
+export const TUNNEL_HOLE_W = 56;
+export const TUNNEL_HOLE_SLACK = 10;     // px of forgiveness either side of a hole
+export const TUNNEL_DEPTH = 25;          // how far below the path the dog crawls (inside the drawn bore)
+export const TUNNEL_POP_VY = -6;         // the hop out of a hole when duck is let go
+export const TUNNEL_DIVE_MS = 140;       // the dog sliding into / out of a hole (drawing only)
+export const TUNNEL_TREAT_POINTS = 25;
+export const TUNNEL_LAYOUTS = [
+  ['hedge', 'treatBar', 'rock', 'hedge', 'bird', 'rockThenBar'],
+  ['hedge', 'hedge', 'rock', 'treatBar', 'hedge', 'rock'],
+  ['hedge', 'bird', 'hedge', 'rock', 'rock', 'treatBar', 'hedge', 'rockThenBar'],
+];
+
 // --- Weather ---
 export const RAIN_CHANCE = 0.25;   // rolled at each dawn→day and sunset→night change
 export const RAIN_DROPS = 120;

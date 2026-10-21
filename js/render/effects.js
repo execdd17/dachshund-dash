@@ -58,6 +58,7 @@ export const EFFECT_DRAWERS = {
   trampBounce: drawScorePopup('BOING! +' + TRAMP_BOUNCE_BONUS, '#7A4FBF'),
   heartGain: drawScorePopup('+1 HEART!', '#FF4D6D'),
   heartBonus: drawScorePopup('FULL! +' + HEART_FULL_BONUS, '#FF4D6D'),
+  pointsPickup: (ctx, e, view) => drawScorePopup('+' + e.points, '#E08A1E')(ctx, e, view),
 };
 
 export function drawEffects(ctx, state, sprites, now = performance.now()) {
@@ -67,13 +68,14 @@ export function drawEffects(ctx, state, sprites, now = performance.now()) {
   }
 }
 
+// Dust: a tiny rainbow burst on landing, or (with `color` and `size`) dirt
+// clods thrown up by the tunnel's holes.
 export function drawLandingParticles(ctx, state) {
-  // Tiny rainbow dust burst on landing
   state.landingParticles.forEach(p => {
     ctx.globalAlpha = p.life;
-    ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, 0.9)`;
+    ctx.fillStyle = p.color ?? `hsla(${p.hue}, 85%, 65%, 0.9)`;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 1.5 + (1 - p.life) * 1, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, (p.size ?? 1.5) + (1 - p.life) * 1, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   });

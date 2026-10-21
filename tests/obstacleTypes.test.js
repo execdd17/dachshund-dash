@@ -9,9 +9,10 @@ import { OBSTACLE_LOOKS } from '../js/render/obstacles.js';
 import { COLLECT_ACTIONS } from '../js/systems/collision.js';
 import { spawnObstacle } from '../js/systems/spawning.js';
 import { spawnTrampRep } from '../js/systems/trampoline.js';
+import { spawnTunnel } from '../js/systems/tunnel.js';
 import { tutorialScene, TUTORIAL_STEP_COUNT } from '../js/systems/tutorial.js';
 import { createState } from '../js/core/state.js';
-import { CHASE_ACORN_Y, TRAMP_REPS } from '../js/config.js';
+import { CHASE_ACORN_Y, TRAMP_REPS, TUNNEL_LAYOUTS } from '../js/config.js';
 import { createSequenceRng, createTestServices } from './helpers.js';
 
 test('every spawnable obstacle type is registered', () => {
@@ -29,6 +30,11 @@ test('every spawnable obstacle type is registered', () => {
   for (let rep = 0; rep < TRAMP_REPS.length; rep++) {
     const state = createState(() => 0.5);
     spawnTrampRep(state, rep);
+    state.obstacles.forEach(o => seen.add(o.type));
+  }
+  for (const layout of TUNNEL_LAYOUTS) {
+    const state = createState(() => 0.5);
+    spawnTunnel(state, layout);
     state.obstacles.forEach(o => seen.add(o.type));
   }
   // The tutorial spawns its own practice obstacles, one step at a time.

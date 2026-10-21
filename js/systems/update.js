@@ -127,7 +127,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
 
   // Scenes (the boss may kill the dog; the trampoline bounce must run before
   // collision resolves thorns on the same frame)
-  updateScenes(state, scale, services, now);
+  updateScenes(state, scale, services, now, rng);
 
   // Chime at 100-point milestones
   const milestone = Math.floor(state.score / 100);

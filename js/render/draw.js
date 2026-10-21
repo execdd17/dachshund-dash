@@ -12,8 +12,11 @@ import {
 } from './background.js';
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
+import { tunnelDiveOffset } from './tunnel.js';
 import { drawEffects, drawLandingParticles } from './effects.js';
-import { drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen, drawTutorialOverlay } from './hud.js';
+import {
+  drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen, drawTutorialOverlay, drawTunnelHint,
+} from './hud.js';
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale, isGiant } from '../systems/giant.js';
@@ -119,7 +122,7 @@ export function draw(deps) {
     drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y);
     ctx.restore();
   } else {
-    drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y);
+    drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y + tunnelDiveOffset(dog, now));
   }
   ctx.restore();
 
@@ -130,6 +133,7 @@ export function draw(deps) {
   if (state.gameState !== 'idle' && state.gameState !== 'setup') drawHearts(ctx, state, view, now);
   drawMusicIcon(ctx, music.isOn(), view);
   drawTutorialOverlay(ctx, state, now);
+  drawTunnelHint(ctx, state, now);
 
   if (state.gameState === 'idle') {
     deps.onIdleFrame?.();

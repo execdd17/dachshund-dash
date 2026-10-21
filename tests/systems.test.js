@@ -485,7 +485,7 @@ test('every scene definition is complete and its quiet phases exist', () => {
     def.quietPhases.forEach(p => assert.equal(typeof def.phases[p], 'function', `${def.id} quiet phase ${p}`));
     const state = createState(() => 0.5);
     setScenePhase(state, def.id, 'pending');
-    def.start(state, state.scene);
+    def.start(state, state.scene, { scale: 1, services: createTestServices(), now: 0, rng: () => 0.5 });
     assert.equal(typeof def.phases[state.scene.phase], 'function', `${def.id} starts in a real phase`);
   }
 });
@@ -497,6 +497,7 @@ test('normal spawning pauses only while pending or in a quiet phase', () => {
     chase: { pending: true, entering: true, active: false, exiting: false },
     boss: { pending: true, active: false, exiting: true },
     tramp: { pending: true, active: true },
+    tunnel: { pending: true, active: true },
   };
   for (const [id, phases] of Object.entries(expectations)) {
     for (const [phase, blocks] of Object.entries(phases)) {

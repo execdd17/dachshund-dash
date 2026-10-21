@@ -8,12 +8,14 @@
 //   'terrain' — costs a heart but stays put; a rising dog passes over it
 //   'pickup'  — collected on touch, even during i-frames
 //   'none'    — never harmful
-// collect: what a pickup does — 'giant' (giant mode) or 'heart' (restores a heart); see collision.js.
+// collect: what a pickup does — 'giant' (giant mode), 'heart' (restores a heart), or 'points'
+//   (adds the type's `points`); see collision.js.
 // giant: what giant mode does to a hazard — 'eat' (+GIANT_EAT_BONUS) or 'bonk' (+GIANT_BONK_BONUS).
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
 
 import {
   GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W, TOWER_BARS, TOWER_TALL_FROM_SPEED,
+  TUNNEL_DEPTH, TUNNEL_HOLE_W, TUNNEL_TREAT_POINTS,
 } from '../config.js';
 
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
@@ -51,6 +53,21 @@ export const OBSTACLE_TYPES = {
   trampoline: { height: 12, y: GROUND_Y - 12, inset: DEFAULT_INSET, contact: 'none' },
   // Too tall for one jump: the double-jump obstacle. Spawned at towerSizeFor(speed).
   tower: { width: 36, ...TOWER, inset: { dx: 8, dy: 4, dw: 16, dh: 6 }, contact: 'hazard', giant: 'eat' },
+  // The tunnel scene (systems/tunnel.js). The tunnel runs under the path
+  // (spawnTunnel sizes it to its holes); the holes are just doorways.
+  tunnel: { width: 200, height: 32, y: GROUND_Y + 18, inset: DEFAULT_INSET, contact: 'none' },
+  tunnelHole: { width: TUNNEL_HOLE_W, height: 8, y: GROUND_Y + 14, inset: DEFAULT_INSET, contact: 'none' },
+  // Taller than a double jump reaches (its hitbox top sits above a double
+  // jump's lowest hitbox bottom), so the only way past is underneath.
+  hedge: { width: 34, height: 220, y: GROUND_Y + 26 - 220, inset: { dx: 5, dy: 6, dw: 10, dh: 6 }, contact: 'hazard', giant: 'bonk' },
+  // Sits in the bore at the crawling dog's height, below anything a dog on
+  // the surface can touch (and the crawling dog is below every surface hitbox).
+  rock: { width: 28, height: 18, y: GROUND_Y + 6 + TUNNEL_DEPTH, inset: { dx: 3, dy: 2, dw: 6, dh: 4 }, contact: 'hazard', giant: 'bonk' },
+  // Floats at jump height over the surface route, the reward for taking it.
+  treat: {
+    width: 20, height: 11, y: GROUND_Y - 50, inset: { dx: 0, dy: 0, dw: 0, dh: 0 },
+    contact: 'pickup', collect: 'points', points: TUNNEL_TREAT_POINTS,
+  },
 };
 
 // A new obstacle of `type` at x with the type's default size and height;

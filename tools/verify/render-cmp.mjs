@@ -2,7 +2,8 @@
 // same full frames with a baseline checkout and with the working tree in
 // headless Chromium and compares pixels. Frames cover the time-of-day cycle,
 // every obstacle type, every scene phase, giant mode, effects, rain, death,
-// dog poses, and equipped cosmetics, all with the real sprites loaded.
+// dog poses (including the tunnel crawl), and equipped cosmetics, all with
+// the real sprites loaded.
 //
 // Usage: node tools/verify/render-cmp.mjs [baseline=main] [--save]
 //   Differing frames are written as baseline-*.png / current-*.png to the
@@ -58,15 +59,28 @@ async function renderFrames() {
   // Types without a default height (birds, the trampoline's heart) are placed by their spawner.
   const placed = type => (OBSTACLE_TYPES[type].y === undefined ? { y: 120 } : {});
   Object.keys(OBSTACLE_TYPES).forEach(type => add(`obstacle-${type}`, s => { s.obstacles = [makeObstacle(type, 260, placed(type)), makeObstacle(type, 520, placed(type))]; }));
+  // A stretch of each scene's own field; other scenes share a generic one.
+  const SCENE_FIELDS = {
+    tramp: () => [makeObstacle('trampoline', 300), makeObstacle('thorns', 400), makeObstacle('thorns', 432), makeObstacle('heart', 470, { y: -37 })],
+    tunnel: () => [
+      makeObstacle('tunnel', 60, { width: 700 }), makeObstacle('tunnelHole', 60, { holeIndex: 0 }),
+      makeObstacle('hedge', 300), makeObstacle('treat', 420), makeObstacle('tunnelHole', 500, { holeIndex: 1 }), makeObstacle('rock', 640),
+    ],
+  };
+  const genericField = () => [makeObstacle('bird', 400), makeObstacle('frisbee', 600)];
   for (const def of SCENES) {
     for (const phase of ['pending', ...Object.keys(def.phases)]) {
       add(`scene-${def.id}-${phase}`, s => {
         setScenePhase(s, def.id, phase);
-        s.obstacles = def.id === 'tramp'
-          ? [makeObstacle('trampoline', 300), makeObstacle('thorns', 400), makeObstacle('thorns', 432), makeObstacle('heart', 470, { y: -37 })]
-          : [makeObstacle('bird', 400), makeObstacle('frisbee', 600)];
+        s.obstacles = (SCENE_FIELDS[def.id] ?? genericField)();
       });
     }
+  }
+  if (OBSTACLE_TYPES.tunnel) {
+    const tunnelField = s => { setScenePhase(s, 'tunnel', 'active'); s.obstacles = SCENE_FIELDS.tunnel(); };
+    add('tunnel-hint', s => { tunnelField(s); s.obstacles.forEach(o => { o.x += 240; }); s.tunnelHintPending = true; });
+    add('dog-underground', s => { tunnelField(s); s.obstacles.forEach(o => { o.x -= 100; }); Object.assign(s.dog, { underground: true, ducking: true }); });
+    add('dog-diving', s => { tunnelField(s); Object.assign(s.dog, { underground: true, ducking: true, burrowChangedAt: NOW - 70 }); });
   }
   for (const phase of ['growing', 'active', 'shrinking']) {
     add(`giant-${phase}`, s => { s.giantPhase = phase; s.giantStartTime = NOW - 2000; s.giantTransitionStart = NOW - 300; });
@@ -78,6 +92,7 @@ async function renderFrames() {
     addEffect(s, 'trampBounce', NOW - 50, { x: 500, y: 170 });
     addEffect(s, 'heartGain', NOW - 100, { x: 600, y: 60 });
     addEffect(s, 'heartBonus', NOW - 100, { x: 700, y: 100 });
+    addEffect(s, 'pointsPickup', NOW - 100, { x: 100, y: 120, points: 25 });
   });
   add('hearts-regained', s => { s.startingHearts = 4; s.hearts = 3; s.heartGainedAt = NOW - 10; });
   add('rain', s => { s.weatherRain = true; initRain(s, rng); });
@@ -100,7 +115,8 @@ async function renderFrames() {
       const state = fresh();
       f.setup(state);
       cosmetics.equipped = { hat: null, sunglasses: null, clothes: null, body: null, ...f.equipped };
-      Object.assign(store, { dogSpriteFrame: 0, dogSpriteLastAdvance: 0, squirrelSpriteFrame: 0, squirrelSpriteLastAdvance: 0, birdSpriteFrame: 0, birdSpriteLastAdvance: 0 });
+      // Every frame starts from the same animation clock, whatever pose the frame before left
+      Object.assign(store, { dogSpriteAnim: 'idle', dogSpriteFrame: 0, dogSpriteLastAdvance: 0, squirrelSpriteFrame: 0, squirrelSpriteLastAdvance: 0, birdSpriteFrame: 0, birdSpriteLastAdvance: 0 });
       draw({ canvas, ctx, state, sprites: store, cosmetics, music: { isOn: () => true }, view, now: NOW });
       const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       let hash = 0;

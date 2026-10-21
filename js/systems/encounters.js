@@ -1,19 +1,20 @@
 // Encounter exclusion and the generic scene runner. Encounters (giant mode
-// and the scenes: tutorial, chase, boss, trampoline) never overlap, including their
-// transition phases. Scenes share one slot, state.scene = { id, phase, …data },
-// so "is any scene busy" is just whether the slot is taken.
+// and the scenes: tutorial, chase, boss, trampoline, tunnel) never overlap,
+// including their transition phases. Scenes share one slot, state.scene =
+// { id, phase, …data }, so "is any scene busy" is just whether the slot is taken.
 //
-// A scene is a definition object (see tutorial.js, chase.js, boss.js, trampoline.js):
-//   id                         — 'tutorial' | 'chase' | 'boss' | 'tramp'
+// A scene is a definition object (see tutorial.js, chase.js, boss.js, trampoline.js, tunnel.js):
+//   id                         — 'tutorial' | 'chase' | 'boss' | 'tramp' | 'tunnel'
 //   initialData()              — fresh per-run data merged into state.scene
 //   wantsTurn(state, memory)   — trigger (usually score); memory (state.sceneMemory[id])
 //                                outlives each run of the scene
-//   start(state, scene)        — the field is clear: set the first real phase + data
+//   start(state, scene, ctx)   — the field is clear: set the first real phase + data
 //   phases[phase](state, scene, ctx) — one frame of that phase; returns the
 //                                next phase name, 'done', or nothing to stay
 //   quietPhases                — phases (besides 'pending') with no normal spawning
 //   timeScale(scene)           — optional: multiplier on game time (scenes.js)
 //   scoreless                  — optional: no distance points while it runs
+// ctx is { scale, services, now, rng } for the frame.
 
 import { SCENE_MIN_GAP } from '../config.js';
 
@@ -117,7 +118,7 @@ export function stepScene(state, def, ctx) {
         state.scene = null;
         requeueSceneFront(state, def.id);
       } else if (state.obstacles.length === 0) {
-        def.start(state, scene);
+        def.start(state, scene, ctx);
       }
       return;
     }

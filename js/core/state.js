@@ -19,6 +19,8 @@ export function createDog() {
     doubleJumped: false,
     ducking: false,
     fastFalling: false,  // Down pressed mid-air (systems/control.js)
+    underground: false,  // crawling through the tunnel scene's tunnel (systems/burrow.js)
+    burrowChangedAt: 0,  // when it last dropped in or popped out (drives the dive drawing)
     legFrame: 0,
   };
 }
@@ -55,6 +57,7 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     globalPlacement: null,  // 1-based global-board rank set at death (null = didn't place / board unknown)
     speed: INITIAL_SPEED,
     dog: createDog(),
+    tunnelHintPending: true,  // flash HOLD ↓ over the tunnel's first hole until the dog first drops in (systems/tunnel.js)
 
     // --- Hearts (extra lives) ---
     hearts: startingHearts,

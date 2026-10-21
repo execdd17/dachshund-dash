@@ -1,14 +1,15 @@
 // HUD: score readout, giant-mode timer, hearts, music icon,
-// idle/game-over text, tutorial prompts.
+// idle/game-over text, tutorial prompts, the tunnel's HOLD ↓ hint.
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
   HEART_FLASH_MS,
 } from '../config.js';
-import { roundRect, drawPixelHeart, HEART_BITMAP_W } from './primitives.js';
+import { roundRect, drawPixelHeart, drawPopupText, HEART_BITMAP_W } from './primitives.js';
 import { formatOrdinal } from '../leaderboard/global.js';
 import { isGiant } from '../systems/giant.js';
 import { TUTORIAL_STEP_COUNT } from '../systems/tutorial.js';
+import { inScene } from '../systems/encounters.js';
 
 // In app mode the HUD hugs the visible top edge (above world y=0, inside the
 // device safe areas) instead of the world's top — see view.js.
@@ -215,4 +216,33 @@ export function drawTutorialOverlay(ctx, state, now = performance.now()) {
     ctx.font = 'bold 18px Courier New';
     ctx.fillText(TUTORIAL_STEP_TITLES[scene.step], W / 2, 86);
   }
+}
+
+// Each run's first tunnel: HOLD ↓ flashing over the first hole, with an
+// arrow bobbing down into it, until the dog drops in.
+const TUNNEL_HINT = { text: 'HOLD ↓', keys: 'to dig in!', touch: 'hold the left side to dig in!' };
+
+export function drawTunnelHint(ctx, state, now = performance.now()) {
+  if (!state.tunnelHintPending || !inScene(state, 'tunnel', 'active') || state.dog.underground) return;
+  const hole = state.obstacles.find(o => o.type === 'tunnelHole' && o.holeIndex === 0 && !o.used);
+  if (!hole || hole.x > W) return;
+  const cx = hole.x + hole.width / 2;
+  const flash = Math.sin(now * 0.012) > 0 ? 1 : 0.55;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  roundRect(ctx, cx - 75, 112, 150, 46, 8);
+  drawPopupText(ctx, TUNNEL_HINT.text, cx, 138, { color: '#FFD700', size: 26, alpha: flash });
+  drawPopupText(ctx, TUNNEL_HINT[state.touchDevice ? 'touch' : 'keys'], cx, 152, { color: '#fff', size: 10, alpha: 1 });
+
+  const bob = Math.abs(Math.sin(now * 0.008)) * 8;
+  ctx.fillStyle = '#FFD700';
+  ctx.globalAlpha = flash;
+  ctx.beginPath();
+  ctx.moveTo(cx - 7, 170 + bob);
+  ctx.lineTo(cx + 7, 170 + bob);
+  ctx.lineTo(cx, 180 + bob);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillRect(cx - 2.5, 160 + bob, 5, 10);
+  ctx.globalAlpha = 1;
 }

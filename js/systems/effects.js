@@ -21,6 +21,7 @@ export const EFFECT_KINDS = {
   trampBounce: { ttl: SCORE_POPUP_MS },
   heartGain: { ttl: SCORE_POPUP_MS },
   heartBonus: { ttl: SCORE_POPUP_MS },
+  pointsPickup: { ttl: SCORE_POPUP_MS },
 };
 
 export function addEffect(state, kind, now, props) {

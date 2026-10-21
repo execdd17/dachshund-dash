@@ -22,6 +22,12 @@ const TONES = {
     { type: 'triangle', from: 300, to: 1200, sweep: 0.2, gain: 0.08, dur: 0.22 },
   ],
   playHeart: [523, 659, 784, 1047].map((from, i) => ({ type: 'sine', from, gain: 0.12, dur: 0.14, at: i * 0.06 })),
+  playDig: [
+    { type: 'triangle', from: 320, to: 90, sweep: 0.12, gain: 0.16, dur: 0.14 },
+    { type: 'square', from: 140, to: 60, sweep: 0.08, gain: 0.04, dur: 0.1, at: 0.03 },
+  ],
+  playPop: [{ type: 'sine', from: 220, to: 950, sweep: 0.07, gain: 0.16, dur: 0.1 }],
+  playTreat: [880, 1320].map((from, i) => ({ type: 'square', from, gain: 0.05, dur: 0.07, at: i * 0.05 })),
   playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
   playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),
 };

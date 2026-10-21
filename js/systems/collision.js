@@ -3,10 +3,11 @@
 
 import {
   GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS,
-  DOG_HITBOX_STAND, DOG_HITBOX_DUCK, DOG_HITBOX_RUN_REAR,
+  DOG_HITBOX_STAND, DOG_HITBOX_DUCK, DOG_HITBOX_RUN_REAR, TUNNEL_DEPTH,
 } from '../config.js';
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect, isGiant } from './giant.js';
 import { spendHeart, gainHeart } from './hearts.js';
+import { addEffect } from './effects.js';
 import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
 
 export { getObstacleHitbox };
@@ -31,9 +32,11 @@ export function getDogHitbox(dog, giant) {
 
 // The boxes that collide with obstacles. Running on the ground, the standing
 // box's rear is lowered to the back line (DOG_HITBOX_RUN_REAR); ducking,
-// airborne, and giant poses use their one box.
+// airborne, and giant poses use their one box. In the tunnel the dog crawls
+// (always ducking) TUNNEL_DEPTH below the path, under every surface hitbox.
 export function getDogHurtboxes(dog, giant) {
   const box = getDogHitbox(dog, giant);
+  if (dog.underground) return [{ ...box, y: box.y + TUNNEL_DEPTH }];
   if (giant || dog.ducking || dog.jumping) return [box];
   const rearW = DOG_HITBOX_RUN_REAR.w;
   const backLine = dog.y + DOG_HITBOX_RUN_REAR.dy;
@@ -51,6 +54,12 @@ export function rectsOverlap(a, b) {
 export const COLLECT_ACTIONS = {
   giant: (state, obs, services, now) => activateGiantMode(state, services, now),
   heart: (state, obs, services, now) => gainHeart(state, services, now, { x: obs.x + obs.width / 2, y: obs.y }),
+  points: (state, obs, services, now) => {
+    const { points } = OBSTACLE_TYPES[obs.type];
+    state.score += points;
+    addEffect(state, 'pointsPickup', now, { x: obs.x + obs.width / 2, y: obs.y, points });
+    services.sfx.playTreat();
+  },
 };
 
 // Walk obstacles, resolving overlaps by each type's contact rule
