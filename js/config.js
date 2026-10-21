@@ -25,6 +25,11 @@ export const DEATH_SHAKE_PX = 6;
 // Dog hitbox, relative to dog.x / dog.y (ducking is a lower, flatter box).
 export const DOG_HITBOX_STAND = { dx: 23, dy: -8, w: 50, h: 22 };
 export const DOG_HITBOX_DUCK = { dx: 23, dy: 10, w: 50, h: 8 };
+// Running on the ground, a dachshund's back half sits well below its head
+// (measured from the run frames: back line ~y+3..+6, head ~y-1). The rear
+// `w` of the standing box starts at dog.y + dy instead, so standing up under
+// a bird that's already past the head doesn't count as a hit.
+export const DOG_HITBOX_RUN_REAR = { w: 16, dy: 3 };
 export const INITIAL_SPEED = 3.0;
 export const MAX_SPEED = 6.5;
 export const SPEED_INCREMENT = 0.0005;

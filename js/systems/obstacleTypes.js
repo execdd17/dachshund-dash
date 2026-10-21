@@ -19,6 +19,9 @@ import {
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
 const DEFAULT_INSET = { dx: 12, dy: 8, dw: 24, dh: 10 };
 const AERIAL_INSET = { dx: 6, dy: 2, dw: 12, dh: 4 };
+// Birds fly left, so the trailing edge is the tail: thin feathers riding
+// above the feet and wings, drawn past the hitbox rather than inside it.
+const BIRD_INSET = { dx: 6, dy: 2, dw: 16, dh: 4 };
 // A tower of `bars` bars, 20px apart, standing on the ground line.
 export function towerSize(bars) {
   const height = 22 + 20 * (bars - 1);
@@ -35,7 +38,7 @@ export const OBSTACLE_TYPES = {
   // Drawn as a chocolate bar normally and as a hot dog in giant mode.
   hotdog: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'hazard', giant: 'eat' },
   frisbee: { width: 44, height: 14, y: GROUND_Y - 12, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
-  bird: { width: BIRD_W, height: BIRD_H, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
+  bird: { width: BIRD_W, height: BIRD_H, inset: BIRD_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
   golden: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'pickup', collect: 'giant' },
   // Floats in the sky over the last trampoline rep, at TRAMP_REPS[].heart.y.
   heart: { width: 21, height: 18, inset: { dx: 1, dy: 1, dw: 3, dh: 2 }, contact: 'pickup', collect: 'heart' },

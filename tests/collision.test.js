@@ -2,12 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  getDogHitbox, getObstacleHitbox, rectsOverlap, checkCollision,
+  getDogHitbox, getDogHurtboxes, getObstacleHitbox, rectsOverlap, checkCollision,
 } from '../js/systems/collision.js';
+import { update } from '../js/systems/update.js';
+import { duck } from '../js/systems/control.js';
+import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import { createState, createDog } from '../js/core/state.js';
 import { activateGiantMode, deactivateGiantMode, giantScoreMultiplier } from '../js/systems/giant.js';
 import {
   GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y, HEART_FULL_BONUS,
+  BIRD_LOW_Y, BIRD_SPRITE_W, DOG_HITBOX_STAND, DOG_HITBOX_RUN_REAR, DT_BASELINE, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED,
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { effectsOfKind } from '../js/systems/effects.js';
@@ -204,4 +208,54 @@ test('ducking avoids a frisbee at head height', () => {
   assert.equal(checkCollision(state, createTestServices()), true, 'standing dog is hit');
   state.dog.ducking = true;
   assert.equal(checkCollision(state, createTestServices()), false, 'ducking dog slides under');
+});
+
+// --- Standing up from a duck under a low bird ---
+
+// Where the dog's shoulders begin: in front of the lowered rear of the run pose.
+const shouldersX = dog => dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_RUN_REAR.w;
+// The bird sprite's right edge, tail feathers included (drawBirdSprite centers it on the obstacle).
+const birdTailTip = o => o.x + o.width / 2 + BIRD_SPRITE_W / 2;
+
+test('only the grounded run pose lowers its rear; ducking, airborne, and giant keep one box', () => {
+  const dog = createDog();
+  assert.equal(getDogHurtboxes(dog, false).length, 2);
+  assert.equal(getDogHurtboxes({ ...dog, ducking: true }, false).length, 1);
+  assert.equal(getDogHurtboxes({ ...dog, jumping: true }, false).length, 1);
+  assert.equal(getDogHurtboxes(dog, true).length, 1);
+  const [rear, front] = getDogHurtboxes(dog, false);
+  const whole = getDogHitbox(dog, false);
+  assert.equal(rear.x, whole.x);
+  assert.equal(front.x + front.w, whole.x + whole.w, 'same footprint as the standing box');
+  assert.equal(rear.y + rear.h, whole.y + whole.h, 'same bottom: jump clearances are unchanged');
+  assert.equal(front.y, whole.y, 'the head is as tall as ever');
+  assert.ok(rear.y > whole.y, 'the back is lower');
+});
+
+test('a low bird over the head still hits a standing dog', () => {
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  const bird = makeObstacle('bird', shouldersX(state.dog), { y: BIRD_LOW_Y });
+  state.obstacles = [bird];
+  checkCollision(state, createTestServices(), 1000);
+  assert.equal(state.hearts, state.startingHearts - 1);
+});
+
+test('standing up once a ducked-under bird, tail and all, is past the shoulders never hits', () => {
+  for (const speed of [INITIAL_SPEED, 4.5, MAX_SPEED]) {
+    const state = createState(() => 0.5);
+    const services = createTestServices();
+    state.gameState = 'running';
+    state.score = (speed - INITIAL_SPEED) / SPEED_INCREMENT;
+    state.nextObstacleIn = Infinity;
+    const bird = makeObstacle('bird', 400, { y: BIRD_LOW_Y });
+    state.obstacles = [bird];
+    duck(state, true, services);
+    for (let f = 0, now = 0; state.obstacles.length && f < 1000; f++) {
+      if (state.duckHeld && birdTailTip(bird) <= shouldersX(state.dog)) duck(state, false, services);
+      update(state, DT_BASELINE, services, () => 0.5, now += DT_BASELINE);
+    }
+    assert.equal(state.duckHeld, false, `speed ${speed}: stood up under the bird`);
+    assert.equal(state.hearts, state.startingHearts, `speed ${speed}: no hit`);
+  }
 });
