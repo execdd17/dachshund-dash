@@ -5,13 +5,13 @@ import {
   W, SQUIRREL_OFFSET,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   GIANT_FIRST_AT, GIANT_COOLDOWN, GIANT_SPAWN_CHANCE,
-  BIRD_LOW_Y, BIRD_HIGH_Y, BIRD_TRI_DX, BIRD_TRI_ROW2_DX,
-  BIRD_WALL_MID_Y, BIRD_WALL_HIGH_Y,
+  BIRD_LOW_Y,
   PATTERN_FIRST_AT, PATTERN_CHANCE, PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT, SPAWN_MIX,
 } from '../config.js';
 import { giantBusy, anySceneBusy } from './encounters.js';
 import { isChaseActive } from './chase.js';
 import { makeObstacle, towerSizeFor } from './obstacleTypes.js';
+import { birdStack, birdTriangle } from './birdWalls.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
 // (or jump the ground beat, then duck the aerial one). Gaps are short enough
@@ -59,18 +59,6 @@ export const SPAWN_PATTERNS = [
   },
 ];
 
-function birdObs(x, y, skin, extra = {}) {
-  const wallRow = extra.wallRow ?? (
-    y === BIRD_HIGH_Y || y === BIRD_WALL_HIGH_Y ? 'high'
-      : y === BIRD_WALL_MID_Y ? 'mid'
-        : y === BIRD_LOW_Y ? 'low'
-          : undefined
-  );
-  return makeObstacle('bird', x, { y, skin, wallRow, ...extra });
-}
-
-const WALL = { aerialWall: true };
-
 // Spawn kinds: what one spawn (or pattern beat) puts on the field.
 const SPAWN_KINDS = {
   hotdog: (x, skin) => [makeObstacle('hotdog', x, { skin })],
@@ -80,18 +68,9 @@ const SPAWN_KINDS = {
     const low = makeObstacle('frisbee', x, { skin });
     return [low, makeObstacle('frisbee', x, { skin, y: low.y - low.height - 6 })];
   },
-  bird: (x, skin) => [birdObs(x, BIRD_LOW_Y, skin)],
-  // Two birds stacked with no vertical gap — blocks every jump timing.
-  birdStack: (x, skin) => [birdObs(x, BIRD_HIGH_Y, skin, WALL), birdObs(x, BIRD_LOW_Y, skin, WALL)],
-  // Low outer pair (duck) + mid/high staggered rows — no jump lane between tiers.
-  birdTriangle: (x, skin) => [
-    birdObs(x - BIRD_TRI_DX, BIRD_LOW_Y, skin, WALL),
-    birdObs(x + BIRD_TRI_DX, BIRD_LOW_Y, skin, WALL),
-    birdObs(x - BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, WALL),
-    birdObs(x + BIRD_TRI_ROW2_DX, BIRD_WALL_MID_Y, skin, WALL),
-    birdObs(x - BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, WALL),
-    birdObs(x + BIRD_TRI_ROW2_DX, BIRD_WALL_HIGH_Y, skin, WALL),
-  ],
+  bird: (x, skin) => [makeObstacle('bird', x, { y: BIRD_LOW_Y, skin })],
+  birdStack: (x, skin) => birdStack(x, { skin }),
+  birdTriangle: (x, skin) => birdTriangle(x, { skin }),
 };
 
 function spawnKind(state, spawnX, skin, kind) {

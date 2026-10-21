@@ -34,17 +34,22 @@ export const MAX_OBSTACLE_GAP = 500;
 // --- Bird obstacles (1.5× frisbee-tier sizing) ---
 export const BIRD_W = 66;
 export const BIRD_H = 51;
-export const BIRD_LOW_Y = GROUND_Y - 49;   // single-bird / triangle base row
-export const BIRD_HIGH_Y = 48;             // stack top / triangle apex (blocks jump arc)
-export const BIRD_TRI_DX = 28;             // triangle bottom birds ± from center
-export const BIRD_TRI_ROW2_DX = 14;        // mid/high rows staggered ± from center
-export const BIRD_WALL_MID_Y = GROUND_Y - 62;   // triangle middle row (fills jump lane)
-export const BIRD_WALL_HIGH_Y = GROUND_Y - 102; // triangle top row (lower than BIRD_HIGH_Y)
+export const BIRD_LOW_Y = GROUND_Y - 49;   // solo bird and every wall's bottom row: duck height
+// Bird walls (systems/birdWalls.js), measured by sweeping jump and double-jump
+// timings against speed — re-sweep if jump physics or the bird hitbox change.
+// The stack is a column with no gap a jump fits through and too tall to
+// double-jump: it must be ducked. The triangle (∧) can be ducked, or cleared
+// by a double jump: from the slowest speed the first press has ~90ms and the
+// second ~110ms, roomier as speed rises.
+export const BIRD_STACK_HIGH_Y = 48;       // stack top
+export const BIRD_STACK_MID_Y = 100;       // stack middle: evenly spaced, filling the jump lane
+export const BIRD_TRI_APEX_Y = 118;        // triangle apex: center, above the wings
+export const BIRD_TRI_WING_DX = 18;        // triangle wings: low-row birds ± from center
 
 // Chase acorn footprint (drawObstacle renders bird/frisbee obstacles as acorns).
 // Solo chase aerials pin to CHASE_ACORN_Y so one acorn forces a duck. Wall
-// low-row birds use the same duck height in chase (draw + hitbox); mid/high
-// rows use BIRD_WALL_MID_Y / BIRD_WALL_HIGH_Y with acorn-sized hitboxes.
+// low-row birds use the same duck height in chase (draw + hitbox); higher
+// rows keep their own y with acorn-sized hitboxes.
 export const ACORN_W = 36;
 export const ACORN_H = 22;
 export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standing dog, duck clears it

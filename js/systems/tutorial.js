@@ -6,12 +6,13 @@
 //   pending → teach → praise → teach … → done   (a miss: teach → retry → teach)
 
 import {
-  W, MIN_OBSTACLE_GAP, BIRD_LOW_Y, BIRD_HIGH_Y,
+  W, MIN_OBSTACLE_GAP,
   TUTORIAL_VERSION, TUTORIAL_REFRESH_MS, TUTORIAL_SLOW_SCALE, TUTORIAL_GAPS, TUTORIAL_AGAIN_VY,
   TUTORIAL_PRAISE_MS, TUTORIAL_RETRY_MS,
 } from '../config.js';
 import { getDogHitbox } from './collision.js';
 import { makeObstacle, getObstacleHitbox, towerSizeFor } from './obstacleTypes.js';
+import { birdStack } from './birdWalls.js';
 
 const STORAGE_KEY = 'dachshundDashTutorial';
 const PRACTICE = { practice: true };
@@ -58,11 +59,8 @@ const STEPS = [
     ],
   },
   {
-    // A bird wall: too tall to jump, so it has to be ducked.
-    spawn: x => [
-      makeObstacle('bird', x, { y: BIRD_HIGH_Y, aerialWall: true, wallRow: 'high', ...PRACTICE }),
-      makeObstacle('bird', x, { y: BIRD_LOW_Y, aerialWall: true, wallRow: 'low', ...PRACTICE }),
-    ],
+    // The bird stack: no way over or through, so it has to be ducked.
+    spawn: x => birdStack(x, PRACTICE),
     actions: [{ prompt: 'duck', ready: gap => gap <= TUTORIAL_GAPS.duck.prompt, done: dog => dog.ducking || dog.fastFalling }],
   },
 ];
