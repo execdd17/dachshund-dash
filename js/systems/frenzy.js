@@ -1,5 +1,5 @@
 // Frenzy: the run's last act, when the music turns frantic. From
-// FRENZY_AT, at the first moment the field is free (giant mode over, no
+// FRENZY_SPEED (normal: score 5000; hyper gets there sooner), at the first moment the field is free (giant mode over, no
 // scene past waiting for its turn), it starts with the drop: everything on
 // screen bursts, the screen flashes, a shockwave rolls out from the dog, the
 // camera shakes, FRENZY! comes up, and the boss starts that same frame — it
@@ -10,7 +10,8 @@
 // giant mode. render/frenzy.js has the looks.
 //   state.frenzyAt: when it started (ms), 0 until then
 
-import { W, FRENZY_AT, FRENZY_DROP_CALM } from '../config.js';
+import { W, FRENZY_SPEED, FRENZY_DROP_CALM } from '../config.js';
+import { runSpeed } from '../core/speed.js';
 import { OBSTACLE_TYPES } from './obstacleTypes.js';
 import { addEffect } from './effects.js';
 import { SCENES, forceScene } from './scenes.js';
@@ -48,7 +49,7 @@ function drop(state, now) {
 // Once per frame, after obstacles move.
 export function stepFrenzy(state, now) {
   if (!inFrenzy(state)) {
-    if (state.score >= FRENZY_AT && fieldIsFree(state)) drop(state, now);
+    if (runSpeed(state) >= FRENZY_SPEED && fieldIsFree(state)) drop(state, now);
     return;
   }
   if (state.giantPhase !== 'off') return;  // giant mode eats or fetches what it meets

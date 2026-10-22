@@ -12,6 +12,7 @@ import { giantBusy, anySceneBusy } from './encounters.js';
 import { isChaseActive } from './chase.js';
 import { makeObstacle, towerSizeFor } from './obstacleTypes.js';
 import { birdStack } from './birdWalls.js';
+import { paceOf } from '../core/speed.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
 // (or jump the ground beat, then duck the aerial one). Gaps are short enough
@@ -77,7 +78,7 @@ function spawnKind(state, spawnX, skin, kind) {
 }
 
 function patternEligible(state) {
-  return !state.activeSpawnPattern && !anySceneBusy(state) && state.score >= PATTERN_FIRST_AT;
+  return !state.activeSpawnPattern && !anySceneBusy(state) && paceOf(state) >= PATTERN_FIRST_AT;
 }
 
 export function patternChance(score) {
@@ -87,8 +88,8 @@ export function patternChance(score) {
 }
 
 function tryStartPattern(state, rng) {
-  if (!patternEligible(state) || rng() >= patternChance(state.score)) return null;
-  const eligible = SPAWN_PATTERNS.filter(p => state.score >= p.minScore);
+  if (!patternEligible(state) || rng() >= patternChance(paceOf(state))) return null;
+  const eligible = SPAWN_PATTERNS.filter(p => paceOf(state) >= p.minScore);
   if (!eligible.length) return null;
   return eligible[Math.floor(rng() * eligible.length)];
 }
@@ -114,14 +115,15 @@ function spawnSingleton(state, spawnX, skin, rng) {
   const { tower, aerial, aerialSplit, frisbee } = SPAWN_MIX;
   let type = 'hotdog';
   const r = rng();
-  if (state.score > tower.after && r < tower.below) {
+  const pace = paceOf(state);  // the ease-in follows speed (core/speed.js)
+  if (pace > tower.after && r < tower.below) {
     type = 'tower';
-  } else if (state.score >= BIRD_WALL_FIRST_AT && r < aerial.below) {
+  } else if (pace >= BIRD_WALL_FIRST_AT && r < aerial.below) {
     const r2 = rng();
     if (r2 < aerialSplit.birdStack) type = 'birdStack';
     else if (!isChaseActive(state) && r2 < aerialSplit.bird) type = 'bird';
     else type = 'frisbee';
-  } else if (state.score > frisbee.after && r < frisbee.below) {
+  } else if (pace > frisbee.after && r < frisbee.below) {
     type = 'frisbee';
   }
 
@@ -143,8 +145,8 @@ export function spawnObstacle(state, rng = Math.random) {
   // At most one golden in each stretch between two scenes, so giant mode
   // never chains or crowds the scenes out; and none while a boss waits for
   // its turn (giant mode's points would carry it far past its score, and up
-  // against the frenzy's boss).
-  const goldenEligible = !giantBusy(state) && !anySceneBusy(state) && !state.goldenSinceScene
+  // against the frenzy's boss). None in hyper mode: its runs are all skill.
+  const goldenEligible = !state.hyper && !giantBusy(state) && !anySceneBusy(state) && !state.goldenSinceScene
     && !state.sceneQueue.includes('boss')
     && state.score >= GIANT_FIRST_AT
     && state.score >= state.lastGoldenScore + GIANT_COOLDOWN

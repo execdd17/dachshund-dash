@@ -30,9 +30,17 @@ export const DOG_HITBOX_DUCK = { dx: 23, dy: 10, w: 50, h: 8 };
 // `w` of the standing box starts at dog.y + dy instead, so standing up under
 // a bird that's already past the head doesn't count as a hit.
 export const DOG_HITBOX_RUN_REAR = { w: 16, dy: 3 };
+// Speed is what difficulty follows (core/speed.js): a run's speed is a fixed
+// function of its score and mode. Normal climbs from INITIAL_SPEED by
+// SPEED_INCREMENT a point; hyper starts higher and climbs twice as fast.
+// Both stop at MAX_SPEED, which every jump, duck, and scene is tested up to.
 export const INITIAL_SPEED = 3.0;
-export const MAX_SPEED = 6.75;     // reached at score 7500, so speed keeps climbing into the frenzy (FRENZY_AT)
+export const MAX_SPEED = 6.75;     // normal reaches it at 7500, so speed keeps climbing into the frenzy (FRENZY_SPEED)
 export const SPEED_INCREMENT = 0.0005;
+export const SPEED_PROFILES = {
+  normal: { start: INITIAL_SPEED, perPoint: SPEED_INCREMENT },
+  hyper: { start: 4.0, perPoint: SPEED_INCREMENT * 2 },  // below the second boss's speed, so it still comes
+};
 export const MIN_OBSTACLE_GAP = 300;
 export const MAX_OBSTACLE_GAP = 500;
 
@@ -71,6 +79,9 @@ export const TOWER_BARS = { short: 5, tall: 6 };
 export const TOWER_TALL_FROM_SPEED = 4.0;   // score ~2000
 
 // --- Spawn patterns (close-gap sequences that punish jump-only play) ---
+// The ease-in's scores (here, BIRD_WALL_FIRST_AT, SPAWN_MIX `after`, a
+// pattern's minScore) are normal-run points at a speed (paceOf,
+// core/speed.js): hyper, starting faster, starts past all of them.
 export const PATTERN_FIRST_AT = 300;         // score before patterns can arm
 // Per spawn cycle when eligible: ramps linearly from `start` at
 // PATTERN_FIRST_AT to `full` at score `fullAt`, so the early game eases in.
@@ -132,7 +143,7 @@ export const SQUIRREL_MAX_RUN_SPEED = 3.5;   // …up to this
 export const SQUIRREL_OFFSCREEN_PAD = 80;    // enter from / escape to this far past the right edge
 
 // --- Boss chase ---
-export const BOSS_AT = [1000, 3000];  // the scores that bring a boss; the frenzy (FRENZY_AT) brings the next
+export const BOSS_SPEEDS = [3.5, 4.5];  // the speeds that bring a boss (normal: 1000, 3000); the frenzy's comes at FRENZY_SPEED
 export const DOG_BASE_X = 60;                      // dog's normal resting x position
 export const BOSS_MAX_DOG_SHIFT = 150;             // max rightward shift during boss (px)
 export const BOSS_DOG_SHIFT_SPEED = 0.75;          // px/frame ramp-up when chasing (~3.3s to max)
@@ -265,7 +276,7 @@ export const RAIN_DROPS = 120;
 export const MUSIC_FADE_MS = 1200;   // a track fades out over this, then the next fades in over it (giant mode cuts in at once)
 
 // --- Frenzy (systems/frenzy.js) ---
-export const FRENZY_AT = 5000;         // score from which the frenzy starts, and with it its music and the score's fire
+export const FRENZY_SPEED = 5.5;       // the speed from which the frenzy starts (normal: 5000), and with it its music and the score's fire
 export const FRENZY_DROP_MS = 2200;    // the drop's banner; its flash, shockwave, and shake are shorter
 export const FRENZY_SHAKE_MS = 600;
 export const FRENZY_SHAKE_PX = 5;
@@ -312,6 +323,7 @@ export const SQUIRREL_SPRITE_GROUND_OFFSET = 60; // sprite padding; lower = squi
 // --- High scores (localStorage) ---
 export const HIGH_SCORES_KEY = 'dachshundDashHighScores';
 export const MAX_HIGH_SCORES = 5;
+export const HYPER_MODE_KEY = 'dachshundDashHyper';  // the start overlay's HYPER switch, remembered on the device
 export const PLAYER_NAME_KEY = 'dachshundDashPlayerName';  // the last name saved with a global score (prefills the prompt)
 
 // --- Equipped cosmetics (localStorage) ---

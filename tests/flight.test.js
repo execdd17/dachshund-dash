@@ -14,10 +14,12 @@ import { flightScene, spawnGates, steerFlight } from '../js/systems/flight.js';
 import { sceneMemory } from '../js/systems/encounters.js';
 import {
   H, GROUND_Y, INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
-  FLIGHT_FIRST_AT, FLIGHT_COOLDOWN, FLIGHT_LANES, FLIGHT_HUD_BAND, FLIGHT_GATES, FLIGHT_EASY_GATES, FRENZY_AT,
+  FLIGHT_FIRST_AT, FLIGHT_COOLDOWN, FLIGHT_LANES, FLIGHT_HUD_BAND, FLIGHT_GATES, FLIGHT_EASY_GATES, FRENZY_SPEED,
 } from '../js/config.js';
-import { createTestServices } from './helpers.js';
+import { createTestServices, normalScoreAt } from './helpers.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
+
+const FRENZY_AT = normalScoreAt(FRENZY_SPEED);  // the frenzy's speed, in a normal run
 
 const SPEEDS = [INITIAL_SPEED, 4.5, MAX_SPEED];
 const FRAME_MS = [1000 / 60, 1000 / 120, 1000 / 144];

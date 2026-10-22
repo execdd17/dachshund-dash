@@ -8,11 +8,11 @@
 // INFERNO_RAMP_MS from the drop.
 
 import {
-  W, H, GROUND_Y, FRENZY_AT, FRENZY_DROP_MS, FRENZY_SHAKE_MS, FRENZY_SHAKE_PX, BURST_MS,
-  INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
+  W, H, GROUND_Y, FRENZY_SPEED, FRENZY_DROP_MS, FRENZY_SHAKE_MS, FRENZY_SHAKE_PX, BURST_MS, MAX_SPEED,
 } from '../config.js';
 import { drawSparkle, hash01 } from './primitives.js';
 import { lerpColor } from '../core/color.js';
+import { profileOf, scoreAtSpeed } from '../core/speed.js';
 import { inFrenzy } from '../systems/frenzy.js';
 import { isGiant } from '../systems/giant.js';
 
@@ -280,8 +280,6 @@ const FLAME_SPACING = 7;     // px between tongues
 const FLAME_FLARE_POINTS = 60;  // the flare at max speed dies down over this many points (the catch's, over the drop)
 const FLAME_OUTLINE = 'rgba(70, 14, 0, 0.7)';  // around the outer tongues, so the fire reads on any sky
 
-// Speed is a fixed function of score, so the score where it maxes out is too.
-const MAX_SPEED_AT = (MAX_SPEED - INITIAL_SPEED) / SPEED_INCREMENT;
 const flareAfter = (score, at) => 0.7 * Math.max(0, 1 - (score - at) / FLAME_FLARE_POINTS) * (score >= at);
 const flareSince = (now, at) => 0.7 * Math.max(0, 1 - (now - at) / FRENZY_DROP_MS);
 
@@ -289,10 +287,11 @@ const flareSince = (now, at) => 0.7 * Math.max(0, 1 - (now - at) / FRENZY_DROP_M
 // burns; true when it drew (the HUD then outlines the digits).
 export function drawScoreFire(ctx, left, right, baseY, state, now) {
   if (!blazing(state)) return false;
-  const startSpeed = Math.min(MAX_SPEED, INITIAL_SPEED + FRENZY_AT * SPEED_INCREMENT);
-  const heat = Math.min(1, Math.max(0, (state.speed - startSpeed) / (MAX_SPEED - startSpeed || 1)));
+  const heat = Math.min(1, Math.max(0, (state.speed - FRENZY_SPEED) / (MAX_SPEED - FRENZY_SPEED)));
   const maxed = state.speed >= MAX_SPEED;
-  const flare = 1 + Math.max(flareSince(now, state.frenzyAt), flareAfter(state.score, MAX_SPEED_AT));
+  // Speed is a fixed function of score in each mode, so the score where it maxes out is too.
+  const maxedAt = scoreAtSpeed(MAX_SPEED, profileOf(state));
+  const flare = 1 + Math.max(flareSince(now, state.frenzyAt), flareAfter(state.score, maxedAt));
   const height = FLAME_HEIGHT.catching + (FLAME_HEIGHT.max - FLAME_HEIGHT.catching) * heat;
   const tongues = Math.max(2, Math.round((right - left) / FLAME_SPACING) + 1);
   ctx.save();

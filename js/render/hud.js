@@ -24,6 +24,8 @@ export function hudOrigin(view) {
   };
 }
 
+const HYPER_BADGE = '#FFB04A';
+
 export function drawScore(ctx, state, view, now = performance.now()) {
   const hud = hudOrigin(view);
   ctx.font = 'bold 18px Courier New';
@@ -31,7 +33,11 @@ export function drawScore(ctx, state, view, now = performance.now()) {
 
   const scoreStr = String(Math.floor(state.score)).padStart(5, '0');
   const hi = state.highScores[0]?.score ?? state.highScore;
-  if (hi > 0) {
+  if (state.hyper) {
+    // Hyper runs keep no scores (leaderboard/recorder.js), so its badge stands where HI would.
+    ctx.fillStyle = HYPER_BADGE;
+    ctx.fillText('HYPER  ', hud.right - 100, hud.top + 30);
+  } else if (hi > 0) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.fillText('HI ' + String(Math.floor(hi)).padStart(5, '0') + '  ', hud.right - 100, hud.top + 30);
   }

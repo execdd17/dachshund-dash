@@ -79,7 +79,7 @@ export const tutorialScene = {
   scoreless: true,
   // scene.prompt: the action being waited on ('jump' | 'jumpAgain' | 'duck'), or null
   initialData: () => ({ step: 0, action: 0, prompt: null, targets: [], until: 0 }),
-  wantsTurn: state => state.tutorialPending,
+  wantsTurn: state => state.tutorialPending && !state.hyper,  // its timing was measured at normal speed; it waits for a normal run
   timeScale: scene => (scene.prompt ? TUTORIAL_SLOW_SCALE : 1),
 
   start(state, scene) {

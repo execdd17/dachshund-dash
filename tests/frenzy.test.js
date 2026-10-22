@@ -1,4 +1,4 @@
-// The frenzy (systems/frenzy.js): the drop at FRENZY_AT, what holds it
+// The frenzy (systems/frenzy.js): the drop at FRENZY_SPEED, what holds it
 // back, the boss it puts first, the scenes it skips, and hazards bursting
 // once the dog is past them.
 
@@ -12,8 +12,10 @@ import { stepFrenzy, inFrenzy } from '../js/systems/frenzy.js';
 import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import { activateGiantMode } from '../js/systems/giant.js';
 import { setScenePhase } from '../js/systems/scenes.js';
-import { W, FRENZY_AT, FRENZY_DROP_CALM, BIRD_JUMP_BONUS } from '../js/config.js';
-import { createTestServices } from './helpers.js';
+import { W, FRENZY_SPEED, FRENZY_DROP_CALM, BIRD_JUMP_BONUS } from '../js/config.js';
+import { createTestServices, normalScoreAt } from './helpers.js';
+
+const FRENZY_AT = normalScoreAt(FRENZY_SPEED);  // the frenzy's speed, in a normal run
 
 function runningState(score) {
   const state = createState(() => 0.5);

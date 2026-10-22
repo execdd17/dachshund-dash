@@ -1,16 +1,17 @@
-// Boss scene: a longer, higher-stakes squirrel chase at each BOSS_AT score;
-// the frenzy brings one more (frenzy.js), so one comes every 2000 points:
+// Boss scene: a longer, higher-stakes squirrel chase at each of BOSS_SPEEDS;
+// the frenzy brings one more (frenzy.js), so one comes every 1.0 of speed:
 // pending → active (closing in) → exiting (falling back).
 
 import {
   GROUND_Y, DOG_BASE_X,
-  BOSS_AT, BOSS_MAX_DOG_SHIFT, BOSS_DOG_SHIFT_SPEED, BOSS_DOG_RETURN_SPEED,
+  BOSS_SPEEDS, BOSS_MAX_DOG_SHIFT, BOSS_DOG_SHIFT_SPEED, BOSS_DOG_RETURN_SPEED,
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
   BOSS_APPROACH_FRAC, BOSS_RETREAT_FRAC, BOSS_TAIL_GAP, BOSS_EXIT_PAD, BOSS_SPEED_MULTIPLIER,
 } from '../config.js';
 import { getDogHitbox, rectsOverlap } from './collision.js';
 import { killDog } from './death.js';
 import { inScene, stepScene } from './encounters.js';
+import { profileOf, runSpeed } from '../core/speed.js';
 
 export const isBossChasing = state => inScene(state, 'boss', 'active');
 
@@ -27,22 +28,25 @@ export const bossScene = {
   quietPhases: ['exiting'],
   initialData: () => ({ squirrelX: BOSS_SQUIRREL_START_X, chaseFrames: 0, dogShift: 0 }),
 
-  // A turn at each BOSS_AT score (memory.lastMilestone counts those reached).
-  // The request waits in the scene queue, so one crossed while blocked is
-  // never lost (and crossing another while queued doesn't stack a second
-  // boss — one queued request per scene). None after 3000: a 4000 one, held
-  // up behind other scenes, often ran right into the frenzy's own boss.
+  // A turn at each of BOSS_SPEEDS above the run's starting speed (hyper
+  // starts past the first); memory.lastMilestone counts those reached. The
+  // request waits in the scene queue, so one crossed while blocked is never
+  // lost (and crossing another while queued doesn't stack a second boss — one
+  // queued request per scene). None at 5.0 (normal: 4000): held up behind
+  // other scenes, it often ran right into the frenzy's own boss.
   wantsTurn(state, memory) {
-    const milestone = BOSS_AT.filter(at => state.score >= at).length;
+    const start = profileOf(state).start;
+    const speed = runSpeed(state);
+    const milestone = BOSS_SPEEDS.filter(at => at > start && speed >= at).length;
     if (milestone <= (memory.lastMilestone ?? 0)) return false;
     memory.lastMilestone = milestone;
     return true;
   },
 
   // Every boss goes ahead of the scenes that armed earlier, so it comes
-  // close to its score (otherwise the first comes last in the first rotation,
-  // often after a short run has ended). With a boss at every 1000 that made
-  // every other scene a boss; at two scores it doesn't.
+  // close to its speed (otherwise the first comes last in the first rotation,
+  // often after a short run has ended). With a boss at every 1000 points that
+  // made every other scene a boss; at two speeds it doesn't.
   jumpsQueue: () => true,
 
   start(state, scene) {

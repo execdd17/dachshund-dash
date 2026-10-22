@@ -17,10 +17,12 @@ import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import {
   W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
-  BOSS_AT, FRENZY_AT, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
+  BOSS_SPEEDS, FRENZY_SPEED, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
   SCENE_MIN_GAP, TRAMP_FIRST_AT, GROUND_Y, DT_BASELINE, FAST_FALL_VY,
 } from '../js/config.js';
-import { createTestServices } from './helpers.js';
+import { createTestServices, normalScoreAt } from './helpers.js';
+
+const BOSS_AT = BOSS_SPEEDS.map(normalScoreAt);  // the bosses' speeds, in a normal run
 
 // --- Giant mode ---
 
@@ -189,7 +191,7 @@ test('a chase escape completing stamps lastSceneEndAt', () => {
 
 // --- Boss state machine ---
 
-test('a boss asks for a turn at each BOSS_AT score and nowhere else', () => {
+test('a boss asks for a turn at each of BOSS_SPEEDS and nowhere else', () => {
   const memory = {};
   const asked = [];
   for (let score = 0; score <= 9000; score += 50) {
@@ -198,11 +200,11 @@ test('a boss asks for a turn at each BOSS_AT score and nowhere else', () => {
   assert.deepEqual(asked, BOSS_AT);
 });
 
-test('bosses, the frenzy one included, come at least 2000 points apart', () => {
-  // Held up in the queue, a boss can start several hundred points late: a
-  // 4000 one ran right into the frenzy's boss at 5000.
-  const at = [...BOSS_AT, FRENZY_AT];
-  at.slice(1).forEach((score, i) => assert.ok(score - at[i] >= 2000, `${at[i]} then ${score}`));
+test('bosses, the frenzy one included, come at least 1.0 of speed apart', () => {
+  // Held up in the queue, a boss can start well past its speed: one at 5.0
+  // (normal: 4000) ran right into the frenzy's boss at 5.5.
+  const at = [...BOSS_SPEEDS, FRENZY_SPEED];
+  at.slice(1).forEach((speed, i) => assert.ok(speed - at[i] >= 1 - 1e-9, `${at[i]} then ${speed}`));
 });
 
 test('boss queues at its score and waits out a pending chase', () => {

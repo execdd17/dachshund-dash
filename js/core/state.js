@@ -117,6 +117,7 @@ export function createState(rng = Math.random) {
     touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
     difficulty: DEFAULT_DIFFICULTY.label,  // label of the session difficulty; recorded with global scores
     startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
+    hyper: false,  // hyper mode (start overlay): faster from the start and climbing faster (core/speed.js); no leaderboard
     tutorialPending: false,  // run the controls tutorial at the next run start (systems/tutorial.js; set by main.js)
     duckHeld: false,  // duck key/touch is down; outlives runs so a held key carries into a restart
 

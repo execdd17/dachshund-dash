@@ -63,6 +63,7 @@ async function renderFrames() {
     for (const score of [0, 300, 450, 650]) add(`biome-${skip}-score-${score}`, s => { s.biomeSkip = skip; s.score = score; });
   }
   add('biome-handover', s => { s.score = 1175; });
+  add('hyper', s => { s.hyper = true; s.score = 300; });  // the HUD's HYPER badge (core/speed.js)
   // The frenzy (render/frenzy.js): the drop (flash, shockwave, banner),
   // rainbow bursts, and the inferno with the score's fire as speed climbs.
   const frenzy = (score, speed, since = 3000) => s => { Object.assign(s, { score, speed, frenzyAt: NOW - since }); };

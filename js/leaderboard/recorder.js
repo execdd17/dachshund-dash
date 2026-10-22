@@ -11,8 +11,9 @@ export function createScoreRecorder({ storage, globalScores }) {
   // Called once per death (services.recordRun).
   function recordRun(state) {
     const { score, difficulty } = state;
-    // A run boosted with the +500 debug key counts nowhere.
-    if (state.scoreBoosted) {
+    // A run boosted with the +500 debug key counts nowhere, and hyper mode has
+    // no leaderboard yet (its scores aren't comparable with normal ones).
+    if (state.scoreBoosted || state.hyper) {
       state.pendingScore = null;
       return;
     }

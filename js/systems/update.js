@@ -6,7 +6,6 @@
 
 import {
   W, GROUND_Y, GRAVITY, FAST_FALL_GRAVITY_MULT, DT_BASELINE,
-  INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
   MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
   BOSS_OBSTACLE_GAP_MULTIPLIER,
   DOG_HITBOX_STAND,
@@ -25,6 +24,7 @@ import { addEffect, updateEffects } from './effects.js';
 import { killDog } from './death.js';
 import { soundtrackFor } from './soundtrack.js';
 import { stepFrenzy } from './frenzy.js';
+import { runSpeed } from '../core/speed.js';
 
 export function update(state, dt, services, rng = Math.random, now = performance.now()) {
   // The music follows the game every frame, between runs too (back to the main track).
@@ -33,7 +33,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
 
   const scale = (dt / DT_BASELINE) * (state.slowMode ? 0.5 : 1) * sceneTimeScale(state);
   state.frameCount++;
-  state.speed = Math.min(MAX_SPEED, INITIAL_SPEED + state.score * SPEED_INCREMENT);
+  state.speed = runSpeed(state);
 
   const effectiveSpeed = state.speed * bossSpeedMultiplier(state);
 

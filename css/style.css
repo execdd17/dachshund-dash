@@ -136,6 +136,31 @@
     font-weight: normal;
     color: rgba(255, 255, 255, 0.7);
   }
+  #startOverlay .hyper-row {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 8px;
+    align-items: center;
+    color: #fff;
+    cursor: pointer;
+  }
+  #startOverlay .hyper-row input {
+    grid-row: span 2;
+    width: 18px;
+    height: 18px;
+    accent-color: #ff6a1a;
+    cursor: pointer;
+  }
+  #startOverlay .hyper-name {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #ffb04a;
+  }
+  #startOverlay .hyper-note {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+  }
 
   /* --- Global Leaderboard --- */
   #globalLeaderboard {

@@ -1,6 +1,8 @@
 // Shared test utilities.
 
 import { createSilentSfx } from '../js/audio/sfx.js';
+import { scoreAtSpeed } from '../js/core/speed.js';
+import { SPEED_PROFILES } from '../js/config.js';
 import { createSilentMusic } from '../js/audio/music.js';
 
 // Minimal localStorage stand-in.
@@ -30,3 +32,7 @@ export function createTestServices(overrides = {}) {
     ...overrides,
   };
 }
+
+// The normal-run score at `speed`: the bosses and the frenzy are set by speed
+// (core/speed.js), and tests mostly set a run's score.
+export const normalScoreAt = speed => Math.round(scoreAtSpeed(speed, SPEED_PROFILES.normal));

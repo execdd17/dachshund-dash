@@ -18,13 +18,15 @@ import {
   W, GROUND_Y, DT_BASELINE, MIN_OBSTACLE_GAP, HEART_HIT_INVULN,
   TRAMP_FIRST_AT, TRAMP_COOLDOWN, TRAMP_BOUNCES, TRAMP_BOUNCE_VY,
   TRAMP_BOUNCE_BONUS, TRAMP_BREATHER, TRAMP_REPS, TRAMP_TILE_W,
-  CHASE_FIRST_AT, BOSS_AT, GIANT_FIRST_AT,
+  CHASE_FIRST_AT, BOSS_SPEEDS, GIANT_FIRST_AT,
   INITIAL_SPEED, SPEED_INCREMENT,
 } from '../js/config.js';
 import { setGiantPhase, sceneMemory } from '../js/systems/encounters.js';
 import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
 import { effectsOfKind } from '../js/systems/effects.js';
-import { createTestServices } from './helpers.js';
+import { createTestServices, normalScoreAt } from './helpers.js';
+
+const BOSS_AT = BOSS_SPEEDS.map(normalScoreAt);  // the bosses' speeds, in a normal run
 
 const DT = DT_BASELINE;
 

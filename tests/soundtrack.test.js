@@ -12,9 +12,11 @@ import { soundtrackFor } from '../js/systems/soundtrack.js';
 import { killDog } from '../js/systems/death.js';
 import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
 import { TRACKS, createMusic } from '../js/audio/music.js';
-import { FRENZY_AT, MUSIC_FADE_MS, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED } from '../js/config.js';
-import { createTestServices } from './helpers.js';
+import { FRENZY_SPEED, MUSIC_FADE_MS, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED } from '../js/config.js';
+import { createTestServices, normalScoreAt } from './helpers.js';
 import { drawScore } from '../js/render/hud.js';
+
+const FRENZY_AT = normalScoreAt(FRENZY_SPEED);  // the frenzy's speed, in a normal run
 
 function runningState(score = 0) {
   const state = createState(() => 0.5);
