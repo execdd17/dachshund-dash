@@ -54,7 +54,6 @@ export function createFlowers(rng = Math.random) {
 export function createRunState(startingHearts = DEFAULT_HEARTS) {
   return {
     score: 0,
-    lastMilestone: 0,
     globalPlacement: null,  // 1-based global-board rank of this run's saved score (null = none saved)
     pendingScore: null,     // { score, difficulty, placement } while the name prompt asks about a global-board score
     speed: INITIAL_SPEED,

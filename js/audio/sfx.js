@@ -12,7 +12,6 @@ const TONES = {
   playDoubleJump: [{ type: 'sine', from: 440, to: 880, sweep: 0.08, gain: 0.13, dur: 0.12 }],
   playDuck: [{ type: 'sine', from: 400, to: 150, sweep: 0.08, gain: 0.1, dur: 0.1 }],
   playDeath: [{ type: 'square', from: 400, to: 120, sweep: 0.4, gain: 0.1, dur: 0.4 }],
-  playScore: [520, 680].map((from, i) => ({ type: 'sine', from, gain: 0.12, dur: 0.2, at: i * 0.1 })),
   playBonk: [
     { type: 'triangle', from: 800, to: 200, sweep: 0.15, gain: 0.18, dur: 0.2 },
     { type: 'sine', from: 1200, to: 400, sweep: 0.1, gain: 0.08, dur: 0.12 },

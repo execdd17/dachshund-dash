@@ -140,13 +140,6 @@ export function update(state, dt, services, rng = Math.random, now = performance
   // collision resolves thorns on the same frame)
   updateScenes(state, scale, services, now, rng);
 
-  // Chime at 100-point milestones
-  const milestone = Math.floor(state.score / 100);
-  if (milestone > state.lastMilestone) {
-    state.lastMilestone = milestone;
-    services.sfx.playScore();
-  }
-
   if (checkCollision(state, services, now)) {
     killDog(state, services, now);
   }

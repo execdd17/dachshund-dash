@@ -119,15 +119,20 @@ test('jumping over a bird wall does not award the solo-bird bonus', () => {
   assert.equal(effectsOfKind(state, 'birdJump').length, 0);
 });
 
-test('milestone chime fires every 100 points', () => {
-  const state = runningState();
-  let chimes = 0;
+test('no sound for crossing a hundred or for a bird jump bonus', () => {
+  // A chime every 100 points sounded random (and, often landing on a +50
+  // bird bonus, like the bird's own sound), so the score is silent.
+  const played = [];
   const services = createTestServices();
-  services.sfx = { ...services.sfx, playScore: () => { chimes++; } };
-  state.score = 99.99; // one tick adds ~0.06 points, crossing 100
+  services.sfx = Object.fromEntries(Object.keys(services.sfx).map(name => [name, () => played.push(name)]));
+  const state = runningState();
+  state.score = 99.99;  // one tick crosses 100
   update(state, DT, services, () => 0.99, 0);
-  assert.equal(chimes, 1);
-  assert.equal(state.lastMilestone, 1);
+  Object.assign(state.dog, { jumping: true, y: 100, vy: -1 });
+  state.obstacles = [{ x: 0, y: GROUND_Y - 49, width: 66, height: 51, type: 'bird' }];
+  update(state, DT, services, () => 0.99, 1);
+  assert.equal(effectsOfKind(state, 'birdJump').length, 1, 'the bonus still pays');
+  assert.deepEqual(played, []);
 });
 
 test('slow mode halves the simulation scale', () => {
