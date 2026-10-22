@@ -95,6 +95,15 @@ function goldenRoll(state) {
   return state.obstacles[0]?.type === 'golden';
 }
 
+test('no golden while a boss waits for its turn', () => {
+  const state = createState(() => 0.5);
+  state.score = GIANT_FIRST_AT + 700;
+  state.sceneQueue = ['boss', 'tramp'];
+  assert.ok(!goldenRoll(state), 'the boss is waiting');
+  state.sceneQueue = ['tramp'];
+  assert.ok(goldenRoll(state), 'another scene waiting is fine');
+});
+
 test('the golden cooldown counts from the end of its giant mode', () => {
   // One giant mode earns more than the cooldown, so counting from the spawn
   // would let the next golden roll in the moment it ends.

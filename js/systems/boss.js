@@ -1,9 +1,10 @@
-// Boss scene: a longer, higher-stakes squirrel chase at every BOSS_MILESTONE
-// points: pending → active (closing in) → exiting (falling back).
+// Boss scene: a longer, higher-stakes squirrel chase at each BOSS_AT score;
+// the frenzy brings one more (frenzy.js), so one comes every 2000 points:
+// pending → active (closing in) → exiting (falling back).
 
 import {
   GROUND_Y, DOG_BASE_X,
-  BOSS_MILESTONE, BOSS_MAX_DOG_SHIFT, BOSS_DOG_SHIFT_SPEED, BOSS_DOG_RETURN_SPEED,
+  BOSS_AT, BOSS_MAX_DOG_SHIFT, BOSS_DOG_SHIFT_SPEED, BOSS_DOG_RETURN_SPEED,
   BOSS_SQUIRREL_START_X, BOSS_SQUIRREL_LOSE_SPEED, BOSS_CHASE_DURATION,
   BOSS_APPROACH_FRAC, BOSS_RETREAT_FRAC, BOSS_TAIL_GAP, BOSS_EXIT_PAD, BOSS_SPEED_MULTIPLIER,
 } from '../config.js';
@@ -26,21 +27,23 @@ export const bossScene = {
   quietPhases: ['exiting'],
   initialData: () => ({ squirrelX: BOSS_SQUIRREL_START_X, chaseFrames: 0, dogShift: 0 }),
 
-  // A turn at 1000, 2000, 3000… The request waits in the scene queue, so a
-  // milestone crossed while blocked is never lost (and crossing another while
-  // queued doesn't stack a second boss — one queued request per scene).
+  // A turn at each BOSS_AT score (memory.lastMilestone counts those reached).
+  // The request waits in the scene queue, so one crossed while blocked is
+  // never lost (and crossing another while queued doesn't stack a second
+  // boss — one queued request per scene). None after 3000: a 4000 one, held
+  // up behind other scenes, often ran right into the frenzy's own boss.
   wantsTurn(state, memory) {
-    const milestone = Math.floor(state.score / BOSS_MILESTONE);
+    const milestone = BOSS_AT.filter(at => state.score >= at).length;
     if (milestone <= (memory.lastMilestone ?? 0)) return false;
     memory.lastMilestone = milestone;
     return true;
   },
 
-  // The first boss, at 1000, goes ahead of the scenes that armed earlier
-  // (otherwise it comes last in the first rotation, often after a short run
-  // has ended). Later bosses wait their turn: jumping every milestone would
-  // make every other scene a boss.
-  jumpsQueue: memory => memory.lastMilestone === 1,
+  // Every boss goes ahead of the scenes that armed earlier, so it comes
+  // close to its score (otherwise the first comes last in the first rotation,
+  // often after a short run has ended). With a boss at every 1000 that made
+  // every other scene a boss; at two scores it doesn't.
+  jumpsQueue: () => true,
 
   start(state, scene) {
     scene.phase = 'active';

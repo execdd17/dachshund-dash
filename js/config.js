@@ -132,7 +132,7 @@ export const SQUIRREL_MAX_RUN_SPEED = 3.5;   // …up to this
 export const SQUIRREL_OFFSCREEN_PAD = 80;    // enter from / escape to this far past the right edge
 
 // --- Boss chase ---
-export const BOSS_MILESTONE = 1000;
+export const BOSS_AT = [1000, 3000];  // the scores that bring a boss; the frenzy (FRENZY_AT) brings the next
 export const DOG_BASE_X = 60;                      // dog's normal resting x position
 export const BOSS_MAX_DOG_SHIFT = 150;             // max rightward shift during boss (px)
 export const BOSS_DOG_SHIFT_SPEED = 0.75;          // px/frame ramp-up when chasing (~3.3s to max)

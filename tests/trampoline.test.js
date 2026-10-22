@@ -18,7 +18,7 @@ import {
   W, GROUND_Y, DT_BASELINE, MIN_OBSTACLE_GAP, HEART_HIT_INVULN,
   TRAMP_FIRST_AT, TRAMP_COOLDOWN, TRAMP_BOUNCES, TRAMP_BOUNCE_VY,
   TRAMP_BOUNCE_BONUS, TRAMP_BREATHER, TRAMP_REPS, TRAMP_TILE_W,
-  CHASE_FIRST_AT, BOSS_MILESTONE, GIANT_FIRST_AT,
+  CHASE_FIRST_AT, BOSS_AT, GIANT_FIRST_AT,
   INITIAL_SPEED, SPEED_INCREMENT,
 } from '../js/config.js';
 import { setGiantPhase, sceneMemory } from '../js/systems/encounters.js';
@@ -158,7 +158,7 @@ test('active scene blocks chase, boss, goldens, and regular spawning', () => {
 
   const bossState = runningState();
   setScenePhase(bossState, 'tramp', 'active');
-  bossState.score = BOSS_MILESTONE + 10;
+  bossState.score = BOSS_AT[0] + 10;
   updateBoss(bossState, 1, services);
   assert.notEqual(getScenePhase(bossState, 'boss'), 'pending', 'boss must not arm mid-scene');
 

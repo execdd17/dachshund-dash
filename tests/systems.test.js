@@ -6,7 +6,7 @@ import {
   activateGiantMode, deactivateGiantMode, getGiantVisualScale, finishGiantTransition, giantScoreMultiplier,
 } from '../js/systems/giant.js';
 import { updateChase } from '../js/systems/chase.js';
-import { updateBoss } from '../js/systems/boss.js';
+import { updateBoss, bossScene } from '../js/systems/boss.js';
 import { updateTrampoline } from '../js/systems/trampoline.js';
 import { markSceneEnd, getGiantPhase, setGiantPhase, sceneMemory } from '../js/systems/encounters.js';
 import { getScenePhase, setScenePhase, forceScene, scenesBlockSpawning, SCENES } from '../js/systems/scenes.js';
@@ -17,7 +17,7 @@ import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import {
   W, GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN,
   CHASE_FIRST_AT, CHASE_DURATION_FRAMES, SQUIRREL_OFFSET,
-  BOSS_MILESTONE, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
+  BOSS_AT, FRENZY_AT, BOSS_SQUIRREL_START_X, JUMP_FORCE, DOUBLE_JUMP_FORCE,
   SCENE_MIN_GAP, TRAMP_FIRST_AT, GROUND_Y, DT_BASELINE, FAST_FALL_VY,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
@@ -116,7 +116,7 @@ test('chase and boss do not arm behind a golden pickup, and stand down if giant 
   assert.notEqual(getScenePhase(chaseState, 'chase'), 'pending');
 
   const bossState = createState(() => 0.5);
-  bossState.score = BOSS_MILESTONE + 5;
+  bossState.score = BOSS_AT[0] + 5;
   bossState.obstacles = [golden];
   updateBoss(bossState, 1, createTestServices());
   assert.notEqual(getScenePhase(bossState, 'boss'), 'pending');
@@ -160,7 +160,7 @@ test('no scene arms until SCENE_MIN_GAP has elapsed since the last scene ended',
 
   // Boss: a blocked milestone stays queued rather than being lost
   const bossState = createState(() => 0.5);
-  bossState.score = BOSS_MILESTONE + 5;
+  bossState.score = BOSS_AT[0] + 5;
   markSceneEnd(bossState, endedAt);
   updateBoss(bossState, 1, services, endedAt + SCENE_MIN_GAP - 1);
   assert.notEqual(getScenePhase(bossState, 'boss'), 'pending', 'boss blocked inside the gap');
@@ -189,9 +189,25 @@ test('a chase escape completing stamps lastSceneEndAt', () => {
 
 // --- Boss state machine ---
 
-test('boss queues at each BOSS_MILESTONE and waits out a pending chase', () => {
+test('a boss asks for a turn at each BOSS_AT score and nowhere else', () => {
+  const memory = {};
+  const asked = [];
+  for (let score = 0; score <= 9000; score += 50) {
+    if (bossScene.wantsTurn({ score }, memory)) asked.push(score);
+  }
+  assert.deepEqual(asked, BOSS_AT);
+});
+
+test('bosses, the frenzy one included, come at least 2000 points apart', () => {
+  // Held up in the queue, a boss can start several hundred points late: a
+  // 4000 one ran right into the frenzy's boss at 5000.
+  const at = [...BOSS_AT, FRENZY_AT];
+  at.slice(1).forEach((score, i) => assert.ok(score - at[i] >= 2000, `${at[i]} then ${score}`));
+});
+
+test('boss queues at its score and waits out a pending chase', () => {
   const state = createState(() => 0.5);
-  state.score = BOSS_MILESTONE + 5;
+  state.score = BOSS_AT[0] + 5;
   setScenePhase(state, 'chase', 'pending');
   updateBoss(state, 1, createTestServices());
   assert.notEqual(getScenePhase(state, 'boss'), 'pending', 'chasePending blocks boss start');
@@ -234,28 +250,28 @@ test('a queued scene holds only one turn even if its condition re-fires', () => 
   const state = createState(() => 0.5);
   state.gameState = 'running';
   setScenePhase(state, 'chase', 'active');  // block starts so requests pile up
-  state.score = BOSS_MILESTONE + 5;
+  state.score = BOSS_AT[0] + 5;
   updateBoss(state, 1, services, 0);
-  state.score = BOSS_MILESTONE * 2 + 5;  // second milestone while still queued
+  state.score = BOSS_AT[1] + 5;  // the next boss score while still queued
   updateBoss(state, 1, services, 0);
   assert.deepEqual(state.sceneQueue, ['boss'], 'no duplicate boss entry');
   assert.equal(state.sceneMemory.boss.lastMilestone, 2);
 });
 
-test('the first boss jumps the scene queue; later ones wait their turn', () => {
+test('every boss jumps the scene queue', () => {
   const services = createTestServices();
   const state = createState(() => 0.5);
   state.gameState = 'running';
   setScenePhase(state, 'chase', 'active');
   state.sceneQueue = ['tunnel', 'flight', 'tramp'];  // armed earlier, still waiting
-  state.score = BOSS_MILESTONE + 5;
+  state.score = BOSS_AT[0] + 5;
   updateBoss(state, 1, services, 0);
   assert.deepEqual(state.sceneQueue, ['boss', 'tunnel', 'flight', 'tramp']);
 
   state.sceneQueue = ['tunnel', 'flight'];  // the first boss has had its turn
-  state.score = BOSS_MILESTONE * 2 + 5;
+  state.score = BOSS_AT[1] + 5;
   updateBoss(state, 1, services, 0);
-  assert.deepEqual(state.sceneQueue, ['tunnel', 'flight', 'boss']);
+  assert.deepEqual(state.sceneQueue, ['boss', 'tunnel', 'flight']);
 });
 
 test('boss waits for clear field, chases, then squirrel retreats', () => {

@@ -72,6 +72,15 @@ node firebase/delete-scores-by-name.mjs TESTER --dry-run
 node firebase/delete-scores-by-name.mjs TESTER
 ```
 
+### Delete all scores above a threshold
+
+On every board, scores strictly above the given value; the dry run lists each one (keep it as a record). Used when the game's late-run rules changed (the frenzy, from 5000).
+
+```bash
+node firebase/delete-scores-above.mjs 5000 --dry-run
+node firebase/delete-scores-above.mjs 5000
+```
+
 ### Trim each board to its top 25
 
 The game only ever reads and shows a difficulty's top `GLOBAL_MAX_SCORES` (25). This deletes everything below that, ranked the way the game ranks (score desc, earlier timestamp first). It reads every score once, so run it now and then, not on a schedule.

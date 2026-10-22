@@ -141,8 +141,11 @@ function spawnSingleton(state, spawnX, skin, rng) {
 export function spawnObstacle(state, rng = Math.random) {
   // --- Golden hot dog spawn check ---
   // At most one golden in each stretch between two scenes, so giant mode
-  // never chains or crowds the scenes out.
+  // never chains or crowds the scenes out; and none while a boss waits for
+  // its turn (giant mode's points would carry it far past its score, and up
+  // against the frenzy's boss).
   const goldenEligible = !giantBusy(state) && !anySceneBusy(state) && !state.goldenSinceScene
+    && !state.sceneQueue.includes('boss')
     && state.score >= GIANT_FIRST_AT
     && state.score >= state.lastGoldenScore + GIANT_COOLDOWN
     && rng() < GIANT_SPAWN_CHANCE;
