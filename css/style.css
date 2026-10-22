@@ -48,7 +48,7 @@
   .game-wrapper {
     position: relative;
   }
-  #nameEntryOverlay {
+  .game-overlay {
     display: none;
     position: absolute;
     top: 0;
@@ -63,17 +63,17 @@
     font-family: 'Courier New', monospace;
     z-index: 10;
   }
-  #nameEntryOverlay.visible {
+  .game-overlay.visible {
     display: flex;
   }
-  #nameEntryOverlay .prompt {
+  .game-overlay .prompt {
     color: #fff;
     font-size: 16px;
     font-weight: bold;
     text-align: center;
     padding: 0 20px;
   }
-  #nameEntryOverlay input {
+  .game-overlay input[type="text"] {
     font-family: 'Courier New', monospace;
     font-size: 18px;
     padding: 8px 12px;
@@ -82,7 +82,7 @@
     border-radius: 4px;
     background: rgba(255,255,255,0.95);
   }
-  #nameEntryOverlay button {
+  .game-overlay button {
     font-family: 'Courier New', monospace;
     font-size: 16px;
     padding: 8px 24px;
@@ -92,10 +92,28 @@
     border-radius: 4px;
     cursor: pointer;
   }
-  #nameEntryOverlay button:hover {
+  .game-overlay button:hover {
     background: #5a9f4f;
   }
-  #nameEntryOverlay .difficulty-row {
+  .game-overlay button:disabled {
+    background: #7a9a74;
+    cursor: default;
+  }
+  .game-overlay button.secondary {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+  }
+  #scoreNameOverlay .score-place {
+    color: #FFD700;
+  }
+  #scoreNameOverlay .score-difficulty {
+    color: #7FD4FF;
+  }
+  .game-overlay .button-row {
+    display: flex;
+    gap: 12px;
+  }
+  #startOverlay .difficulty-row {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -105,12 +123,12 @@
     font-weight: bold;
     letter-spacing: 1px;
   }
-  #nameEntryOverlay .difficulty-row input[type="range"] {
+  #startOverlay .difficulty-row input[type="range"] {
     width: 220px;
     accent-color: #4a8f3f;
     cursor: pointer;
   }
-  #nameEntryOverlay .difficulty-ends {
+  #startOverlay .difficulty-ends {
     display: flex;
     justify-content: space-between;
     width: 220px;

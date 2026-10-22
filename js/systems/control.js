@@ -1,12 +1,12 @@
 // Player intents: jump (also starts/restarts a run) and duck.
 
 import { JUMP_FORCE, DOUBLE_JUMP_FORCE, FAST_FALL_VY, RESTART_LOCKOUT_MS } from '../config.js';
-import { resetRun } from '../core/state.js';
+import { resetRun, isBetweenRuns } from '../core/state.js';
 import { jumpOutOfTunnel } from './burrow.js';
 
 export function jump(state, services, now = performance.now()) {
-  const canStart = state.gameState === 'idle'
-    || (state.gameState === 'dead' && now - state.deathTime >= RESTART_LOCKOUT_MS);
+  const canStart = isBetweenRuns(state)
+    && (state.gameState === 'idle' || now - state.deathTime >= RESTART_LOCKOUT_MS);
   if (canStart) {
     state.gameState = 'running';
     resetRun(state);

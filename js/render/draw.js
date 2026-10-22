@@ -44,7 +44,7 @@ const SCENE_ACTORS = {
   },
 };
 
-// deps: { canvas, ctx, state, sprites, cosmetics, music, view, now, onIdleFrame } — now is the
+// deps: { canvas, ctx, state, sprites, cosmetics, music, view, now } — now is the
 // frame's timestamp (the same clock update() ran on); every time-based visual reads it.
 export function draw(deps) {
   const { canvas, ctx, state, sprites, cosmetics, music, view, now = performance.now() } = deps;
@@ -136,11 +136,11 @@ export function draw(deps) {
   drawTunnelHint(ctx, state, now);
 
   if (state.gameState === 'idle') {
-    deps.onIdleFrame?.();
     drawIdleScreen(ctx, state);
   }
 
-  if (state.gameState === 'dead') {
+  // While the name prompt is up it stands in for the game-over box
+  if (state.gameState === 'dead' && !state.pendingScore) {
     drawGameOverScreen(ctx, state);
   }
 

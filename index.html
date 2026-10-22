@@ -26,15 +26,23 @@
 </div>
 <div class="game-wrapper">
   <canvas id="game" width="1600" height="500"></canvas>
-  <div id="nameEntryOverlay">
-    <span class="prompt">Who's playing? Enter your name:</span>
-    <input type="text" id="nameInput" maxlength="12" placeholder="Your name" />
+  <div id="startOverlay" class="game-overlay">
+    <span class="prompt">Choose your difficulty:</span>
     <div class="difficulty-row">
       <label for="difficultySlider">DIFFICULTY: <span id="difficultyValue">VERY EASY &mdash; 6 HEARTS</span></label>
       <input type="range" id="difficultySlider" min="0" max="4" step="1" value="0" />
       <div class="difficulty-ends"><span>VERY EASY</span><span>VERY HARD</span></div>
     </div>
-    <button type="button" id="nameSubmitBtn">Start</button>
+    <button type="button" id="startBtn">Start</button>
+  </div>
+  <div id="scoreNameOverlay" class="game-overlay">
+    <span class="prompt">NEW HIGH SCORE!</span>
+    <span class="prompt"><span class="score-place" id="scoreNamePlace"></span> place on the <span class="score-difficulty" id="scoreNameDifficulty"></span> board!</span>
+    <input type="text" id="scoreNameInput" maxlength="12" placeholder="Your name" autocomplete="nickname" />
+    <div class="button-row">
+      <button type="button" id="scoreNameSaveBtn">Save</button>
+      <button type="button" id="scoreNameSkipBtn" class="secondary">Skip</button>
+    </div>
   </div>
   <div id="idleActions">
     <button type="button" id="customizeBtn"><span class="btn-icon"><img src="png/hats/top-hat.png" alt=""></span>ACCESSORIZE</button>

@@ -54,7 +54,8 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
   return {
     score: 0,
     lastMilestone: 0,
-    globalPlacement: null,  // 1-based global-board rank set at death (null = didn't place / board unknown)
+    globalPlacement: null,  // 1-based global-board rank of this run's saved score (null = none saved)
+    pendingScore: null,     // { score, difficulty, placement } while the name prompt asks about a global-board score
     speed: INITIAL_SPEED,
     dog: createDog(),
     tunnelHintPending: true,  // flash HOLD ↓ over the tunnel's first hole until the dog first drops in (systems/tunnel.js)
@@ -103,7 +104,7 @@ export function createState(rng = Math.random) {
     frameCount: 0,
     deathTime: 0,
     slowMode: false,
-    playerName: null,  // chosen once on the start overlay; reused for every score submit
+    playerName: null,  // the last name saved with a global score (loaded by main.js; prefills the name prompt)
     touchDevice: false,  // set by main.js; switches HUD prompts to tap wording
     difficulty: DEFAULT_DIFFICULTY.label,  // label of the session difficulty; recorded with global scores
     startingHearts: DEFAULT_HEARTS,  // set by the start overlay's difficulty slider
@@ -123,4 +124,10 @@ export function createState(rng = Math.random) {
 // dead→running transitions in jump(); music reset is the caller's job.
 export function resetRun(state) {
   Object.assign(state, createRunState(state.startingHearts));
+}
+
+// Between runs (idle or dead) with nothing waiting on the player: the menus
+// beside the game show, and a jump starts the next run.
+export function isBetweenRuns(state) {
+  return (state.gameState === 'idle' || state.gameState === 'dead') && !state.pendingScore;
 }

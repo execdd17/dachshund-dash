@@ -9,24 +9,24 @@ export function isTouchDevice() {
   return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 }
 
-// deps: { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view }
+// deps: { state, canvas, services, startOverlay, cosmetics, cosmeticsMenu, music, touchDevice, view }
 export function wireInput(deps) {
-  const { state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view } = deps;
+  const { state, canvas, services, startOverlay, cosmetics, cosmeticsMenu, music, touchDevice, view } = deps;
 
   document.addEventListener('keydown', e => {
     if (state.gameState === 'setup') {
-      if (e.code === 'Enter') {
+      if (e.code === 'Enter' || e.code === 'Space') {
         e.preventDefault();
-        nameEntry.submit();
-      } else if (!(document.activeElement instanceof HTMLInputElement)
-          && (e.code === 'Space' || e.code.startsWith('Arrow'))) {
+        startOverlay.submit();
+      } else if (!(document.activeElement instanceof HTMLInputElement) && e.code.startsWith('Arrow')) {
         // Keep the page from scrolling under the setup overlay (the desktop
-        // layout scrolls to the leaderboard); inputs keep their key defaults
-        // (spaces in the name field, arrows on the difficulty slider).
+        // layout scrolls to the leaderboard); the difficulty slider keeps its arrows.
         e.preventDefault();
       }
       return;
     }
+    // The name prompt's field takes the keys (ui/scoreNamePrompt.js)
+    if (state.pendingScore) return;
     // Don't capture keys when typing in the search box
     if (document.activeElement && document.activeElement.id === 'lbSearch') return;
     // Don't capture keys while the cosmetics menu is open

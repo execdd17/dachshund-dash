@@ -1,26 +1,43 @@
-// What happens to a finished run's score: the game-over placement, the local
-// top list, and the global board, all under the name chosen at setup.
-// Storage and the global board are injected, so this runs under Node.
+// What happens to a finished run's score. Locally: the session best and the
+// device's top list (the HUD's HI). Globally: nothing yet — a score that
+// makes its difficulty's board becomes state.pendingScore, and the name
+// prompt (ui/scoreNamePrompt.js) either names it, which submits it (the
+// run's only Firestore write), or skips it. Storage and the global board are
+// injected, so this runs under Node.
 
-import { qualifiesLocally, insertScore, saveHighScores, normalizeName } from './local.js';
+import { qualifiesLocally, insertScore, saveHighScores, normalizeName, savePlayerName } from './local.js';
 
 export function createScoreRecorder({ storage, globalScores }) {
-  // Called once per death (services.recordRun). Records the score if it makes
-  // either board; otherwise only the session best can move.
+  // Called once per death (services.recordRun).
   function recordRun(state) {
     const { score, difficulty } = state;
-    state.globalPlacement = globalScores.placement(score, difficulty);
-    const qualifies = qualifiesLocally(state.highScores, score) || globalScores.qualifies(score, difficulty);
-    if (!qualifies) {
-      state.highScore = Math.max(state.highScore, score);
-      return;
+    state.highScore = Math.max(state.highScore, score);
+    if (qualifiesLocally(state.highScores, score)) {
+      state.highScores = insertScore(state.highScores, state.playerName ?? '', score);
+      saveHighScores(storage, state.highScores);
     }
-    const name = state.playerName ?? normalizeName('');
-    state.highScores = insertScore(state.highScores, name, score);
-    saveHighScores(storage, state.highScores);
-    state.highScore = state.highScores[0]?.score ?? 0;
-    globalScores.submit(name, score, difficulty);
+    const placement = globalScores.placement(score, difficulty);
+    state.pendingScore = placement ? { score, difficulty, placement } : null;
+    globalScores.refreshIfStale();
   }
 
-  return { recordRun };
+  // The prompt's SAVE: submits the pending score under `rawName` and
+  // remembers the name for next time. A blank name saves nothing.
+  function nameScore(state, rawName) {
+    const pending = state.pendingScore;
+    if (!pending || !rawName?.trim()) return;
+    const name = normalizeName(rawName);
+    state.playerName = name;
+    savePlayerName(storage, name);
+    state.globalPlacement = pending.placement;
+    state.pendingScore = null;
+    globalScores.submit(name, pending.score, pending.difficulty);
+  }
+
+  // The prompt's SKIP: the score stays off the global board.
+  function skipScore(state) {
+    state.pendingScore = null;
+  }
+
+  return { recordRun, nameScore, skipScore };
 }

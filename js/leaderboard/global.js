@@ -1,10 +1,12 @@
-// Global high scores backed by a Firebase Firestore `scores` collection.
+// Global high scores backed by a Firebase Firestore `scores` collection,
+// kept frugal with reads and writes (see GLOBAL_MAX_SCORES in config.js).
 // Fetches up to GLOBAL_MAX_SCORES rows for one difficulty at a time. The
-// player's session difficulty is loaded after setup and drives qualifies,
-// placement, and the default tab; browsing another tab fetches that board.
+// player's session difficulty is loaded after setup and drives placement and
+// the default tab; browsing another tab fetches that board once. A saved
+// score is added to the cached board in place rather than refetched.
 // Legacy docs without a difficulty field are ignored entirely.
 
-import { GLOBAL_MAX_SCORES, GLOBAL_FETCH_INTERVAL } from '../config.js';
+import { GLOBAL_MAX_SCORES, GLOBAL_REFRESH_MS } from '../config.js';
 import { computeScoreChecksum } from './checksum.js';
 
 export function createGlobalScores({ db, ready }) {
@@ -19,7 +21,7 @@ export function createGlobalScores({ db, ready }) {
   };
 
   const cache = new Map();     // difficulty label → score rows
-  let lastFetchTime = 0;
+  const fetchedAt = new Map(); // difficulty label → Date.now() of its last fetch
   let fetchToken = 0;
 
   function scoresQuery(difficulty) {
@@ -47,9 +49,11 @@ export function createGlobalScores({ db, ready }) {
     store.loaded = false;
     store.onChange();
     try {
+      // From the server only: offline, the SDK would otherwise answer from its
+      // empty cache, and an "empty" board would place every score.
       const snapshot = await scoresQuery(difficulty)
         .limit(GLOBAL_MAX_SCORES)
-        .get();
+        .get({ source: 'server' });
       if (token !== fetchToken) return;
       const scores = docsToScores(snapshot);
       cache.set(difficulty, scores);
@@ -59,7 +63,7 @@ export function createGlobalScores({ db, ready }) {
       }
       store.loaded = true;
       store.error = false;
-      lastFetchTime = Date.now();
+      fetchedAt.set(difficulty, Date.now());
     } catch (e) {
       if (token !== fetchToken) return;
       console.warn('Failed to fetch global scores:', e);
@@ -96,6 +100,7 @@ export function createGlobalScores({ db, ready }) {
     return fetchBoard(difficulty);
   }
 
+  // One write. The cached board takes the new row itself, so nothing is reread.
   async function submit(name, scoreVal, difficulty) {
     if (!ready || !db) return;
     const timestamp = Date.now();
@@ -108,28 +113,23 @@ export function createGlobalScores({ db, ready }) {
         timestamp: timestamp,
         checksum: checksum,
       });
-      cache.delete(difficulty);
-      await fetchBoard(difficulty);
-      if (difficulty !== store.viewDifficulty) {
-        await fetchBoard(store.viewDifficulty);
-      }
     } catch (e) {
       console.warn('Failed to submit global score:', e);
+      return;
     }
+    if (!cache.has(difficulty)) return;
+    const board = insertIntoBoard(cache.get(difficulty), { name, score: scoreVal, difficulty });
+    cache.set(difficulty, board);
+    if (difficulty === store.viewDifficulty) store.scores = board;
+    store.onChange();
   }
 
-  function maybeRefresh(now = Date.now()) {
-    if (!store.sessionDifficulty) return;
-    if (now - lastFetchTime > GLOBAL_FETCH_INTERVAL) {
-      cache.delete(store.sessionDifficulty);
-      if (store.viewDifficulty === store.sessionDifficulty) {
-        cache.delete(store.viewDifficulty);
-      }
-      void fetchBoard(store.sessionDifficulty);
-      if (store.viewDifficulty && store.viewDifficulty !== store.sessionDifficulty) {
-        void fetchBoard(store.viewDifficulty);
-      }
-    }
+  // When a run ends: refetch the session board if it's gone stale, so a
+  // long session sees other players' scores without the idle game polling.
+  function refreshIfStale(now = Date.now()) {
+    const difficulty = store.sessionDifficulty;
+    if (!difficulty || now - (fetchedAt.get(difficulty) ?? 0) < GLOBAL_REFRESH_MS) return Promise.resolve();
+    return fetchBoard(difficulty);
   }
 
   function sessionBoard() {
@@ -137,13 +137,8 @@ export function createGlobalScores({ db, ready }) {
     return cache.get(store.sessionDifficulty) ?? [];
   }
 
-  function qualifies(score, difficulty) {
-    if (difficulty !== store.sessionDifficulty || !store.sessionLoaded) return false;
-    const board = sessionBoard();
-    return board.length < GLOBAL_MAX_SCORES
-      || score > (board[GLOBAL_MAX_SCORES - 1]?.score ?? 0);
-  }
-
+  // Where a score would rank on its difficulty's board, or null when it
+  // wouldn't make it (or that board isn't the loaded session board).
   function placement(score, difficulty) {
     if (difficulty !== store.sessionDifficulty || !store.sessionLoaded) return null;
     return getGlobalPlacement(sessionBoard(), score);
@@ -152,8 +147,7 @@ export function createGlobalScores({ db, ready }) {
   store.setSessionDifficulty = setSessionDifficulty;
   store.loadView = loadView;
   store.submit = submit;
-  store.maybeRefresh = maybeRefresh;
-  store.qualifies = qualifies;
+  store.refreshIfStale = refreshIfStale;
   store.placement = placement;
   return store;
 }
@@ -165,6 +159,13 @@ export function createGlobalScores({ db, ready }) {
 export function getGlobalPlacement(board, score) {
   const rank = board.filter(e => e.score >= score).length + 1;
   return rank <= GLOBAL_MAX_SCORES ? rank : null;
+}
+
+// Pure: the board with `entry` placed where getGlobalPlacement ranks it
+// (below equal scores), still capped at GLOBAL_MAX_SCORES.
+export function insertIntoBoard(board, entry) {
+  const rank = board.filter(e => e.score >= entry.score).length;
+  return [...board.slice(0, rank), entry, ...board.slice(rank)].slice(0, GLOBAL_MAX_SCORES);
 }
 
 // Pure: 1 → '1st', 2 → '2nd', 3 → '3rd', 11–13 → 'th', 21 → '21st', …

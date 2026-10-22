@@ -95,7 +95,7 @@ node firebase/delete-scores-by-difficulty.mjs "VERY HARD"
 
 Valid difficulty labels: `VERY EASY`, `EASY`, `NORMAL`, `HARD`, `VERY HARD`.
 
-**Delete all scores for the default test name** (empty setup input → stored as `PLAYER`):
+**Delete all scores for the old default name** (older builds stored a blank name as `PLAYER`; the game no longer submits one):
 
 ```bash
 node firebase/delete-scores-by-name.mjs --dry-run
@@ -103,6 +103,13 @@ node firebase/delete-scores-by-name.mjs
 ```
 
 Pass a name to target something else: `node firebase/delete-scores-by-name.mjs TESTER`
+
+**Trim every board to its top 25** (the most the game shows or reads; everything below is dead weight):
+
+```bash
+node firebase/prune-scores.mjs --dry-run
+node firebase/prune-scores.mjs
+```
 
 **Add new admin scripts:** use `getAdminDb()` from `firebase/lib/init.mjs` (same credentials, batch writes/deletes in chunks of 500). See [`firebase/README.md`](firebase/README.md).
 

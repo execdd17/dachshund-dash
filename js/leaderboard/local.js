@@ -1,7 +1,8 @@
-// Local top-5 high scores, persisted in localStorage. Storage is injected so
-// the logic runs under Node for tests.
+// Local top-5 high scores and the last name saved with a global score, both
+// persisted in localStorage. Storage is injected so the logic runs under Node
+// for tests.
 
-import { HIGH_SCORES_KEY, MAX_HIGH_SCORES } from '../config.js';
+import { HIGH_SCORES_KEY, MAX_HIGH_SCORES, PLAYER_NAME_KEY } from '../config.js';
 
 export function loadHighScores(storage) {
   try {
@@ -18,6 +19,20 @@ export function loadHighScores(storage) {
 export function saveHighScores(storage, scores) {
   try {
     storage.setItem(HIGH_SCORES_KEY, JSON.stringify(scores));
+  } catch (_) {}
+}
+
+export function loadPlayerName(storage) {
+  try {
+    return storage.getItem(PLAYER_NAME_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePlayerName(storage, name) {
+  try {
+    storage.setItem(PLAYER_NAME_KEY, name);
   } catch (_) {}
 }
 

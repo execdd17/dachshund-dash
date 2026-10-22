@@ -349,6 +349,19 @@ test('restart from dead is locked out for 1s after death', () => {
   assert.equal(state.gameState, 'running');
 });
 
+test('restart waits while the name prompt asks about a global-board score', () => {
+  const state = createState(() => 0.5);
+  const services = createTestServices();
+  state.gameState = 'dead';
+  state.deathTime = 5000;
+  state.pendingScore = { score: 900, difficulty: 'EASY', placement: 3 };
+  jump(state, services, 9000);
+  assert.equal(state.gameState, 'dead');
+  state.pendingScore = null;  // named or skipped
+  jump(state, services, 9000);
+  assert.equal(state.gameState, 'running');
+});
+
 test('duck only applies while running and grounded', () => {
   const state = createState(() => 0.5);
   const services = createTestServices();

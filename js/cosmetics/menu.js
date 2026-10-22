@@ -7,6 +7,7 @@ import {
   getItemAnchorOffset, getHeadAnchor, getOverlayFrame,
 } from './cosmetics.js';
 import { drawSpriteFrameLayer, drawCosmeticOverlay } from '../render/actors.js';
+import { isBetweenRuns } from '../core/state.js';
 
 export function createCosmeticsMenu(cosmetics, sprites, state) {
   let activeTab = COSMETIC_SLOTS[0];
@@ -89,8 +90,7 @@ export function createCosmeticsMenu(cosmetics, sprites, state) {
   }
 
   function updateCustomizeButtonVisibility() {
-    const show = state.gameState === 'idle' || state.gameState === 'dead';
-    document.getElementById('customizeBtn').classList.toggle('visible', show);
+    document.getElementById('customizeBtn').classList.toggle('visible', isBetweenRuns(state));
   }
 
   function wireControls() {

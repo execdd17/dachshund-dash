@@ -58,7 +58,7 @@ Valid labels: `VERY EASY`, `EASY`, `NORMAL`, `HARD`, `VERY HARD` (must match `DI
 
 ### Delete all scores for one player name
 
-Empty setup names are stored as `PLAYER` (see `normalizeName()` in `js/leaderboard/local.js`).
+Older builds stored a blank name as `PLAYER` (see `normalizeName()` in `js/leaderboard/local.js`); the game no longer submits one.
 
 ```bash
 # Preview default-name test runs
@@ -70,6 +70,15 @@ node firebase/delete-scores-by-name.mjs
 # Delete a specific name (normalized to uppercase, max 12 chars)
 node firebase/delete-scores-by-name.mjs TESTER --dry-run
 node firebase/delete-scores-by-name.mjs TESTER
+```
+
+### Trim each board to its top 25
+
+The game only ever reads and shows a difficulty's top `GLOBAL_MAX_SCORES` (25). This deletes everything below that, ranked the way the game ranks (score desc, earlier timestamp first). It reads every score once, so run it now and then, not on a schedule.
+
+```bash
+node firebase/prune-scores.mjs --dry-run
+node firebase/prune-scores.mjs
 ```
 
 ### Backup before bulk deletes

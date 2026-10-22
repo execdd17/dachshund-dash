@@ -259,11 +259,17 @@ export const SQUIRREL_SPRITE_GROUND_OFFSET = 60; // sprite padding; lower = squi
 // --- High scores (localStorage) ---
 export const HIGH_SCORES_KEY = 'dachshundDashHighScores';
 export const MAX_HIGH_SCORES = 5;
+export const PLAYER_NAME_KEY = 'dachshundDashPlayerName';  // the last name saved with a global score (prefills the prompt)
 
 // --- Equipped cosmetics (localStorage) ---
 export const EQUIPPED_COSMETICS_KEY = 'dachshundDashEquippedCosmetics';
 
 // --- Global high scores (Firebase) ---
-export const GLOBAL_MAX_SCORES = 100;
+// Firestore's free tier bills every document read and write, so the board is
+// kept small and touched rarely: a board fetch reads at most GLOBAL_MAX_SCORES
+// docs, a saved score is one write that updates the cached board in place,
+// and the session board is refetched only when a run ends and it's older
+// than GLOBAL_REFRESH_MS (never while the game sits idle).
+export const GLOBAL_MAX_SCORES = 25;              // per difficulty
 export const GLOBAL_PAGE_SIZE = 10;
-export const GLOBAL_FETCH_INTERVAL = 30000;
+export const GLOBAL_REFRESH_MS = 10 * 60 * 1000;

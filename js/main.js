@@ -11,9 +11,10 @@ import { createCosmeticsMenu } from './cosmetics/menu.js';
 import { initFirebase } from './firebase.js';
 import { createGlobalScores } from './leaderboard/global.js';
 import { createLeaderboardUi } from './leaderboard/ui.js';
-import { loadHighScores } from './leaderboard/local.js';
+import { loadHighScores, loadPlayerName } from './leaderboard/local.js';
 import { createScoreRecorder } from './leaderboard/recorder.js';
-import { createNameEntry } from './ui/nameEntry.js';
+import { createStartOverlay } from './ui/startOverlay.js';
+import { createScoreNamePrompt } from './ui/scoreNamePrompt.js';
 import { createHowToPlayButton } from './ui/howToPlay.js';
 import { update } from './systems/update.js';
 import { jump } from './systems/control.js';
@@ -39,6 +40,7 @@ const state = createState();
 state.touchDevice = touchDevice;
 state.highScores = loadHighScores(localStorage);
 state.highScore = state.highScores[0]?.score ?? 0;
+state.playerName = loadPlayerName(localStorage);
 state.tutorialPending = isTutorialDue(localStorage, Date.now());
 
 // --- View (canvas sizing / world-to-screen mapping) ---
@@ -73,10 +75,11 @@ const leaderboardUi = createLeaderboardUi(globalScores);
 globalScores.onChange = leaderboardUi.render;
 
 const scoreRecorder = createScoreRecorder({ storage: localStorage, globalScores });
-const nameEntry = createNameEntry(state, {
+const startOverlay = createStartOverlay(state, {
   // Load the leaderboard for the board the player is actually competing on.
   onDifficultyChosen: label => leaderboardUi.setSessionDifficulty(label),
 });
+const scoreNamePrompt = createScoreNamePrompt(state, scoreRecorder);
 const cosmeticsMenu = createCosmeticsMenu(cosmetics, sprites, state);
 
 // Everything update() needs to cause effects outside the state object.
@@ -90,8 +93,9 @@ const services = {
 const howToPlay = createHowToPlayButton(state, { startRun: () => jump(state, services) });
 
 // --- Wiring ---
-wireInput({ state, canvas, services, nameEntry, cosmetics, cosmeticsMenu, music, touchDevice, view });
-nameEntry.wireControls();
+wireInput({ state, canvas, services, startOverlay, cosmetics, cosmeticsMenu, music, touchDevice, view });
+startOverlay.wireControls();
+scoreNamePrompt.wireControls();
 cosmeticsMenu.wireControls();
 howToPlay.wireControls();
 leaderboardUi.wireControls();
@@ -105,16 +109,13 @@ function gameLoop(now) {
   update(state, dt, services, Math.random, now);
   cosmeticsMenu.updateCustomizeButtonVisibility();
   howToPlay.updateVisibility();
-  draw({
-    canvas, ctx, state, sprites, cosmetics, music, view, now,
-    // Periodic global score refresh while sitting on the idle screen
-    onIdleFrame: () => globalScores.maybeRefresh(),
-  });
+  scoreNamePrompt.update();
+  draw({ canvas, ctx, state, sprites, cosmetics, music, view, now });
   requestAnimationFrame(gameLoop);
 }
 
 // --- Start ---
 leaderboardUi.render();
-// Ask for name + difficulty once per page load, before the first run.
-nameEntry.show();
+// Pick a difficulty once per page load, before the first run.
+startOverlay.show();
 gameLoop();
