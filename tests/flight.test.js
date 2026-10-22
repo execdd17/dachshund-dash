@@ -9,8 +9,8 @@ import { update } from '../js/systems/update.js';
 import { jump, duck } from '../js/systems/control.js';
 import { getDogHurtboxes } from '../js/systems/collision.js';
 import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
-import { forceScene, getScenePhase, setScenePhase } from '../js/systems/scenes.js';
-import { flightScene, spawnGates, steerFlight, cameraLift } from '../js/systems/flight.js';
+import { forceScene, getScenePhase, setScenePhase, cameraLift } from '../js/systems/scenes.js';
+import { flightScene, spawnGates, steerFlight } from '../js/systems/flight.js';
 import { sceneMemory } from '../js/systems/encounters.js';
 import {
   H, GROUND_Y, INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,

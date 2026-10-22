@@ -9,11 +9,12 @@ import { update } from '../js/systems/update.js';
 import { jump, duck } from '../js/systems/control.js';
 import { checkCollision, getDogHitbox, getDogHurtboxes } from '../js/systems/collision.js';
 import { OBSTACLE_TYPES, makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
-import { setScenePhase, getScenePhase } from '../js/systems/scenes.js';
+import { setScenePhase, getScenePhase, cameraLift } from '../js/systems/scenes.js';
 import { tunnelScene, spawnTunnel, TUNNEL_STRETCHES } from '../js/systems/tunnel.js';
 import {
   DT_BASELINE, INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT, DOG_HITBOX_STAND,
   TUNNEL_LAYOUTS, TUNNEL_BEAT_FRAMES, TUNNEL_FIRST_AT, TUNNEL_COOLDOWN, TUNNEL_POP_VY, JUMP_FORCE,
+  TUNNEL_CAMERA_DROP, TUNNEL_CAMERA_SPEED,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
@@ -43,7 +44,7 @@ function placeDogAt(state, index, fraction = 0) {
   const dx = dogCenterX(state.dog) - (hole.x + hole.width / 2) - fraction * TUNNEL_BEAT_FRAMES * state.speed;
   state.obstacles.forEach(o => { o.x += dx; });
 }
-const stepScene = (state, services, now = 1000) => tunnelScene.phases.active(state, state.scene, { services, now });
+const stepScene = (state, services, now = 1000) => tunnelScene.phases.active(state, state.scene, { scale: 1, services, now });
 
 // --- Layouts ---
 
@@ -80,6 +81,18 @@ test("each stretch's hazards block the layer it doesn't need, never the tunnel o
       const pays = obstacles.some(([, type]) => type === 'bird' || OBSTACLE_TYPES[type].contact === 'pickup');
       assert.ok(pays, `${name}: the surface route pays`);
     }
+  }
+});
+
+test('every rock has a warning sign above it, which is only scenery', () => {
+  assert.equal(OBSTACLE_TYPES.rockSign.contact, 'none');
+  for (const layout of TUNNEL_LAYOUTS) {
+    const state = tunnelState(layout);
+    const center = o => o.x + o.width / 2;
+    const rocks = state.obstacles.filter(o => o.type === 'rock');
+    const signs = state.obstacles.filter(o => o.type === 'rockSign');
+    assert.equal(signs.length, rocks.length, `${layout}`);
+    rocks.forEach(rock => assert.ok(signs.some(sign => Math.abs(center(sign) - center(rock)) < 0.5), `${layout}: a sign over each rock`));
   }
 });
 
@@ -276,10 +289,14 @@ function playTunnel(layout, speed, frameMs, route) {
   let hits = 0;
   let points = 0;
   let now = 0;
+  let liftAtFirstHole = null;  // the camera's dip when the dog reaches the first hole
+  let biggestCameraStep = 0;   // the camera never snaps, even as the scene ends
   for (let frame = 0; frame < 20000 && getScenePhase(state, 'tunnel') !== 'idle'; frame++) {
     const hearts = state.hearts;
     const effectsBefore = state.effects.length;
+    const liftBefore = cameraLift(state);
     update(state, frameMs, services, () => 0.5, now);
+    biggestCameraStep = Math.max(biggestCameraStep, Math.abs(cameraLift(state) - liftBefore));
     now += frameMs;
     state.score = score;
     if (state.hearts < hearts) hits++;
@@ -287,6 +304,8 @@ function playTunnel(layout, speed, frameMs, route) {
 
     const dogBox = getDogHitbox(state.dog, false);
     const cx = dogCenterX(state.dog);
+    const firstHole = holeOf(state, 0);
+    if (liftAtFirstHole === null && firstHole && firstHole.x + firstHole.width / 2 <= cx) liftAtFirstHole = cameraLift(state);
     const next = state.obstacles
       .filter(o => o.type === 'tunnelHole' && !o.used && o.x + o.width / 2 >= cx)
       .sort((a, b) => a.holeIndex - b.holeIndex)[0];
@@ -301,7 +320,10 @@ function playTunnel(layout, speed, frameMs, route) {
       if (gaps.some(gap => gap > 0 && gap <= speed * 14)) jump(state, services, now);
     }
   }
-  return { hits, points, finished: getScenePhase(state, 'tunnel') === 'idle', underground: state.dog.underground };
+  return {
+    hits, points, liftAtFirstHole, biggestCameraStep,
+    finished: getScenePhase(state, 'tunnel') === 'idle', underground: state.dog.underground,
+  };
 }
 
 const safeRoute = stretch => TUNNEL_STRETCHES[stretch].needs ?? 'underground';
@@ -316,6 +338,8 @@ test('every layout plays clean at every speed, staying under or taking the surfa
           const label = `${layout} at ${speed}, ${Math.round(1000 / frameMs)}Hz, ${name} route`;
           assert.equal(run.hits, 0, label);
           assert.ok(run.finished && !run.underground, `${label}: scene ends with the dog up top`);
+          assert.equal(run.liftAtFirstHole, -TUNNEL_CAMERA_DROP, `${label}: camera fully dipped by the first hole`);
+          assert.ok(run.biggestCameraStep <= TUNNEL_CAMERA_SPEED * frameMs / DT_BASELINE + 1e-9, `${label}: the camera eases, never snaps`);
         }
       }
     }

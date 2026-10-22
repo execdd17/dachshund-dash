@@ -8,6 +8,7 @@
 import {
   W, MIN_OBSTACLE_GAP, BIRD_LOW_Y,
   TUNNEL_FIRST_AT, TUNNEL_COOLDOWN, TUNNEL_BEAT_FRAMES, TUNNEL_HOLE_W, TUNNEL_LAYOUTS,
+  TUNNEL_CAMERA_DROP, TUNNEL_CAMERA_SPEED,
 } from '../config.js';
 import { makeObstacle } from './obstacleTypes.js';
 import { stepBurrow } from './burrow.js';
@@ -18,11 +19,20 @@ import { sceneMemory, scoreCooldownTrigger } from './encounters.js';
 // null when either does.
 export const TUNNEL_STRETCHES = {
   hedge: { needs: 'underground', obstacles: [[0.5, 'hedge']] },
-  rock: { needs: 'surface', obstacles: [[0.5, 'rock']] },
-  rockThenBar: { needs: 'surface', obstacles: [[0.5, 'rock'], [0.85, 'hotdog']] },
+  rock: { needs: 'surface', obstacles: [[0.5, 'rock'], [0.5, 'rockSign']] },
+  rockThenBar: { needs: 'surface', obstacles: [[0.5, 'rock'], [0.5, 'rockSign'], [0.85, 'hotdog']] },
   treatBar: { needs: null, obstacles: [[0.35, 'treat'], [0.5, 'hotdog'], [0.65, 'treat']] },
   bird: { needs: null, obstacles: [[0.5, 'bird', { y: BIRD_LOW_Y }]] },
 };
+
+// The camera dips while any of the tunnel is still ahead of the dog, so the
+// bore sits clear of the screen's bottom edge, and comes back up once it's past.
+function stepCamera(state, scene, scale) {
+  const ahead = state.obstacles.some(o => o.type === 'tunnel' && o.x + o.width > state.dog.x);
+  const target = ahead ? -TUNNEL_CAMERA_DROP : 0;
+  const step = TUNNEL_CAMERA_SPEED * scale;
+  scene.lift += Math.max(-step, Math.min(step, target - scene.lift));
+}
 
 // Any layout but the one the last scene played.
 function pickLayout(memory, rng) {
@@ -52,7 +62,7 @@ export function spawnTunnel(state, layout) {
 export const tunnelScene = {
   id: 'tunnel',
   quietPhases: ['active'],  // the scene spawns its own field
-  initialData: () => ({}),
+  initialData: () => ({ lift: 0 }),
   wantsTurn: (state, memory) => scoreCooldownTrigger(state, memory, TUNNEL_FIRST_AT, TUNNEL_COOLDOWN),
 
   start(state, scene, { rng }) {
@@ -61,11 +71,12 @@ export const tunnelScene = {
   },
 
   phases: {
-    // Runs until every piece of the tunnel has scrolled off.
-    active(state, scene, { services, now }) {
+    // Runs until every piece of the tunnel has scrolled off and the camera is back.
+    active(state, scene, { scale, services, now }) {
       stepBurrow(state, services, now);
       if (state.dog.underground) state.tunnelHintPending = false;
-      if (state.obstacles.length > 0) return undefined;
+      stepCamera(state, scene, scale);
+      if (state.obstacles.length > 0 || scene.lift !== 0) return undefined;
       sceneMemory(state, 'tunnel').lastEndScore = state.score;
       state.nextObstacleIn = MIN_OBSTACLE_GAP;
       return 'done';

@@ -208,6 +208,8 @@ export const TUNNEL_DEPTH = 25;          // how far below the path the dog crawl
 export const TUNNEL_POP_VY = -6;         // the hop out of a hole when duck is let go
 export const TUNNEL_DIVE_MS = 140;       // the dog sliding into / out of a hole (drawing only)
 export const TUNNEL_TREAT_POINTS = 25;
+export const TUNNEL_CAMERA_DROP = 20;    // the camera dips this far while the tunnel's ahead, lifting it clear of phone toolbars and home bars
+export const TUNNEL_CAMERA_SPEED = 0.35; // camera dip per frame, down and back
 export const TUNNEL_LAYOUTS = [
   ['hedge', 'treatBar', 'rock', 'hedge', 'bird', 'rockThenBar'],
   ['hedge', 'hedge', 'rock', 'treatBar', 'hedge', 'rock'],

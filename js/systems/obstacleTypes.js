@@ -63,6 +63,8 @@ export const OBSTACLE_TYPES = {
   // Sits in the bore at the crawling dog's height, below anything a dog on
   // the surface can touch (and the crawling dog is below every surface hitbox).
   rock: { width: 28, height: 18, y: GROUND_Y + 6 + TUNNEL_DEPTH, inset: { dx: 3, dy: 2, dw: 6, dh: 4 }, contact: 'hazard', giant: 'bonk' },
+  // A warning sign planted in the path above each rock (scenery: it stays put when the rock is bonked).
+  rockSign: { width: 18, height: 24, y: GROUND_Y - 1, inset: DEFAULT_INSET, contact: 'none' },
   // Floats at jump height over the surface route, the reward for taking it.
   treat: {
     width: 20, height: 11, y: GROUND_Y - 50, inset: { dx: 0, dy: 0, dw: 0, dh: 0 },

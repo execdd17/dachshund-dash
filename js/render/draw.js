@@ -21,7 +21,7 @@ import {
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale, isGiant } from '../systems/giant.js';
-import { cameraLift } from '../systems/flight.js';
+import { cameraLift } from '../systems/scenes.js';
 
 // Per-scene actors, keyed by scene id (scenes with none, like the trampoline, are absent).
 const SCENE_ACTORS = {
@@ -66,8 +66,9 @@ export function draw(deps) {
     }
   }
 
-  // The flight scene pans the camera up: the world drops by `lift`, while
-  // the sky, sun, and rain stay put on screen and clouds move at half the rate.
+  // A scene can pan the camera (cameraLift): the flight pans up, the tunnel
+  // down a little. The world moves by `lift`, while the sky, sun, and rain
+  // stay put on screen and clouds move at half the rate.
   const lift = cameraLift(state);
   ctx.save();
   ctx.translate(0, lift);
@@ -142,13 +143,13 @@ export function draw(deps) {
 
   drawEffects(ctx, state, sprites, now);
   drawLandingParticles(ctx, state);
+  drawTunnelHint(ctx, state, now);
   ctx.restore();
 
   drawScore(ctx, state, view, now);
   if (state.gameState !== 'idle' && state.gameState !== 'setup') drawHearts(ctx, state, view, now);
   drawMusicIcon(ctx, music.isOn(), view);
   drawTutorialOverlay(ctx, state, now);
-  drawTunnelHint(ctx, state, now);
 
   if (state.gameState === 'idle') {
     drawIdleScreen(ctx, state);

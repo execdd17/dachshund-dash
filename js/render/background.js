@@ -236,6 +236,12 @@ export function drawNearHills(ctx, state) {
     ['#5D9E58', '#988050', '#1A2E1A', '#5A7858']);
 }
 
+// Deep earth below the world's bottom edge, shown when a scene dips the camera
+// (the tunnel's, at most TUNNEL_CAMERA_DROP): the same dark brown as the
+// tunnel's bore, so the underground reads as one space.
+export const DEEP_EARTH = '#3A2614';
+const DEEP_EARTH_DEPTH = 40;
+
 export function drawGround(ctx, state) {
   const { phase } = getTimeOfDay(state.score);
   const p = phase * 4;
@@ -280,6 +286,8 @@ export function drawGround(ctx, state) {
   grassGrad.addColorStop(1, grassBottomC);
   ctx.fillStyle = grassGrad;
   ctx.fillRect(0, GROUND_Y + 36, W, H - GROUND_Y - 36);
+  ctx.fillStyle = DEEP_EARTH;
+  ctx.fillRect(0, H, W, DEEP_EARTH_DEPTH);
 
   ctx.fillStyle = grassBladeC;
   for (let i = 0; i < W; i += 6) {

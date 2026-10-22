@@ -1,17 +1,22 @@
 // The tunnel scene's looks: the tunnel as a cut-away of the soil under the
-// path, its holes, the hedge, the rock, and the treat, plus the dog's slide
+// path, its holes, the hedge, the rock (and the warning sign above it), and the treat, plus the dog's slide
 // into and out of a hole. Texture comes from a hash of each detail's index
 // along the tunnel, so it scrolls with the tunnel and never shimmers.
 
 import { W, H, GROUND_Y, TUNNEL_DEPTH, TUNNEL_DIVE_MS } from '../config.js';
 import { drawSparkle } from './primitives.js';
+import { DEEP_EARTH } from './background.js';
 
 const SOIL_TOP = GROUND_Y + 23;       // just under the path's running line
 const BORE_TOP = SOIL_TOP + 3;
 const BORE_BOTTOM = H;
-const SOIL = { base: '#6B4423', dark: '#55361B', speck: '#8A5E36', pebble: '#9C8B7A', root: '#C9A27A' };
-const BORE = { top: '#24160B', bottom: '#3A2614', floor: '#4E331B' };
+const SOIL = { base: '#6B4423', dark: '#55361B', speck: '#8A5E36', pebble: '#5E4026', root: '#C9A27A' };  // pebbles stay soil-dark: only rocks are pale
+const BORE = { top: '#24160B', bottom: DEEP_EARTH, floor: '#4E331B' };
 const HOLE = { mouth: '#140B04', lip: '#9C6B3C', mound: '#8F5F33', moundLit: '#B07A45', moundEdge: '#4A2F17' };
+// A pale, cool stone with a dark outline, so it stands out against the dark bore.
+const ROCK = { outline: '#15171C', base: '#9AA6B5', lit: '#D3DBE6', shine: '#F4F7FB', crack: '#3E4552' };
+const SIGN = { post: '#7A4E25', postDark: '#4E3015', face: '#FFC928', border: '#2B2100', mark: '#1A1400' };
+const ROCK_DRAW_PAD = 3;  // the rock is drawn this much wider than its hitbox on each side
 const HEDGE = {
   outline: '#173F1A', lit: '#4CAF50', mid: '#2E7D32', shade: '#1F5E24', leafLight: '#66BB6A', leafDark: '#1B5E20',
 };
@@ -41,7 +46,7 @@ function drawTunnel(ctx, o) {
   // Soil, with rounded shoulders where the cut-away begins and ends, flecked with grit
   ctx.fillStyle = SOIL.base;
   ctx.beginPath();
-  ctx.roundRect(o.x - 4, SOIL_TOP, o.width + 8, H - SOIL_TOP + 8, [6, 6, 0, 0]);
+  ctx.roundRect(o.x - 4, SOIL_TOP, o.width + 8, H - SOIL_TOP, [6, 6, 0, 0]);  // down to the floor; deep earth (background.js) below
   ctx.fill();
   eachVisibleSlot(o, 9, (k, x) => {
     ctx.fillStyle = hash01(k, 1) < 0.5 ? SOIL.speck : SOIL.dark;
@@ -57,7 +62,7 @@ function drawTunnel(ctx, o) {
   ctx.strokeStyle = SOIL.speck;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(o.x + 6, BORE_TOP, o.width - 12, BORE_BOTTOM - BORE_TOP + 8, [12, 12, 0, 0]);
+  ctx.roundRect(o.x + 6, BORE_TOP, o.width - 12, BORE_BOTTOM - BORE_TOP, [12, 12, 0, 0]);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = BORE.floor;
@@ -195,38 +200,73 @@ function drawHedge(ctx, o, frameCount) {
 
 // A grey boulder wedged in the bore.
 function drawRock(ctx, o) {
-  const { x, y, width: w, height: h } = o;
-  ctx.fillStyle = '#4A4A4A';
-  ctx.beginPath();
-  ctx.moveTo(x + 2, y + h);
-  ctx.lineTo(x, y + h * 0.55);
-  ctx.lineTo(x + w * 0.2, y + h * 0.15);
-  ctx.lineTo(x + w * 0.55, y);
-  ctx.lineTo(x + w * 0.85, y + h * 0.2);
-  ctx.lineTo(x + w, y + h * 0.6);
-  ctx.lineTo(x + w - 2, y + h);
-  ctx.closePath();
+  const x = o.x - ROCK_DRAW_PAD;
+  const w = o.width + ROCK_DRAW_PAD * 2;
+  const { y, height: h } = o;
+  const outline = [
+    [x + 2, y + h], [x, y + h * 0.55], [x + w * 0.2, y + h * 0.12], [x + w * 0.55, y - 1],
+    [x + w * 0.85, y + h * 0.18], [x + w, y + h * 0.6], [x + w - 2, y + h],
+  ];
+  const trace = points => {
+    ctx.beginPath();
+    points.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+    ctx.closePath();
+  };
+  trace(outline);
+  ctx.fillStyle = ROCK.base;
   ctx.fill();
-  ctx.fillStyle = '#8A8A8A';
-  ctx.beginPath();
-  ctx.moveTo(x + 3, y + h * 0.55);
-  ctx.lineTo(x + w * 0.22, y + h * 0.22);
-  ctx.lineTo(x + w * 0.55, y + h * 0.08);
-  ctx.lineTo(x + w * 0.8, y + h * 0.26);
-  ctx.lineTo(x + w * 0.6, y + h * 0.5);
-  ctx.lineTo(x + w * 0.25, y + h * 0.62);
-  ctx.closePath();
+  ctx.fillStyle = ROCK.lit;
+  trace([
+    [x + 3, y + h * 0.55], [x + w * 0.22, y + h * 0.2], [x + w * 0.55, y + h * 0.06],
+    [x + w * 0.8, y + h * 0.24], [x + w * 0.6, y + h * 0.5], [x + w * 0.25, y + h * 0.62],
+  ]);
   ctx.fill();
-  ctx.fillStyle = '#B5B5B5';
-  ctx.fillRect(x + w * 0.3, y + h * 0.2, w * 0.18, 2);
+  ctx.fillStyle = ROCK.shine;
+  ctx.fillRect(x + w * 0.3, y + h * 0.2, w * 0.2, 2);
   // Crack
-  ctx.strokeStyle = '#2E2E2E';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = ROCK.crack;
+  ctx.lineWidth = 1.2;
   ctx.beginPath();
   ctx.moveTo(x + w * 0.62, y + h * 0.3);
   ctx.lineTo(x + w * 0.7, y + h * 0.55);
-  ctx.lineTo(x + w * 0.64, y + h * 0.8);
+  ctx.lineTo(x + w * 0.64, y + h * 0.85);
   ctx.stroke();
+  trace(outline);
+  ctx.strokeStyle = ROCK.outline;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.lineJoin = 'miter';
+}
+
+// A yellow "!" sign planted in the path above a rock, so a crawling dog sees
+// the rock coming at eye level. Only scenery: the surface is safe there.
+function drawRockSign(ctx, o) {
+  const cx = o.x + o.width / 2;
+  const base = o.y + o.height;
+  const top = o.y;
+  ctx.fillStyle = SIGN.postDark;
+  ctx.fillRect(cx - 1.5, top + 8, 4, base - top - 8);
+  ctx.fillStyle = SIGN.post;
+  ctx.fillRect(cx - 1.5, top + 8, 3, base - top - 8);
+  // Diamond face
+  const r = 9;
+  const cy = top + 4;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r, cy);
+  ctx.lineTo(cx, cy + r);
+  ctx.lineTo(cx - r, cy);
+  ctx.closePath();
+  ctx.fillStyle = SIGN.face;
+  ctx.fill();
+  ctx.strokeStyle = SIGN.border;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // "!"
+  ctx.fillStyle = SIGN.mark;
+  ctx.fillRect(cx - 1, cy - 5.5, 2, 6.5);
+  ctx.fillRect(cx - 1, cy + 2.5, 2, 2);
 }
 
 // A bone-shaped dog biscuit, bobbing and twinkling (the hitbox stays put).
@@ -266,6 +306,7 @@ export const TUNNEL_LOOKS = {
   tunnelHole: { normal: (ctx, o) => drawTunnelHole(ctx, o) },
   hedge: { normal: (ctx, o, v) => drawHedge(ctx, o, v.frameCount) },
   rock: { normal: (ctx, o) => drawRock(ctx, o) },
+  rockSign: { normal: (ctx, o) => drawRockSign(ctx, o) },
   treat: { normal: (ctx, o, v) => drawTreat(ctx, o, v.frameCount) },
 };
 

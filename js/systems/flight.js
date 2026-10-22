@@ -32,11 +32,6 @@ function fullLift(state) {
 const ease = k => k * k * (3 - 2 * k);
 const lerp = (a, b, k) => a + (b - a) * k;
 
-// How far up the camera is (draw.js shifts the world down by it).
-export function cameraLift(state) {
-  return state.scene?.id === 'flight' ? state.scene.lift : 0;
-}
-
 // A little cloud of `n` puffs left behind at (x, y).
 function puff(state, x, y, n, color = 'rgba(255, 255, 255, 0.85)') {
   for (let i = 0; i < n; i++) {

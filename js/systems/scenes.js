@@ -27,6 +27,12 @@ export function sceneTimeScale(state) {
   return runningDef(state)?.timeScale?.(state.scene) ?? 1;
 }
 
+// How far the running scene has panned the camera up (negative: down). draw.js
+// shifts the world down by it; a scene pans by keeping `lift` in its data.
+export function cameraLift(state) {
+  return state.scene?.lift ?? 0;
+}
+
 // True while the running scene is `scoreless` (no distance points).
 export function scenesFreezeScore(state) {
   return Boolean(runningDef(state)?.scoreless);

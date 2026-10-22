@@ -81,6 +81,7 @@ async function renderFrames() {
     add('tunnel-hint', s => { tunnelField(s); s.obstacles.forEach(o => { o.x += 240; }); s.tunnelHintPending = true; });
     add('dog-underground', s => { tunnelField(s); s.obstacles.forEach(o => { o.x -= 100; }); Object.assign(s.dog, { underground: true, ducking: true }); });
     add('dog-diving', s => { tunnelField(s); Object.assign(s.dog, { underground: true, ducking: true, burrowChangedAt: NOW - 70 }); });
+    add('tunnel-camera-down', s => { tunnelField(s); s.scene.lift = -20; s.obstacles.forEach(o => { o.x -= 100; }); Object.assign(s.dog, { underground: true, ducking: true }); });
   }
   if (OBSTACLE_TYPES.cape) {
     const fly = (s, lane) => {
