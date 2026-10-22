@@ -120,7 +120,8 @@ export function createState(rng = Math.random) {
 
     groundOffset: 0,
     clouds: createClouds(),
-    flowers: createFlowers(rng),
+    flowers: createFlowers(rng),  // decor spots along the path; each biome draws its own there (render/biomes.js)
+    biomeSkip: 0,  // the N debug key's shift along the biome order (cosmetic)
     skyTop: 0,  // top of visible sky in world coords (≤0; set by the app-mode view)
 
     ...createRunState(),

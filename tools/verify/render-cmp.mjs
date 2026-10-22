@@ -1,9 +1,9 @@
 // Render check for changes that shouldn't alter how the game looks: draws the
 // same full frames with a baseline checkout and with the working tree in
-// headless Chromium and compares pixels. Frames cover the time-of-day cycle,
-// every obstacle type, every scene phase, giant mode, effects, rain, death,
-// dog poses (including the tunnel crawl), and equipped cosmetics, all with
-// the real sprites loaded.
+// headless Chromium and compares pixels. Frames cover the time-of-day cycle
+// in every biome, every obstacle type, every scene phase, giant mode, effects,
+// rain, death, dog poses (including the tunnel crawl), and equipped
+// cosmetics, all with the real sprites loaded.
 //
 // Usage: node tools/verify/render-cmp.mjs [baseline=main] [--save]
 //   Differing frames are written as baseline-*.png / current-*.png to the
@@ -57,6 +57,11 @@ async function renderFrames() {
   add('setup', s => { s.gameState = 'setup'; });
   add('idle', s => { s.gameState = 'idle'; });
   for (const score of [0, 300, 450, 650, 1000]) add(`score-${score}`, s => { s.score = score; });
+  // The other biomes (render/biomes.js) at each time of day, and a handover halfway through.
+  for (const skip of [1, 2]) {
+    for (const score of [0, 300, 450, 650]) add(`biome-${skip}-score-${score}`, s => { s.biomeSkip = skip; s.score = score; });
+  }
+  add('biome-handover', s => { s.score = 1175; });
   // Types without a default height (birds, the trampoline's heart) are placed by their spawner.
   const placed = type => (OBSTACLE_TYPES[type].y === undefined ? { y: 120 } : {});
   Object.keys(OBSTACLE_TYPES).forEach(type => add(`obstacle-${type}`, s => { s.obstacles = [makeObstacle(type, 260, placed(type)), makeObstacle(type, 520, placed(type))]; }));

@@ -2,13 +2,14 @@
 // Day 0-250, sunset 250-350 (100 pts: day→night), night 350-600 (250 pts),
 // dawn 600-700 (100 pts: night→day), then repeat.
 
+export const DAY_CYCLE = 700;
+const DAY_END = 250;
+export const SUNSET_END = 350;  // 100 pts: day→night
+export const NIGHT_END = 600;   // 250 pts of night
+const DAWN_END = DAY_CYCLE;     // 100 pts: night→day
+
 export function getTimeOfDay(score) {
-  const CYCLE = 700;
-  const s = score % CYCLE;
-  const DAY_END = 250;
-  const SUNSET_END = 350;   // 100 pts: day→night
-  const NIGHT_END = 600;    // 250 pts of night
-  const DAWN_END = 700;     // 100 pts: night→day
+  const s = score % DAY_CYCLE;
   let phase, stage, t;
   if (s < DAY_END) {
     stage = 'day';

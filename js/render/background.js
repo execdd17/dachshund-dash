@@ -1,52 +1,53 @@
 // Procedurally drawn background: sky, sun/moon/stars, clouds, parallax
-// hills/mountains, ground, flowers, rain. All support the day/night
-// color-lerp cycle driven by getTimeOfDay(score).
+// hills/mountains, ground, decor (flowers and the like), rain. Colors follow
+// the day/night cycle driven by getTimeOfDay(score); the scenery itself —
+// colors, hill shapes, decor — comes from the current biome (biomes.js).
 
 import { W, H, GROUND_Y } from '../config.js';
 import { lerpColor } from '../core/color.js';
 import { getTimeOfDay } from '../core/timeOfDay.js';
+import { biomeAt } from './biomes.js';
 
-// --- Rolling hills / mountain parallax shape functions (pure) ---
-
-// Smooth rolling hills (mid/near layers)
-export function hillY(x, offset, amp, freq) {
-  const v = x + offset;
-  return amp * (
-    Math.sin(v * freq) * 0.50 +
-    Math.sin(v * freq * 2.1 + 1.3) * 0.30 +
-    Math.sin(v * freq * 0.6 + 0.8) * 0.20
-  );
+// A [day, sunset, night, dawn] palette at `phase`: the stage it's in and how
+// far toward the next.
+function cycleStep(phase) {
+  const p = phase * 4;
+  return [Math.floor(p) % 4, p % 1];
 }
+const cycleColor = (palette, phase) => {
+  const [i, t] = cycleStep(phase);
+  return lerpColor(palette[i], palette[(i + 1) % 4], t);
+};
+const cycleNumber = (palette, phase) => {
+  const [i, t] = cycleStep(phase);
+  return palette[i] + (palette[(i + 1) % 4] - palette[i]) * t;
+};
 
-// Mountain range (far layer) — layered abs(sin) with pow sharpening
-export function mountainY(x, offset, amp, freq) {
-  const v = x + offset;
-  // Broad mountain masses
-  const base = Math.abs(Math.sin(v * freq * 0.45 + 0.8)) * 0.25;
-  // Main peaks — pow < 1 sharpens the tips
-  const peaks = Math.pow(Math.abs(Math.sin(v * freq * 1.1)), 0.7) * 0.30;
-  // Secondary ridges
-  const ridges = Math.abs(Math.sin(v * freq * 2.3 + 1.5)) * 0.20;
-  // Fine jagged detail
-  const jag = Math.abs(Math.sin(v * freq * 4.7 + 3.2)) * 0.15;
-  // Subtle craggy texture
-  const crag = Math.abs(Math.sin(v * freq * 8.3 + 5.1)) * 0.10;
-  return amp * (base + peaks + ridges + jag + crag);
+// The scenery for this frame: the biome blend plus the time of day.
+function sceneryOf(state) {
+  const { from, to, k } = biomeAt(state.score, state.biomeSkip);
+  const { phase } = getTimeOfDay(state.score);
+  const blending = from !== to && k > 0;
+  return {
+    from, to, k: blending ? k : 0, phase,
+    // A palette picked from each biome by `pick`, at this time of day and blend.
+    color: pick => {
+      const c = cycleColor(pick(from), phase);
+      return blending ? lerpColor(c, cycleColor(pick(to), phase), k) : c;
+    },
+    number: pick => {
+      const n = cycleNumber(pick(from), phase);
+      return blending ? n + (cycleNumber(pick(to), phase) - n) * k : n;
+    },
+  };
 }
 
 // extraTop: logical units of extended sky above world y=0 (app mode; see view.js)
 export function drawSky(ctx, state, extraTop = 0) {
-  // Sky gradient colors per stage: [day, sunset, night, dawn] -> top, mid, bottom
-  const skyTop = ['#4AB8E8', '#FF8C42', '#0D1B2A', '#6B4E71'];
-  const skyMid = ['#87CEEB', '#FF6B6B', '#1B263B', '#9B8AA6'];
-  const skyBottom = ['#B0E0F0', '#FFB88C', '#415A77', '#4AB8E8'];
-  const { phase } = getTimeOfDay(state.score);
-  const p = phase * 4;
-  const i = Math.floor(p) % 4;
-  const t = p % 1;
-  const top = lerpColor(skyTop[i], skyTop[(i + 1) % 4], t);
-  const mid = lerpColor(skyMid[i], skyMid[(i + 1) % 4], t);
-  const bottom = lerpColor(skyBottom[i], skyBottom[(i + 1) % 4], t);
+  const { color } = sceneryOf(state);
+  const top = color(b => b.sky.top);
+  const mid = color(b => b.sky.mid);
+  const bottom = color(b => b.sky.bottom);
   const grad = ctx.createLinearGradient(0, -extraTop, 0, GROUND_Y + 20);
   grad.addColorStop(0, top);
   grad.addColorStop(0.7, mid);
@@ -153,17 +154,10 @@ export function drawSun(ctx, state, extraTop = 0) {
 }
 
 export function drawClouds(ctx, state, extraTop = 0) {
-  const { phase } = getTimeOfDay(state.score);
-  const p = phase * 4;
-  const i = Math.floor(p) % 4;
-  const t = p % 1;
-  // Cloud colors: [day=white, sunset=pinkish, night=dark gray, dawn=lightening]
-  const cloudFill = ['#FFFFFF', '#FFD4D4', '#3A3A4A', '#E8E8F0'];
-  const cloudShadow = ['#B4DCF0', '#E8B4C0', '#2A2A35', '#B0B8D0'];
-  let fillC = lerpColor(cloudFill[i], cloudFill[(i + 1) % 4], t);
-  let shadowC = lerpColor(cloudShadow[i], cloudShadow[(i + 1) % 4], t);
-  const highlightAlphas = [0.8, 0.6, 0.2, 0.5];
-  let highlightAlpha = highlightAlphas[i] + (highlightAlphas[(i + 1) % 4] - highlightAlphas[i]) * t;
+  const { color, number } = sceneryOf(state);
+  let fillC = color(b => b.clouds.fill);
+  let shadowC = color(b => b.clouds.shadow);
+  let highlightAlpha = number(b => b.clouds.highlight);
   if (state.weatherRain) {
     fillC = lerpColor(fillC, '#8A8E96', 0.6);
     shadowC = lerpColor(shadowC, '#6A6E76', 0.6);
@@ -197,43 +191,44 @@ export function drawClouds(ctx, state, extraTop = 0) {
   });
 }
 
-// Draw a single hill/mountain layer as a filled path
-function drawHillLayer(ctx, state, scrollRate, baseY, amp, freq, fillColors, shapeFn, step) {
-  const { phase } = getTimeOfDay(state.score);
-  const p = phase * 4;
-  const idx = Math.floor(p) % 4;
-  const t = p % 1;
+// Hill layer n (far to near) as a filled path. In a handover it morphs from
+// one biome's silhouette to the next's.
+function drawHillLayer(ctx, state, n) {
+  const { from, to, k, phase, color } = sceneryOf(state);
+  const a = from.hills[n];
+  const b = to.hills[n];
+  const heightAt = (layer, x) => layer.baseY - layer.shape(x, state.groundOffset * layer.scroll, layer.amp, layer.freq);
 
-  const fill = lerpColor(fillColors[idx], fillColors[(idx + 1) % 4], t);
-  const offset = state.groundOffset * scrollRate;
-  const yFn = shapeFn || hillY;
-  const dx = step || 4;
-
-  ctx.fillStyle = fill;
+  ctx.fillStyle = color(biome => biome.hills[n].fill);
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y + 20);
+  const dx = k > 0 ? Math.min(a.step, b.step) : a.step;
   for (let x = 0; x <= W; x += dx) {
-    const y = baseY - yFn(x, offset, amp, freq);
+    const y = k > 0 ? heightAt(a, x) + (heightAt(b, x) - heightAt(a, x)) * k : heightAt(a, x);
     ctx.lineTo(x, y);
   }
   ctx.lineTo(W, GROUND_Y + 20);
   ctx.closePath();
   ctx.fill();
+
+  // A layer's own details on top (the autumn ridge's tree colors). In a
+  // handover they fade with their biome.
+  const layers = k > 0 ? [[a, 1 - k], [b, k]] : [[a, 1]];
+  layers.forEach(([layer, weight]) => {
+    if (!layer.details) return;
+    ctx.globalAlpha = weight;
+    layer.details(ctx, layer, state.groundOffset * layer.scroll, palette => cycleColor(palette, phase));
+    ctx.globalAlpha = 1;
+  });
 }
 
 export function drawFarHills(ctx, state) {
-  // Mountain range: jagged peaks, taller, slower, finer step for crisper ridgeline
-  drawHillLayer(ctx, state, 0.06, GROUND_Y - 20, 50, 0.0028,
-    ['#8090A8', '#B88878', '#161C28', '#686080'], mountainY, 2);
+  drawHillLayer(ctx, state, 0);
 }
 
 export function drawNearHills(ctx, state) {
-  // Mid hills: medium undulations
-  drawHillLayer(ctx, state, 0.20, GROUND_Y - 2, 20, 0.006,
-    ['#7BA888', '#B08860', '#162420', '#688070']);
-  // Near hills: smaller, fastest, most saturated
-  drawHillLayer(ctx, state, 0.38, GROUND_Y + 4, 14, 0.010,
-    ['#5D9E58', '#988050', '#1A2E1A', '#5A7858']);
+  drawHillLayer(ctx, state, 1);
+  drawHillLayer(ctx, state, 2);
 }
 
 // Deep earth below the world's bottom edge, shown when a scene dips the camera
@@ -243,19 +238,12 @@ export const DEEP_EARTH = '#3A2614';
 const DEEP_EARTH_DEPTH = 40;
 
 export function drawGround(ctx, state) {
-  const { phase } = getTimeOfDay(state.score);
-  const p = phase * 4;
-  const i = Math.floor(p) % 4;
-  const t = p % 1;
+  const { color } = sceneryOf(state);
   const groundOffset = state.groundOffset;
 
-  // Path colors: [day=sandy, sunset=warm amber, night=dark brown, dawn=sandy]
-  const pathTop = ['#E8D5A3', '#E8B870', '#5C4033', '#E8D5A3'];
-  const pathBottom = ['#D4C08E', '#D4A055', '#3D2B1F', '#D4C08E'];
-  const pathTex = ['#C9B57A', '#C9A055', '#4A3728', '#C9B57A'];
-  const pathTopC = lerpColor(pathTop[i], pathTop[(i + 1) % 4], t);
-  const pathBottomC = lerpColor(pathBottom[i], pathBottom[(i + 1) % 4], t);
-  const pathTexC = lerpColor(pathTex[i], pathTex[(i + 1) % 4], t);
+  const pathTopC = color(b => b.path.top);
+  const pathBottomC = color(b => b.path.bottom);
+  const pathTexC = color(b => b.path.texture);
 
   const pathGrad = ctx.createLinearGradient(0, GROUND_Y + 16, 0, GROUND_Y + 34);
   pathGrad.addColorStop(0, pathTopC);
@@ -270,15 +258,10 @@ export function drawGround(ctx, state) {
     ctx.fillRect((gx + 9) % W, GROUND_Y + 28, 3, 2);
   }
 
-  // Grass: [day=green, sunset=warm-tinted, night=very dark, dawn=returning]
-  const grassTop = ['#5DBE3E', '#6B8E3E', '#1A2E1A', '#5DBE3E'];
-  const grassMid = ['#4CAF30', '#5A7E30', '#152515', '#4CAF30'];
-  const grassBottom = ['#3D8B28', '#4A6B28', '#0F1F0F', '#3D8B28'];
-  const grassBlade = ['#6ECF4A', '#7A9F4A', '#2A3A2A', '#6ECF4A'];
-  const grassTopC = lerpColor(grassTop[i], grassTop[(i + 1) % 4], t);
-  const grassMidC = lerpColor(grassMid[i], grassMid[(i + 1) % 4], t);
-  const grassBottomC = lerpColor(grassBottom[i], grassBottom[(i + 1) % 4], t);
-  const grassBladeC = lerpColor(grassBlade[i], grassBlade[(i + 1) % 4], t);
+  const grassTopC = color(b => b.grass.top);
+  const grassMidC = color(b => b.grass.mid);
+  const grassBottomC = color(b => b.grass.bottom);
+  const grassBladeC = color(b => b.grass.blade);
 
   const grassGrad = ctx.createLinearGradient(0, GROUND_Y + 36, 0, H);
   grassGrad.addColorStop(0, grassTopC);
@@ -302,31 +285,19 @@ export function drawGround(ctx, state) {
   }
 }
 
-export function drawFlowers(ctx, state) {
-  const { phase } = getTimeOfDay(state.score);
-  const p = phase * 4;
-  const i = Math.floor(p) % 4;
-  const t = p % 1;
-  const flowerVis = [1, 0.9, 0.35, 0.7];
-  const flowerOp = flowerVis[i] + (flowerVis[(i + 1) % 4] - flowerVis[i]) * t;
-
-  state.flowers.forEach(f => {
-    const fx = (f.x - state.groundOffset * 0.8 % W + W) % W;
-    const s = f.size;
-
-    ctx.globalAlpha = flowerOp;
-    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? '#2A3A2A' : '#2E8B2E';
-    ctx.fillRect(fx, f.baseY - f.size * 2, 2, f.size * 2 + 2);
-
-    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? lerpColor(f.color, '#2A2A3A', 0.6) : f.color;
-    ctx.fillRect(fx - s + 1, f.baseY - s * 3, s, s);
-    ctx.fillRect(fx + 2, f.baseY - s * 3, s, s);
-    ctx.fillRect(fx - s + 1, f.baseY - s * 1.5, s, s);
-    ctx.fillRect(fx + 2, f.baseY - s * 1.5, s, s);
-
-    ctx.fillStyle = phase >= 0.5 && phase < 0.75 ? '#4A4A40' : '#FFD700';
-    ctx.fillRect(fx, f.baseY - s * 2.5 + 1, s - 1, s - 1);
-    ctx.globalAlpha = 1;
+// The biome's decor at each state.flowers spot; in a handover the old biome's
+// fades out as the next one's fades in.
+export function drawDecor(ctx, state) {
+  const { from, to, k, phase } = sceneryOf(state);
+  const layers = k > 0 ? [[from, 1 - k], [to, k]] : [[from, 1]];
+  layers.forEach(([biome, weight]) => {
+    const opacity = cycleNumber(biome.decor.opacity, phase) * weight;
+    state.flowers.forEach(f => {
+      const fx = (f.x - state.groundOffset * 0.8 % W + W) % W;
+      ctx.globalAlpha = opacity;
+      biome.decor.draw(ctx, f, fx, phase);
+      ctx.globalAlpha = 1;
+    });
   });
 }
 

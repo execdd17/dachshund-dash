@@ -260,6 +260,9 @@ export const CAPE_AWAY_MS = 1100;          // the cape flying off after the land
 export const RAIN_CHANCE = 0.25;   // rolled at each dawn→day and sunset→night change
 export const RAIN_DROPS = 120;
 
+// --- Biomes (render/biomes.js; cosmetic) ---
+export const BIOME_CYCLES = 2;  // day cycles (700 pts each) per biome; the next takes over during the last night
+
 // --- Hearts (extra lives) ---
 // Difficulty is picked once on the start overlay (slider index into this
 // list) and only changes how many hearts a run starts with. Locked for the

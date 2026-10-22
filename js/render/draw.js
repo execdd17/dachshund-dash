@@ -8,7 +8,7 @@ import {
 } from '../config.js';
 import {
   drawSky, drawSun, drawClouds, drawFarHills, drawNearHills,
-  drawGround, drawFlowers, drawRain,
+  drawGround, drawDecor, drawRain,
 } from './background.js';
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
@@ -78,7 +78,7 @@ export function draw(deps) {
   drawFarHills(ctx, state);
   drawNearHills(ctx, state);
   drawGround(ctx, state);
-  drawFlowers(ctx, state);
+  drawDecor(ctx, state);
   ctx.save();
   ctx.translate(0, -lift);
   drawRain(ctx, state);

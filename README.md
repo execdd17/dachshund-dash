@@ -19,7 +19,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 ## What You'll Find
 
 - A hand-animated dachshund with pixel-art sprites
-- A day/night cycle with sunsets, starry skies, and dynamic weather
+- A day/night cycle with sunsets, starry skies, and dynamic weather, through changing scenery: a meadow, an autumn forest, and a desert, each giving way to the next overnight
 - A soulful soundtrack (with an EDM remix for special occasions)
 - Squirrel chases and a boss encounter
 - Giant mode — grab a golden hot dog and become unstoppable: hot dogs get gobbled and bones come in arcs to jump through; bones fetched in a row are worth more

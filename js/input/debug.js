@@ -19,6 +19,7 @@ export const DEBUG_KEYS = {
     running: true,
     run: state => { if (!isGiant(state)) state.obstacles.push(makeObstacle('golden', state.dog.x + 120)); },
   },
+  KeyN: { label: 'next biome', run: state => { state.biomeSkip++; } },
   KeyR: {
     label: 'rain',
     run: state => {
