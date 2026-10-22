@@ -94,15 +94,15 @@ test('resetRun restores a dirty state to run defaults', () => {
 
 test('resetRun refills hearts from the session difficulty', () => {
   const s = createState(() => 0.5);
-  s.startingHearts = 6;  // VERY EASY, picked on the start overlay
+  s.startingHearts = 3;  // NORMAL, picked on the start overlay
   s.hearts = 1;
   resetRun(s);
-  assert.equal(s.hearts, 6);
+  assert.equal(s.hearts, 3);
 });
 
 test('difficulty levels map to the expected starting hearts', () => {
   assert.deepEqual(DIFFICULTY_LEVELS.map(l => l.hearts), [6, 4, 3, 2, 1]);
-  assert.equal(DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label, 'EASY');
+  assert.equal(DIFFICULTY_LEVELS[DEFAULT_DIFFICULTY_INDEX].label, 'VERY EASY');
 });
 
 test('dog sprite anim per game state: setup and idle stand still, running runs', () => {

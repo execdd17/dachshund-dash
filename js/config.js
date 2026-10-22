@@ -233,7 +233,7 @@ export const DIFFICULTY_LEVELS = [
   { label: 'HARD',      hearts: 2 },
   { label: 'VERY HARD', hearts: 1 },
 ];
-export const DEFAULT_DIFFICULTY_INDEX = 1;          // EASY (the slider's start; keep index.html's initial text in sync)
+export const DEFAULT_DIFFICULTY_INDEX = 0;          // VERY EASY (the slider's start; keep index.html's initial text in sync)
 export const HEART_HIT_INVULN = 1500;               // ms of invulnerability after losing a heart
 export const HEART_FLASH_MS = 800;                  // ms a just-lost or just-regained heart blinks in the HUD
 export const HEART_FULL_BONUS = 100;                // points for a heart pickup with every heart already full
