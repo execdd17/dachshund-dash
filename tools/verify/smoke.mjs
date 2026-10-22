@@ -1,6 +1,6 @@
 // End-to-end smoke run in headless Chromium: the start overlay, every sound,
 // the cosmetics menu, the controls tutorial, each encounter via its debug
-// key, a dig into the tunnel, the high-score name prompt (against a stand-in
+// key, a dig into the tunnel, a flight through the sky lanes, the high-score name prompt (against a stand-in
 // Firestore), a death, and the restart lockout. Fails on page errors, console errors/warnings, and failed
 // requests; screenshots key moments for eyeballing.
 //
@@ -161,6 +161,21 @@ try {
   await page.keyboard.up('ArrowDown');
   await page.waitForTimeout(2500);
   await shot(page, 'tunnel-popped-up.png');
+  await page.close();
+
+  // The flight: F sends the Hero Cape; running into it puts it on and lifts
+  // the dog into the sky lanes (↑ ↓ over the dog), and Up moves it up a lane.
+  page = await newGame(browser, 'flight', VERY_EASY);
+  await page.click('#game');
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('KeyF');
+  await page.waitForTimeout(1500);
+  await shot(page, 'flight-cape.png');
+  await page.waitForTimeout(2300);
+  await shot(page, 'flight-hint.png');
+  await page.keyboard.press('ArrowUp');
+  await page.waitForTimeout(400);
+  await shot(page, 'flight-up-a-lane.png');
   await page.close();
 
   // The name prompt, on an empty stand-in board so every score places. Nothing

@@ -8,6 +8,7 @@ import {
 import { activateGiantMode, triggerChompEffect, triggerBonkEffect, isGiant } from './giant.js';
 import { spendHeart, gainHeart } from './hearts.js';
 import { addEffect } from './effects.js';
+import { grabCape } from './flight.js';
 import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
 
 export { getObstacleHitbox };
@@ -60,6 +61,7 @@ export const COLLECT_ACTIONS = {
     addEffect(state, 'pointsPickup', now, { x: obs.x + obs.width / 2, y: obs.y, points });
     services.sfx.playTreat();
   },
+  flight: (state, obs, services, now) => grabCape(state, services, now),
 };
 
 // Walk obstacles, resolving overlaps by each type's contact rule

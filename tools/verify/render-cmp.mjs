@@ -82,6 +82,18 @@ async function renderFrames() {
     add('dog-underground', s => { tunnelField(s); s.obstacles.forEach(o => { o.x -= 100; }); Object.assign(s.dog, { underground: true, ducking: true }); });
     add('dog-diving', s => { tunnelField(s); Object.assign(s.dog, { underground: true, ducking: true, burrowChangedAt: NOW - 70 }); });
   }
+  if (OBSTACLE_TYPES.cape) {
+    const fly = (s, lane) => {
+      setScenePhase(s, 'flight', 'active');
+      Object.assign(s.scene, { lane, lift: 150 });
+      Object.assign(s.dog, { flying: true, jumping: true, y: [-105, -40, 25][lane] });
+      s.obstacles = [makeObstacle('bird', 420, { y: -61.5, aerialWall: true }), makeObstacle('treat', 600, { y: -42.5 })];
+    };
+    add('flight-hint', s => { fly(s, 1); s.flightHintPending = true; });
+    add('dog-flying', s => { fly(s, 2); s.flightHintPending = false; addEffect(s, 'flightCall', NOW - 300); });
+    add('dog-flying-rain', s => { fly(s, 0); s.flightHintPending = false; s.weatherRain = true; initRain(s, rng); });
+    add('cape-away', s => { addEffect(s, 'capeAway', NOW - 300, { x: 90, y: 180, vx: -1.2, vy: -1.6, rotation: -0.3 }); });
+  }
   for (const phase of ['growing', 'active', 'shrinking']) {
     add(`giant-${phase}`, s => { s.giantPhase = phase; s.giantStartTime = NOW - 2000; s.giantTransitionStart = NOW - 300; });
   }

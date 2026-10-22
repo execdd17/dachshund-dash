@@ -3,6 +3,7 @@
 import { JUMP_FORCE, DOUBLE_JUMP_FORCE, FAST_FALL_VY, RESTART_LOCKOUT_MS } from '../config.js';
 import { resetRun, isBetweenRuns } from '../core/state.js';
 import { jumpOutOfTunnel } from './burrow.js';
+import { steerFlight } from './flight.js';
 
 export function jump(state, services, now = performance.now()) {
   const canStart = isBetweenRuns(state)
@@ -13,6 +14,10 @@ export function jump(state, services, now = performance.now()) {
     services.music.resetToNormal();
   }
   if (state.gameState !== 'running') return;
+  if (state.dog.flying) {
+    steerFlight(state, -1, services);
+    return;
+  }
   if (state.dog.underground) {
     jumpOutOfTunnel(state, services, now, JUMP_FORCE);
     return;
@@ -42,6 +47,8 @@ export function duck(state, active, services) {
   const dog = state.dog;
   if (!active) {
     dog.fastFalling = false;
+  } else if (pressed && dog.flying) {
+    steerFlight(state, 1, services);
   } else if (pressed && dog.jumping && state.gameState === 'running') {
     dog.fastFalling = true;
     dog.vy = Math.max(dog.vy, FAST_FALL_VY);

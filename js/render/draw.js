@@ -13,6 +13,7 @@ import {
 import { drawObstacle } from './obstacles.js';
 import { drawDachshund, drawSquirrel } from './actors.js';
 import { tunnelDiveOffset } from './tunnel.js';
+import { drawFlightWind, flightBobOffset, withFlightCape, drawFlightHint } from './flight.js';
 import { drawEffects, drawLandingParticles } from './effects.js';
 import {
   drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen, drawTutorialOverlay, drawTunnelHint,
@@ -20,6 +21,7 @@ import {
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
 import { getGiantVisualScale, isGiant } from '../systems/giant.js';
+import { cameraLift } from '../systems/flight.js';
 
 // Per-scene actors, keyed by scene id (scenes with none, like the trampoline, are absent).
 const SCENE_ACTORS = {
@@ -64,21 +66,32 @@ export function draw(deps) {
     }
   }
 
-  drawSky(ctx, state, extraTop);
-  drawSun(ctx, state, extraTop);
-  drawClouds(ctx, state, extraTop);
+  // The flight scene pans the camera up: the world drops by `lift`, while
+  // the sky, sun, and rain stay put on screen and clouds move at half the rate.
+  const lift = cameraLift(state);
+  ctx.save();
+  ctx.translate(0, lift);
+  drawSky(ctx, state, extraTop + lift);
+  drawSun(ctx, state, extraTop + lift);
+  drawClouds(ctx, state, extraTop + lift / 2);
   drawFarHills(ctx, state);
   drawNearHills(ctx, state);
   drawGround(ctx, state);
   drawFlowers(ctx, state);
+  ctx.save();
+  ctx.translate(0, -lift);
   drawRain(ctx, state);
+  ctx.restore();
 
+  drawFlightHint(ctx, state, now);
   advanceBirdSpriteFrame(sprites, now);
   state.obstacles.forEach(o => drawObstacle(ctx, state, o, sprites, now));
 
   // The running scene's actors, behind the dog
   const scene = state.scene;
   if (scene && scene.phase !== 'pending') SCENE_ACTORS[scene.id]?.(ctx, state, scene, sprites, now);
+
+  drawFlightWind(ctx, state, now);
 
   // Dachshund (with giant-mode scaling and golden glow)
   advanceDogSpriteFrame(sprites, state, now);
@@ -122,12 +135,14 @@ export function draw(deps) {
     drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y);
     ctx.restore();
   } else {
-    drawDachshund(ctx, state, sprites, cosmetics, dog.x, dog.y + tunnelDiveOffset(dog, now));
+    const drawnY = dog.y + tunnelDiveOffset(dog, now) + flightBobOffset(dog, now);
+    drawDachshund(ctx, state, sprites, withFlightCape(cosmetics, dog), dog.x, drawnY);
   }
   ctx.restore();
 
   drawEffects(ctx, state, sprites, now);
   drawLandingParticles(ctx, state);
+  ctx.restore();
 
   drawScore(ctx, state, view, now);
   if (state.gameState !== 'idle' && state.gameState !== 'setup') drawHearts(ctx, state, view, now);

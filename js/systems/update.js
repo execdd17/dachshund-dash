@@ -34,26 +34,28 @@ export function update(state, dt, services, rng = Math.random, now = performance
   // Dog physics (scale by dt for frame-rate independence)
   const dog = state.dog;
   const wasInAir = dog.y < GROUND_Y;
-  dog.vy += GRAVITY * (dog.fastFalling ? FAST_FALL_GRAVITY_MULT : 1) * scale;
-  dog.y += dog.vy * scale;
-  if (dog.y >= GROUND_Y) {
-    dog.y = GROUND_Y;
-    dog.vy = 0;
-    dog.jumping = false;
-    dog.doubleJumped = false;
-    dog.fastFalling = false;
-    // Dust puffs on landing (only when actually coming down from a jump)
-    if (wasInAir && state.gameState === 'running') {
-      const n = 3 + Math.floor(rng() * 3);
-      for (let i = 0; i < n; i++) {
-        state.landingParticles.push({
-          x: dog.x + 30 + (rng() - 0.5) * 40,
-          y: GROUND_Y,
-          vx: (rng() - 0.5) * 0.8,
-          vy: -1.5 - rng() * 2,
-          life: 1,
-          hue: rng() * 360,
-        });
+  if (!dog.flying) {  // the flight scene moves a flying dog itself
+    dog.vy += GRAVITY * (dog.fastFalling ? FAST_FALL_GRAVITY_MULT : 1) * scale;
+    dog.y += dog.vy * scale;
+    if (dog.y >= GROUND_Y) {
+      dog.y = GROUND_Y;
+      dog.vy = 0;
+      dog.jumping = false;
+      dog.doubleJumped = false;
+      dog.fastFalling = false;
+      // Dust puffs on landing (only when actually coming down from a jump)
+      if (wasInAir && state.gameState === 'running') {
+        const n = 3 + Math.floor(rng() * 3);
+        for (let i = 0; i < n; i++) {
+          state.landingParticles.push({
+            x: dog.x + 30 + (rng() - 0.5) * 40,
+            y: GROUND_Y,
+            vx: (rng() - 0.5) * 0.8,
+            vy: -1.5 - rng() * 2,
+            life: 1,
+            hue: rng() * 360,
+          });
+        }
       }
     }
   }

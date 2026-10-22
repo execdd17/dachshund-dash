@@ -21,6 +21,7 @@ export function createDog() {
     fastFalling: false,  // Down pressed mid-air (systems/control.js)
     underground: false,  // crawling through the tunnel scene's tunnel (systems/burrow.js)
     burrowChangedAt: 0,  // when it last dropped in or popped out (drives the dive drawing)
+    flying: false,       // in the flight scene's sky lanes (systems/flight.js)
     legFrame: 0,
   };
 }
@@ -58,6 +59,7 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     pendingScore: null,     // { score, difficulty, placement } while the name prompt asks about a global-board score
     speed: INITIAL_SPEED,
     dog: createDog(),
+    flightHintPending: true,  // flash ↑ ↓ above the flying dog until its first lane change (systems/flight.js)
     tunnelHintPending: true,  // flash HOLD ↓ over the tunnel's first hole until the dog first drops in (systems/tunnel.js)
 
     // --- Hearts (extra lives) ---

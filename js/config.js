@@ -214,6 +214,26 @@ export const TUNNEL_LAYOUTS = [
   ['hedge', 'bird', 'hedge', 'rock', 'rock', 'treatBar', 'hedge', 'rockThenBar'],
 ];
 
+// --- Flight scene ---
+// A Hero Cape floats in at running height; grabbing it flies the dog up to
+// the middle of FLIGHT_LANES while the camera pans up, and a row of bird
+// gates comes through, one every FLIGHT_GATE_BEAT_FRAMES at any speed. Each
+// gate leaves at least one lane open. A missed cape tries again after half
+// the cooldown.
+export const FLIGHT_FIRST_AT = 600;        // score before the first scene can arm
+export const FLIGHT_COOLDOWN = 800;        // score between scenes (from its lastEndScore)
+export const FLIGHT_LANES = [-105, -40, 25];  // dog.y of each lane, top to bottom
+export const FLIGHT_HUD_BAND = 70;         // screen top the HUD covers; the camera centers the lanes below it
+export const FLIGHT_RISE_FRAMES = 120;     // the climb (and camera pan) up to the middle lane
+export const FLIGHT_LAND_FRAMES = 120;     // the glide back down to the path
+export const FLIGHT_GLIDE_PER_FRAME = 6;   // lane change speed
+export const FLIGHT_GATES = 14;
+export const FLIGHT_GATE_BEAT_FRAMES = 95; // baseline frames between gates (~0.8s)
+export const FLIGHT_EASY_GATES = 3;        // the first gates block one lane, the rest two
+export const FLIGHT_TREAT_CHANCE = 0.5;    // a treat in a gate's open lane
+export const FLIGHT_CALL_MS = 1200;        // "SUPER DOG!" on grabbing the cape
+export const CAPE_AWAY_MS = 1100;          // the cape flying off after the landing
+
 // --- Weather ---
 export const RAIN_CHANCE = 0.25;   // rolled at each dawn→day and sunset→night change
 export const RAIN_DROPS = 120;

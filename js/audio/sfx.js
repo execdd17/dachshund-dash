@@ -27,6 +27,17 @@ const TONES = {
     { type: 'square', from: 140, to: 60, sweep: 0.08, gain: 0.04, dur: 0.1, at: 0.03 },
   ],
   playPop: [{ type: 'sine', from: 220, to: 950, sweep: 0.07, gain: 0.16, dur: 0.1 }],
+  // The flight scene (systems/flight.js)
+  playLiftoff: [
+    { type: 'sine', from: 180, to: 900, sweep: 0.5, gain: 0.12, dur: 0.55 },
+    { type: 'triangle', from: 360, to: 1400, sweep: 0.45, gain: 0.04, dur: 0.5, at: 0.05 },
+  ],
+  playWhooshUp: [{ type: 'sine', from: 300, to: 750, sweep: 0.14, gain: 0.08, dur: 0.18 }],
+  playWhooshDown: [{ type: 'sine', from: 750, to: 300, sweep: 0.14, gain: 0.08, dur: 0.18 }],
+  playLand: [
+    { type: 'triangle', from: 200, to: 60, sweep: 0.1, gain: 0.2, dur: 0.16 },
+    { type: 'sine', from: 120, to: 50, sweep: 0.08, gain: 0.1, dur: 0.12 },
+  ],
   playTreat: [880, 1320].map((from, i) => ({ type: 'square', from, gain: 0.05, dur: 0.07, at: i * 0.05 })),
   playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
   playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),

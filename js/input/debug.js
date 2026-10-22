@@ -13,6 +13,7 @@ export const DEBUG_KEYS = {
   KeyB: { label: 'boss scene', running: true, run: state => forceScene(state, 'boss') },
   KeyT: { label: 'trampoline scene', running: true, run: state => forceScene(state, 'tramp') },
   KeyU: { label: 'tunnel scene', running: true, run: state => forceScene(state, 'tunnel') },
+  KeyF: { label: 'flight scene (its cape)', running: true, run: state => forceScene(state, 'flight') },
   KeyG: {
     label: 'golden hot dog',
     running: true,

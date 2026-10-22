@@ -2,7 +2,7 @@
 // list, state.effects: [{ kind, startTime, ...props }]. Gameplay adds them,
 // update() ages them out, and render/effects.js draws each kind.
 
-import { CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS } from '../config.js';
+import { CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS } from '../config.js';
 
 // Per kind: how long it lives (ms) and, optionally, how it moves each frame.
 export const EFFECT_KINDS = {
@@ -22,6 +22,17 @@ export const EFFECT_KINDS = {
   heartGain: { ttl: SCORE_POPUP_MS },
   heartBonus: { ttl: SCORE_POPUP_MS },
   pointsPickup: { ttl: SCORE_POPUP_MS },
+  // The flight scene's call on grabbing the cape, and the cape drifting off after the landing.
+  flightCall: { ttl: FLIGHT_CALL_MS },
+  capeAway: {
+    ttl: CAPE_AWAY_MS,
+    step(e, scale) {
+      e.x += e.vx * scale;
+      e.y += e.vy * scale;
+      e.vy -= 0.01 * scale;
+      e.rotation -= 0.03 * scale;
+    },
+  },
 };
 
 export function addEffect(state, kind, now, props) {

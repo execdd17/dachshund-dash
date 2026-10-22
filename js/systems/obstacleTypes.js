@@ -8,8 +8,8 @@
 //   'terrain' — costs a heart but stays put; a rising dog passes over it
 //   'pickup'  — collected on touch, even during i-frames
 //   'none'    — never harmful
-// collect: what a pickup does — 'giant' (giant mode), 'heart' (restores a heart), or 'points'
-//   (adds the type's `points`); see collision.js.
+// collect: what a pickup does — 'giant' (giant mode), 'heart' (restores a heart), 'points'
+//   (adds the type's `points`), or 'flight' (the flight scene's cape); see collision.js.
 // giant: what giant mode does to a hazard — 'eat' (+GIANT_EAT_BONUS) or 'bonk' (+GIANT_BONK_BONUS).
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
 
@@ -68,6 +68,9 @@ export const OBSTACLE_TYPES = {
     width: 20, height: 11, y: GROUND_Y - 50, inset: { dx: 0, dy: 0, dw: 0, dh: 0 },
     contact: 'pickup', collect: 'points', points: TUNNEL_TREAT_POINTS,
   },
+  // The flight scene's Hero Cape, floating at running height: a ducking dog
+  // still reaches it, and only a jump timed over it misses.
+  cape: { width: 30, height: 30, y: GROUND_Y - 14, inset: { dx: 0, dy: 0, dw: 0, dh: 0 }, contact: 'pickup', collect: 'flight' },
 };
 
 // A new obstacle of `type` at x with the type's default size and height;

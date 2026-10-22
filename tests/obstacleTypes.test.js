@@ -10,6 +10,7 @@ import { COLLECT_ACTIONS } from '../js/systems/collision.js';
 import { spawnObstacle } from '../js/systems/spawning.js';
 import { spawnTrampRep } from '../js/systems/trampoline.js';
 import { spawnTunnel } from '../js/systems/tunnel.js';
+import { flightScene } from '../js/systems/flight.js';
 import { tutorialScene, TUTORIAL_STEP_COUNT } from '../js/systems/tutorial.js';
 import { createState } from '../js/core/state.js';
 import { CHASE_ACORN_Y, TRAMP_REPS, TUNNEL_LAYOUTS } from '../js/config.js';
@@ -37,6 +38,10 @@ test('every spawnable obstacle type is registered', () => {
     spawnTunnel(state, layout);
     state.obstacles.forEach(o => seen.add(o.type));
   }
+  // The flight scene opens with its cape (its gates are birds and treats).
+  const flight = createState(() => 0.5);
+  flightScene.start(flight, { id: 'flight', phase: 'pending', ...flightScene.initialData() });
+  flight.obstacles.forEach(o => seen.add(o.type));
   // The tutorial spawns its own practice obstacles, one step at a time.
   const tutorial = createState(() => 0.5);
   const scene = { id: 'tutorial', phase: 'pending', ...tutorialScene.initialData() };

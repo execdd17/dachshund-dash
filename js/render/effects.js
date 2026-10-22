@@ -6,6 +6,7 @@ import {
 } from '../config.js';
 import { drawPopupText } from './primitives.js';
 import { drawObstacleLook } from './obstacles.js';
+import { FLIGHT_EFFECT_DRAWERS } from './flight.js';
 
 // A knocked-away obstacle keeps the look it had on the field (birds keep flapping).
 function drawBonkedObstacle(ctx, e, frameCount, sprites) {
@@ -59,10 +60,11 @@ export const EFFECT_DRAWERS = {
   heartGain: drawScorePopup('+1 HEART!', '#FF4D6D'),
   heartBonus: drawScorePopup('FULL! +' + HEART_FULL_BONUS, '#FF4D6D'),
   pointsPickup: (ctx, e, view) => drawScorePopup('+' + e.points, '#E08A1E')(ctx, e, view),
+  ...FLIGHT_EFFECT_DRAWERS,
 };
 
 export function drawEffects(ctx, state, sprites, now = performance.now()) {
-  const view = { now, frameCount: state.frameCount, sprites };
+  const view = { now, frameCount: state.frameCount, sprites, dog: state.dog };
   for (const [kind, drawEffect] of Object.entries(EFFECT_DRAWERS)) {
     for (const e of state.effects) if (e.kind === kind) drawEffect(ctx, e, view);
   }

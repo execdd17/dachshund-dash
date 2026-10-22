@@ -6,9 +6,10 @@ import { bossScene } from './boss.js';
 import { trampScene } from './trampoline.js';
 import { tutorialScene } from './tutorial.js';
 import { tunnelScene } from './tunnel.js';
+import { flightScene } from './flight.js';
 import { stepScene, sceneBlocksSpawning } from './encounters.js';
 
-export const SCENES = [tutorialScene, chaseScene, bossScene, trampScene, tunnelScene];
+export const SCENES = [tutorialScene, chaseScene, bossScene, trampScene, tunnelScene, flightScene];
 const SCENE_BY_ID = Object.fromEntries(SCENES.map(def => [def.id, def]));
 const runningDef = state => SCENE_BY_ID[state.scene?.id];
 
