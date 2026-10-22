@@ -2,15 +2,15 @@
 // gets it; only a jump timed over it misses). Grabbing it puts it on the dog,
 // the camera pans up, and the dog rises to the middle of three sky lanes
 // while a row of bird gates comes through: jump moves up a lane, duck moves
-// down one. Treats sometimes sit in an open lane. A missed cape ends the
+// down one. Bones sometimes sit in an open lane. A missed cape ends the
 // scene and tries again after half the cooldown.
 //   pending → cape → rising → active → landing
 
 import {
-  W, H, GROUND_Y, MIN_OBSTACLE_GAP,
+  W, H, GROUND_Y, MIN_OBSTACLE_GAP, BONE_H,
   FLIGHT_FIRST_AT, FLIGHT_COOLDOWN, FLIGHT_LANES as LANES, FLIGHT_HUD_BAND,
   FLIGHT_RISE_FRAMES, FLIGHT_LAND_FRAMES, FLIGHT_GLIDE_PER_FRAME,
-  FLIGHT_GATES, FLIGHT_GATE_BEAT_FRAMES, FLIGHT_EASY_GATES, FLIGHT_TREAT_CHANCE,
+  FLIGHT_GATES, FLIGHT_GATE_BEAT_FRAMES, FLIGHT_EASY_GATES, FLIGHT_BONE_CHANCE,
 } from '../config.js';
 import { makeObstacle } from './obstacleTypes.js';
 import { addEffect } from './effects.js';
@@ -18,7 +18,7 @@ import { sceneMemory, scoreCooldownTrigger } from './encounters.js';
 
 // Centers an obstacle's hitbox on a lane (the dog's hitbox center is dog.y + 3).
 const BIRD_Y = lane => LANES[lane] - 21.5;
-const TREAT_Y = lane => LANES[lane] - 2.5;
+const BONE_Y = lane => LANES[lane] + 3 - BONE_H / 2;
 
 // How far the camera pans up so the lanes center in the screen below the
 // HUD. Taller screens show more sky (state.skyTop), so they pan less.
@@ -70,7 +70,7 @@ export function steerFlight(state, dir, services) {
 }
 
 // FLIGHT_GATES gates from the right edge, one beat apart. The first few put a
-// bird in one lane, the rest in all but one; a treat sometimes sits in a lane
+// bird in one lane, the rest in all but one; a bone sometimes sits in a lane
 // left open.
 export function spawnGates(state, rng) {
   const beat = FLIGHT_GATE_BEAT_FRAMES * state.speed;
@@ -82,8 +82,8 @@ export function spawnGates(state, rng) {
     for (const lane of blocked) {
       state.obstacles.push(makeObstacle('bird', x, { y: BIRD_Y(lane), aerialWall: true }));
     }
-    if (rng() < FLIGHT_TREAT_CHANCE) {
-      state.obstacles.push(makeObstacle('treat', x + 20, { y: TREAT_Y(open) }));
+    if (rng() < FLIGHT_BONE_CHANCE) {
+      state.obstacles.push(makeObstacle('bone', x + 20, { y: BONE_Y(open) }));
     }
   }
 }

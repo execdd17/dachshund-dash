@@ -14,8 +14,10 @@ import {
 } from '../config.js';
 import { applyDuck } from './control.js';
 import { spawnObstacle } from './spawning.js';
-import { checkCollision } from './collision.js';
-import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGiant } from './giant.js';
+import { stepGiantPatterns } from './giantBones.js';
+import { stepBob } from './obstacleTypes.js';
+import { checkCollision, getDogHitbox } from './collision.js';
+import { deactivateGiantMode, finishGiantTransition, giantScoreMultiplier, isGiant, missPassedBones } from './giant.js';
 import { bossSpeedMultiplier, isBossChasing } from './boss.js';
 import { updateScenes, scenesBlockSpawning, sceneTimeScale, scenesFreezeScore } from './scenes.js';
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
@@ -77,9 +79,11 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   });
 
-  // Spawn (unless a scene owns the field), then scroll obstacles
+  // Spawn (unless a scene or giant mode's bone round owns the field), then scroll obstacles
   state.nextObstacleIn -= effectiveSpeed * scale;
-  if (state.nextObstacleIn <= 0 && !scenesBlockSpawning(state)) {
+  if (isGiant(state)) {
+    stepGiantPatterns(state, effectiveSpeed * scale, rng, now);
+  } else if (state.nextObstacleIn <= 0 && !scenesBlockSpawning(state)) {
     spawnObstacle(state, rng);
     if (state.nextObstacleIn <= 0) {
       const gap = isBossChasing(state)
@@ -89,10 +93,15 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   }
 
-  state.obstacles.forEach(o => o.x -= effectiveSpeed * scale);
+  state.obstacles.forEach(o => {
+    o.x -= effectiveSpeed * scale;
+    if (o.bob) stepBob(o, scale);
+  });
 
   // Detect jumping over a solo bird (walls are meant to be ducked/jumped through, not bonused).
-  state.obstacles.forEach(o => {
+  // A giant dog's birds are bones: one that gets past breaks the streak instead.
+  if (isGiant(state)) missPassedBones(state, getDogHitbox(dog, true).x);
+  else state.obstacles.forEach(o => {
     if (o.type === 'bird' && !o.aerialWall && !o.jumped && dog.jumping && o.x + o.width < dog.x + DOG_HITBOX_STAND.dx) {
       o.jumped = true;
       state.score += BIRD_JUMP_BONUS;

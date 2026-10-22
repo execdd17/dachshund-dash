@@ -62,13 +62,50 @@ export function drawPixelHeart(ctx, x, y, { px, filled = true }) {
   }
 }
 
-// One frame of a centered popup label (CHOMP!, BONK!, NICE! +50…).
-export function drawPopupText(ctx, text, x, y, { color, size, alpha }) {
+// A cartoon bone centered on (cx, cy): a shaft with two knobs at each end.
+const BONE_COLORS = { fill: '#FFF8E7', shade: '#E2D3B4', outline: '#4A3A2A' };
+export function drawBone(ctx, cx, cy, len, thick, rotation = 0) {
+  const r = thick * 0.42;
+  const half = len / 2 - r;
+  const shape = () => {
+    ctx.beginPath();
+    ctx.rect(-half, -thick * 0.22, half * 2, thick * 0.44);
+    for (const sx of [-half, half]) {
+      for (const sy of [-r * 0.8, r * 0.8]) {
+        ctx.moveTo(sx + r, sy);
+        ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      }
+    }
+  };
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = BONE_COLORS.outline;
+  shape();
+  ctx.stroke();
+  ctx.fillStyle = BONE_COLORS.fill;
+  shape();
+  ctx.fill();
+  ctx.fillStyle = BONE_COLORS.shade;
+  ctx.fillRect(-half, thick * 0.04, half * 2, thick * 0.18);
+  ctx.restore();
+}
+
+// One frame of a centered popup label (+25, BONK!, NICE! +50…).
+// An `outline` color strokes the text first so it reads against any sky.
+export function drawPopupText(ctx, text, x, y, { color, size, alpha, outline }) {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
   ctx.font = `bold ${size}px Courier New`;
   ctx.textAlign = 'center';
+  if (outline) {
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(text, x, y);
+  }
   ctx.fillText(text, x, y);
   ctx.restore();
 }

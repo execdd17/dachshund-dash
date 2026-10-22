@@ -22,7 +22,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 - A day/night cycle with sunsets, starry skies, and dynamic weather
 - A soulful soundtrack (with an EDM remix for special occasions)
 - Squirrel chases and a boss encounter
-- Giant mode — grab a golden hot dog and become unstoppable
+- Giant mode — grab a golden hot dog and become unstoppable: hot dogs get gobbled and bones come in arcs to jump through; bones fetched in a row are worth more
 - Trampoline scenes — thorn patches where a super-bounce off a trampoline island is the only way through
 - Badger-dog tunnels — duck into a row of holes to crawl under hedges, pop back up before the rocks
 - Super dog flights — grab the Hero Cape and fly up into the sky, dodging gates of birds lane by lane

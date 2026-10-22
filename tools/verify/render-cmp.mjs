@@ -25,9 +25,10 @@ fs.mkdirSync(outDir, { recursive: true });
 async function renderFrames() {
   const imp = p => import(`/js/${p}`);
   const [{ createState }, { draw }, sprites, { createCosmetics, COSMETIC_DEFS }, { OBSTACLE_TYPES, makeObstacle },
-    { SCENES, setScenePhase }, { addEffect }, { initRain }] = await Promise.all([
+    { SCENES, setScenePhase }, { addEffect }, { initRain }, giantBones] = await Promise.all([
     imp('core/state.js'), imp('render/draw.js'), imp('assets/sprites.js'), imp('cosmetics/cosmetics.js'),
-    imp('systems/obstacleTypes.js'), imp('systems/scenes.js'), imp('systems/effects.js'), imp('systems/weather.js')]);
+    imp('systems/obstacleTypes.js'), imp('systems/scenes.js'), imp('systems/effects.js'), imp('systems/weather.js'),
+    imp('systems/giantBones.js').catch(() => null)]);
 
   const store = sprites.createSpriteStore();
   sprites.loadDogSprites(store); sprites.loadSquirrelSprites(store); sprites.loadBirdSprites(store);
@@ -64,7 +65,7 @@ async function renderFrames() {
     tramp: () => [makeObstacle('trampoline', 300), makeObstacle('thorns', 400), makeObstacle('thorns', 432), makeObstacle('heart', 470, { y: -37 })],
     tunnel: () => [
       makeObstacle('tunnel', 60, { width: 700 }), makeObstacle('tunnelHole', 60, { holeIndex: 0 }),
-      makeObstacle('hedge', 300), makeObstacle('treat', 420), makeObstacle('tunnelHole', 500, { holeIndex: 1 }), makeObstacle('rock', 640),
+      makeObstacle('hedge', 300), makeObstacle('bone', 420), makeObstacle('tunnelHole', 500, { holeIndex: 1 }), makeObstacle('rock', 640),
     ],
   };
   const genericField = () => [makeObstacle('bird', 400), makeObstacle('frisbee', 600)];
@@ -88,7 +89,7 @@ async function renderFrames() {
       setScenePhase(s, 'flight', 'active');
       Object.assign(s.scene, { lane, lift: 150 });
       Object.assign(s.dog, { flying: true, jumping: true, y: [-105, -40, 25][lane] });
-      s.obstacles = [makeObstacle('bird', 420, { y: -61.5, aerialWall: true }), makeObstacle('treat', 600, { y: -42.5 })];
+      s.obstacles = [makeObstacle('bird', 420, { y: -61.5, aerialWall: true }), makeObstacle('bone', 600, { y: -42.5 })];
     };
     add('flight-hint', s => { fly(s, 1); s.flightHintPending = true; });
     add('dog-flying', s => { fly(s, 2); s.flightHintPending = false; addEffect(s, 'flightCall', NOW - 300); });
@@ -98,8 +99,36 @@ async function renderFrames() {
   for (const phase of ['growing', 'active', 'shrinking']) {
     add(`giant-${phase}`, s => { s.giantPhase = phase; s.giantStartTime = NOW - 2000; s.giantTransitionStart = NOW - 300; });
   }
+  add('giant-bones', s => {
+    Object.assign(s, { giantPhase: 'active', giantStartTime: NOW - 4000, giantTransitionStart: NOW - 3000, giantStreak: 2 });
+    s.obstacles = [
+      makeObstacle('bird', 330, { y: 60 }), makeObstacle('frisbee', 480), makeObstacle('hotdog', 600),
+      ...[0, 1, 2].map(i => makeObstacle('bird', 680, { y: 35 + i * 45, aerialWall: true })),
+    ];
+    addEffect(s, 'chomp', NOW - 150, { x: 250, y: 120, points: 20, level: 2 });
+    addEffect(s, 'chomp', NOW - 100, { x: 200, y: 165, points: 25, level: 0 });
+  });
+  if (giantBones) {
+    const giant = s => Object.assign(s, { giantPhase: 'active', giantStartTime: NOW - 4000, giantTransitionStart: NOW - 3000 });
+    // Mid-jump through an arc: the dog lifted to where the middle bone was placed for it.
+    add('giant-arc-jump', s => {
+      giant(s);
+      giantBones.GIANT_PATTERNS.arc(s, 0);
+      const mid = s.obstacles[2];
+      const n = giantBones.JUMP_FRAMES / 2;
+      Object.assign(s.dog, { jumping: true, vy: -0.5, y: 200 + giantBones.jumpRise(n) });
+      s.obstacles.forEach(o => { o.x += 106 - (mid.x + mid.width / 2); });
+    });
+    add('giant-patterns', s => {
+      giant(s);
+      giantBones.GIANT_PATTERNS.run(s, 230, () => 0.5);
+      giantBones.GIANT_PATTERNS.bobber(s, 480, () => 0.5);
+      giantBones.GIANT_PATTERNS.arc(s, 560);
+    });
+  }
+  add('giant-feast', s => { addEffect(s, 'giantFeast', NOW - 400, { points: 420 }); });
   add('effects', s => {
-    addEffect(s, 'chomp', NOW - 100, { x: 200, y: 150 });
+    addEffect(s, 'chomp', NOW - 100, { x: 218, y: 150, points: 25, level: 0 });
     addEffect(s, 'bonk', NOW - 200, { x: 300, y: 120, width: 36, height: 22, vx: 0, vy: 0, rotation: 0.7, rotSpeed: 0, type: 'hotdog', skin: 'normal' });
     addEffect(s, 'birdJump', NOW - 150, { x: 400, y: 160 });
     addEffect(s, 'trampBounce', NOW - 50, { x: 500, y: 170 });

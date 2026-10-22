@@ -2,10 +2,10 @@
 // giant mode, pickups, heart loss, or death).
 
 import {
-  GIANT_SCALE, GIANT_EAT_BONUS, GIANT_BONK_BONUS,
+  GROUND_Y, GIANT_SCALE, BONE_POINTS,
   DOG_HITBOX_STAND, DOG_HITBOX_DUCK, DOG_HITBOX_RUN_REAR, TUNNEL_DEPTH,
 } from '../config.js';
-import { activateGiantMode, triggerChompEffect, triggerBonkEffect, isGiant } from './giant.js';
+import { activateGiantMode, giantEat, fetchBone, giantPivot, triggerBonkEffect, isGiant } from './giant.js';
 import { spendHeart, gainHeart } from './hearts.js';
 import { addEffect } from './effects.js';
 import { grabCape } from './flight.js';
@@ -13,22 +13,19 @@ import { OBSTACLE_TYPES, getObstacleHitbox } from './obstacleTypes.js';
 
 export { getObstacleHitbox };
 
-// Ducking lowers the profile (frisbees pass over); giant mode expands it.
+// Ducking lowers the profile (frisbees pass over). The giant dog's box is
+// the standing box scaled like the sprite, about giantPivot, and reaches
+// down to its drawn feet so it still eats hot dogs. Scaling about a point
+// under the feet doubles a jump's height on screen; the box rises with it.
 export function getDogHitbox(dog, giant) {
   const box = dog.ducking ? DOG_HITBOX_DUCK : DOG_HITBOX_STAND;
-  let dx = dog.x + box.dx;
-  let dy = dog.y + box.dy;
-  let dw = box.w;
-  let dh = box.h;
-
-  if (giant) {
-    const expansion = (GIANT_SCALE - 1) * 0.5;
-    dx -= dw * expansion * 0.5;
-    dy -= dh * expansion;
-    dw *= (1 + expansion);
-    dh *= (1 + expansion);
-  }
-  return { x: dx, y: dy, w: dw, h: dh };
+  const dx = dog.x + box.dx;
+  const dy = dog.y + box.dy;
+  if (!giant) return { x: dx, y: dy, w: box.w, h: box.h };
+  const pivot = giantPivot(dog);
+  const top = pivot.y + (dy - pivot.y) * GIANT_SCALE;
+  const feet = pivot.y + (dog.y - GROUND_Y) * GIANT_SCALE;
+  return { x: pivot.x + (dx - pivot.x) * GIANT_SCALE, y: top, w: box.w * GIANT_SCALE, h: feet - top };
 }
 
 // The boxes that collide with obstacles. Running on the ground, the standing
@@ -55,13 +52,17 @@ export function rectsOverlap(a, b) {
 export const COLLECT_ACTIONS = {
   giant: (state, obs, services, now) => activateGiantMode(state, services, now),
   heart: (state, obs, services, now) => gainHeart(state, services, now, { x: obs.x + obs.width / 2, y: obs.y }),
-  points: (state, obs, services, now) => {
-    const { points } = OBSTACLE_TYPES[obs.type];
-    state.score += points;
-    addEffect(state, 'pointsPickup', now, { x: obs.x + obs.width / 2, y: obs.y, points });
-    services.sfx.playTreat();
-  },
   flight: (state, obs, services, now) => grabCape(state, services, now),
+  // A bone pays BONE_POINTS, or in giant mode its place in the streak.
+  bone: (state, obs, services, now) => {
+    if (isGiant(state)) {
+      fetchBone(state, obs, now);
+    } else {
+      state.score += BONE_POINTS;
+      addEffect(state, 'pointsPickup', now, { x: obs.x + obs.width / 2, y: obs.y, points: BONE_POINTS });
+    }
+    services.sfx.playFetch();
+  },
 };
 
 // Walk obstacles, resolving overlaps by each type's contact rule
@@ -95,14 +96,14 @@ export function checkCollision(state, services, now = performance.now()) {
         continue;
       }
       if (isGiant(state)) {
-        if (def.giant === 'bonk') {
+        if (def.giant === 'fetch') {
+          COLLECT_ACTIONS.bone(state, obs, services, now);
+        } else if (def.giant === 'eat') {
+          giantEat(state, obs, now);
+          services.sfx.playCrunch();
+        } else {
           triggerBonkEffect(state, obs, now);
           services.sfx.playBonk();
-          state.score += GIANT_BONK_BONUS;
-        } else {
-          triggerChompEffect(state, obs, now);
-          services.sfx.playCrunch();
-          state.score += GIANT_EAT_BONUS;
         }
         state.obstacles.splice(i, 1);
         continue;

@@ -1,5 +1,5 @@
 // The tunnel scene's looks: the tunnel as a cut-away of the soil under the
-// path, its holes, the hedge, the rock (and the warning sign above it), and the treat, plus the dog's slide
+// path, its holes, the hedge, and the rock (and the warning sign above it), plus the dog's slide
 // into and out of a hole. Texture comes from a hash of each detail's index
 // along the tunnel, so it scrolls with the tunnel and never shimmers.
 
@@ -269,45 +269,12 @@ function drawRockSign(ctx, o) {
   ctx.fillRect(cx - 1, cy + 2.5, 2, 2);
 }
 
-// A bone-shaped dog biscuit, bobbing and twinkling (the hitbox stays put).
-function drawTreat(ctx, o, frameCount) {
-  const bob = Math.sin(frameCount * 0.1 + o.x * 0.01) * 2;
-  const { x, width: w, height: h } = o;
-  const y = o.y + bob;
-  const r = h * 0.3;
-  const knobs = [[x + r, y + r], [x + r, y + h - r], [x + w - r, y + r], [x + w - r, y + h - r]];
-  const bone = (color, grow) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x + r, y + h * 0.28 - grow, w - 2 * r, h * 0.44 + 2 * grow);
-    for (const [kx, ky] of knobs) {
-      ctx.beginPath();
-      ctx.arc(kx, ky, r + grow, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
-  ctx.save();
-  ctx.shadowColor = '#FFD27A';
-  ctx.shadowBlur = 6;
-  bone('#7A4A1E', 1);
-  ctx.restore();
-  bone('#D9A25F', 0);
-  ctx.fillStyle = '#F0C88A';
-  ctx.fillRect(x + r, y + h * 0.3, w - 2 * r, 1.5);
-  ctx.fillStyle = '#9C6A35';
-  for (const dx of [0.38, 0.5, 0.62]) ctx.fillRect(x + w * dx, y + h * 0.55, 1, 1);
-
-  ctx.fillStyle = 'rgba(255, 245, 210, 0.9)';
-  const twinkle = Math.max(0, Math.sin(frameCount * 0.08 + o.x * 0.02));
-  drawSparkle(ctx, x + w + 2, y - 2, 1 + twinkle * 2.5);
-}
-
 export const TUNNEL_LOOKS = {
   tunnel: { normal: (ctx, o) => drawTunnel(ctx, o) },
   tunnelHole: { normal: (ctx, o) => drawTunnelHole(ctx, o) },
   hedge: { normal: (ctx, o, v) => drawHedge(ctx, o, v.frameCount) },
   rock: { normal: (ctx, o) => drawRock(ctx, o) },
   rockSign: { normal: (ctx, o) => drawRockSign(ctx, o) },
-  treat: { normal: (ctx, o, v) => drawTreat(ctx, o, v.frameCount) },
 };
 
 // How far below its physics y to draw the dog: it slides down into a hole

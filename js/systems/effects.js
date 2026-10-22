@@ -2,11 +2,13 @@
 // list, state.effects: [{ kind, startTime, ...props }]. Gameplay adds them,
 // update() ages them out, and render/effects.js draws each kind.
 
-import { CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS } from '../config.js';
+import { CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS, GIANT_FEAST_MS } from '../config.js';
 
 // Per kind: how long it lives (ms) and, optionally, how it moves each frame.
 export const EFFECT_KINDS = {
+  // Giant mode's points: an eaten obstacle or a fetched bone (level = its streak level, 0 for food).
   chomp: { ttl: CHOMP_EFFECT_MS },
+  giantFeast: { ttl: GIANT_FEAST_MS },
   // A knocked-away obstacle: flung up and back, tumbling under gravity.
   bonk: {
     ttl: BONK_EFFECT_MS,

@@ -8,14 +8,19 @@
 //   'terrain' — costs a heart but stays put; a rising dog passes over it
 //   'pickup'  — collected on touch, even during i-frames
 //   'none'    — never harmful
-// collect: what a pickup does — 'giant' (giant mode), 'heart' (restores a heart), 'points'
-//   (adds the type's `points`), or 'flight' (the flight scene's cape); see collision.js.
-// giant: what giant mode does to a hazard — 'eat' (+GIANT_EAT_BONUS) or 'bonk' (+GIANT_BONK_BONUS).
+// collect: what a pickup does — 'giant' (giant mode), 'heart' (restores a heart), 'flight'
+//   (the flight scene's cape), or 'bone' (+BONE_POINTS; in giant mode, GIANT_BONE_POINTS
+//   times the streak level); see collision.js.
+// giant: what giant mode does to a hazard — 'eat' (+GIANT_EAT_BONUS), 'fetch' (a bone: +GIANT_BONE_POINTS
+//   times the streak level), or 'bonk' (knocked away; only scene terrain, which giant mode never meets).
 // aerial: flying obstacles; chase mode re-skins them as acorns at duck height.
+//
+// Any obstacle can also bob: made with `bob: { amp, period, phase }`, it
+// moves up and down around its starting y (see stepBob).
 
 import {
   GROUND_Y, BIRD_W, BIRD_H, ACORN_W, ACORN_H, CHASE_ACORN_Y, TRAMP_TILE_W, TOWER_BARS, TOWER_TALL_FROM_SPEED,
-  TUNNEL_DEPTH, TUNNEL_HOLE_W, TUNNEL_TREAT_POINTS,
+  TUNNEL_DEPTH, TUNNEL_HOLE_W, BONE_W, BONE_H,
 } from '../config.js';
 
 // Hitbox insets from the obstacle's box: x + dx, y + dy, width - dw, height - dh.
@@ -39,8 +44,8 @@ const TOWER = towerSize(TOWER_BARS.tall);
 export const OBSTACLE_TYPES = {
   // Drawn as a chocolate bar normally and as a hot dog in giant mode.
   hotdog: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'hazard', giant: 'eat' },
-  frisbee: { width: 44, height: 14, y: GROUND_Y - 12, inset: AERIAL_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
-  bird: { width: BIRD_W, height: BIRD_H, inset: BIRD_INSET, contact: 'hazard', giant: 'bonk', aerial: true },
+  frisbee: { width: 44, height: 14, y: GROUND_Y - 12, inset: AERIAL_INSET, contact: 'hazard', giant: 'fetch', aerial: true },
+  bird: { width: BIRD_W, height: BIRD_H, inset: BIRD_INSET, contact: 'hazard', giant: 'fetch', aerial: true },
   golden: { width: 36, height: 22, y: GROUND_Y + 4, inset: DEFAULT_INSET, contact: 'pickup', collect: 'giant' },
   // Floats in the sky over the last trampoline rep, at TRAMP_REPS[].heart.y.
   heart: { width: 21, height: 18, inset: { dx: 1, dy: 1, dw: 3, dh: 2 }, contact: 'pickup', collect: 'heart' },
@@ -65,21 +70,32 @@ export const OBSTACLE_TYPES = {
   rock: { width: 28, height: 18, y: GROUND_Y + 6 + TUNNEL_DEPTH, inset: { dx: 3, dy: 2, dw: 6, dh: 4 }, contact: 'hazard', giant: 'bonk' },
   // A warning sign planted in the path above each rock (scenery: it stays put when the rock is bonked).
   rockSign: { width: 18, height: 24, y: GROUND_Y - 1, inset: DEFAULT_INSET, contact: 'none' },
-  // Floats at jump height over the surface route, the reward for taking it.
-  treat: {
-    width: 20, height: 11, y: GROUND_Y - 50, inset: { dx: 0, dy: 0, dw: 0, dh: 0 },
-    contact: 'pickup', collect: 'points', points: TUNNEL_TREAT_POINTS,
-  },
   // The flight scene's Hero Cape, floating at running height: a ducking dog
   // still reaches it, and only a jump timed over it misses.
   cape: { width: 30, height: 30, y: GROUND_Y - 14, inset: { dx: 0, dy: 0, dw: 0, dh: 0 }, contact: 'pickup', collect: 'flight' },
+  // The one collectible: it floats at jump height over the tunnel's surface
+  // route (its default y), sits in the flight's open lanes, and makes up
+  // giant mode's bone round (giantBones.js, at GIANT_BONE_W × GIANT_BONE_H).
+  bone: { width: BONE_W, height: BONE_H, y: GROUND_Y - 50, inset: { dx: 0, dy: 0, dw: 0, dh: 0 }, contact: 'pickup', collect: 'bone' },
 };
 
 // A new obstacle of `type` at x with the type's default size and height;
 // overrides (y, width, skin, wall tags…) are merged on top.
 export function makeObstacle(type, x, overrides = {}) {
   const def = OBSTACLE_TYPES[type];
-  return { type, x, y: def.y, width: def.width, height: def.height, ...overrides };
+  const obs = { type, x, y: def.y, width: def.width, height: def.height, ...overrides };
+  if (obs.bob) obs.bob = { phase: 0, ...obs.bob, baseY: obs.y, t: 0 };
+  return obs;
+}
+
+// One frame of a bobbing obstacle: `amp` px above and below where it was
+// made, one cycle per `period` baseline frames, starting `phase` (0–1) into
+// the cycle. It moves on game time (scale), so any frame rate sees the same
+// path, and its hitbox moves with it.
+export function stepBob(obs, scale) {
+  const b = obs.bob;
+  b.t += scale;
+  obs.y = b.baseY + Math.sin((b.t / b.period + b.phase) * 2 * Math.PI) * b.amp;
 }
 
 export function isAerial(obs) {

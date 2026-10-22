@@ -77,7 +77,7 @@ test("each stretch's hazards block the layer it doesn't need, never the tunnel o
     if (needs === 'surface') assert.ok(blocked.includes('underground'), name);
     if (needs === null) {
       assert.ok(!blocked.includes('underground'), `${name}: the tunnel route stays safe`);
-      // A treat to collect, or a bird whose jump bonus pays
+      // A bone to collect, or a bird whose jump bonus pays
       const pays = obstacles.some(([, type]) => type === 'bird' || OBSTACLE_TYPES[type].contact === 'pickup');
       assert.ok(pays, `${name}: the surface route pays`);
     }
@@ -353,16 +353,16 @@ test('staying in one layer the whole way gets hit on every layout', () => {
   }
 });
 
-test('a jump over the treat bar can collect both treats at every speed', () => {
+test('a jump over the bone bar can collect both bones at every speed', () => {
   for (const speed of SPEEDS) {
     for (const frameMs of FRAME_MS) {
       let best = 0;
       for (let pressFrame = 0; pressFrame < 4 * TUNNEL_BEAT_FRAMES; pressFrame++) {
         const services = createTestServices();
-        const state = tunnelState(['treatBar'], speed);
+        const state = tunnelState(['boneBar'], speed);
         const score = state.score;
         let now = 0;
-        let treats = 0;
+        let bones = 0;
         let frame = 0;
         while (getScenePhase(state, 'tunnel') !== 'idle' && frame < 20000) {
           if (frame === Math.round(pressFrame * DT_BASELINE / frameMs)) jump(state, services, now);
@@ -371,10 +371,10 @@ test('a jump over the treat bar can collect both treats at every speed', () => {
           now += frameMs;
           frame++;
           state.score = score;
-          treats += state.effects.slice(effectsBefore).filter(e => e.kind === 'pointsPickup').length;
+          bones += state.effects.slice(effectsBefore).filter(e => e.kind === 'pointsPickup').length;
           if (state.hearts < 99) break;
         }
-        if (state.hearts === 99) best = Math.max(best, treats);
+        if (state.hearts === 99) best = Math.max(best, bones);
       }
       assert.equal(best, 2, `speed ${speed}, ${Math.round(1000 / frameMs)}Hz`);
     }

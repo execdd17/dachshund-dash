@@ -2,7 +2,7 @@
 // effects → HUD → state-dependent overlays.
 
 import {
-  GROUND_Y, SQUIRREL_OFFSET, DOG_SPRITE_ANCHOR,
+  GROUND_Y, SQUIRREL_OFFSET,
   GIANT_DURATION, GIANT_WARN_AT, GIANT_SCALE_TRANSITION,
   DEATH_SHAKE_MS, DEATH_SHAKE_PX, BOSS_SQUIRREL_SCALE,
 } from '../config.js';
@@ -20,7 +20,7 @@ import {
 } from './hud.js';
 import { scaleAbout } from './primitives.js';
 import { advanceDogSpriteFrame, advanceSquirrelSpriteFrame, advanceBirdSpriteFrame } from '../assets/sprites.js';
-import { getGiantVisualScale, isGiant } from '../systems/giant.js';
+import { getGiantVisualScale, giantPivot, isGiant } from '../systems/giant.js';
 import { cameraLift } from '../systems/scenes.js';
 
 // Per-scene actors, keyed by scene id (scenes with none, like the trampoline, are absent).
@@ -105,8 +105,7 @@ export function draw(deps) {
     ctx.globalAlpha = Math.sin(now * 0.04) > 0 ? 0.85 : 0.3;
   }
   if (giantScale !== 1) {
-    const pivotX = dog.x + dog.width * DOG_SPRITE_ANCHOR;
-    const pivotY = GROUND_Y + 24;
+    const { x: pivotX, y: pivotY } = giantPivot(dog);  // the hitbox scales about it too
 
     // Golden glow: draw the dog sprite slightly larger with shadowBlur behind the real sprite
     if (state.giantPhase !== 'off') {

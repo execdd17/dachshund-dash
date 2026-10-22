@@ -86,6 +86,11 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     giantPhase: 'off',          // 'off' | 'growing' | 'active' | 'shrinking' (systems/giant.js)
     giantStartTime: 0,
     giantTransitionStart: 0,
+    giantStreak: 0,             // bones fetched in a row this giant mode (a bone that gets past breaks it)
+    giantFeast: 0,              // bonus points this giant mode, tallied when it ends
+    giantPatternIn: 0,          // px until the bone round's next pattern (systems/giantBones.js)
+    giantLastPattern: null,     // so the same pattern never comes twice running
+    giantPatternsLeft: {},      // the patterns this round has yet to deal out
     lastGoldenScore: 0,         // the last golden's spawn score, then the score its giant mode ended at
     goldenSinceScene: false,    // a golden has spawned since the last scene ended (one per gap)
 

@@ -8,9 +8,9 @@ import { update } from '../js/systems/update.js';
 import { duck } from '../js/systems/control.js';
 import { makeObstacle } from '../js/systems/obstacleTypes.js';
 import { createState, createDog } from '../js/core/state.js';
-import { activateGiantMode, deactivateGiantMode, giantScoreMultiplier } from '../js/systems/giant.js';
+import { activateGiantMode, deactivateGiantMode, giantScoreMultiplier, giantStreakLevel } from '../js/systems/giant.js';
 import {
-  GROUND_Y, GIANT_EAT_BONUS, GIANT_BONK_BONUS, GIANT_END_INVULN, CHASE_ACORN_Y, HEART_FULL_BONUS,
+  GROUND_Y, BONE_POINTS, GIANT_EAT_BONUS, GIANT_BONE_POINTS, GIANT_STREAK_MAX, GIANT_END_INVULN, BIRD_JUMP_BONUS, CHASE_ACORN_Y, HEART_FULL_BONUS,
   BIRD_LOW_Y, BIRD_SPRITE_W, DOG_HITBOX_STAND, DOG_HITBOX_RUN_REAR, DT_BASELINE, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED,
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
@@ -184,20 +184,95 @@ test('giant mode eats ground obstacles for bonus points', () => {
   assert.equal(died, false);
   assert.equal(state.score, before + GIANT_EAT_BONUS);
   assert.deepEqual(state.obstacles, []);
-  assert.equal(effectsOfKind(state, 'chomp').length, 1);
+  assert.deepEqual(effectsOfKind(state, 'chomp').map(e => e.points), [GIANT_EAT_BONUS], 'the popup shows the points');
 });
 
-test('giant mode bonks birds for a smaller bonus', () => {
+// A giant dog with a bone (a bird, or a frisbee) on its hitbox.
+function giantWithBone(state, type = 'bird') {
+  state.obstacles = [type === 'bird'
+    ? makeObstacle('bird', state.dog.x + 20, { y: GROUND_Y - 49 })
+    : makeObstacle('frisbee', state.dog.x + 20)];
+}
+
+test('giant mode fetches bones, each one in a row worth more up to the cap', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';
-  setGiantPhase(state, 'active');
-  // Giant hitbox reaches higher; put the bird overlapping it
-  state.obstacles = [{ x: state.dog.x + 20, y: GROUND_Y - 49, width: 66, height: 51, type: 'bird' }];
+  activateGiantMode(state, createTestServices(), 0);
+  const paid = [];
+  for (let i = 0; i < GIANT_STREAK_MAX + 2; i++) {
+    giantWithBone(state, i % 2 ? 'frisbee' : 'bird');
+    const before = state.score;
+    assert.equal(checkCollision(state, createTestServices()), false);
+    paid.push(state.score - before);
+    if (i === 1) {  // food in between keeps the streak going
+      state.obstacles = [{ x: state.dog.x + 20, y: GROUND_Y + 4, width: 36, height: 22, type: 'hotdog' }];
+      checkCollision(state, createTestServices());
+    }
+  }
+  const levels = [1, 2, 3, 3, 3].map(n => Math.min(n, GIANT_STREAK_MAX));
+  assert.deepEqual(paid, levels.map(n => n * GIANT_BONE_POINTS));
+  assert.equal(giantStreakLevel(state), GIANT_STREAK_MAX);
+  assert.equal(effectsOfKind(state, 'bonk').length, 0, 'bones are fetched, not bonked');
+  assert.deepEqual(effectsOfKind(state, 'chomp').map(e => e.level), [1, 2, 0, 3, 3, 3]);
+});
+
+test('a bone pays a flat BONE_POINTS outside giant mode, and its place in the streak inside it', () => {
+  const services = createTestServices();
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  const atDog = () => [makeObstacle('bone', state.dog.x + 30, { y: GROUND_Y - 4 })];
+  for (let i = 0; i < 3; i++) {
+    state.obstacles = atDog();
+    const before = state.score;
+    checkCollision(state, services);
+    assert.equal(state.score - before, BONE_POINTS, `bone ${i + 1}: flat`);
+  }
+  assert.equal(state.giantStreak, 0, 'no streak outside giant mode');
+  activateGiantMode(state, services, 0);
+  const paid = [];
+  for (let i = 0; i < 2; i++) {
+    state.obstacles = atDog();
+    const before = state.score;
+    checkCollision(state, services);
+    paid.push(state.score - before);
+  }
+  assert.deepEqual(paid, [GIANT_BONE_POINTS, GIANT_BONE_POINTS * 2]);
+});
+
+test('a bone that gets past the giant dog breaks the streak, and jumping it pays nothing', () => {
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  const services = createTestServices();
+  activateGiantMode(state, services, 0);
+  state.giantStreak = 2;
+  Object.assign(state.dog, { jumping: true, vy: -2, y: GROUND_Y - 200 });  // high over the bone
+  state.obstacles = [makeObstacle('bird', state.dog.x + 40, { y: BIRD_LOW_Y })];
   const before = state.score;
-  const died = checkCollision(state, createTestServices());
-  assert.equal(died, false);
-  assert.equal(state.score, before + GIANT_BONK_BONUS);
-  assert.equal(effectsOfKind(state, 'bonk').length, 1);
+  let now = 0;
+  for (let f = 0; f < 60 && state.giantStreak > 0; f++) {
+    now += 1000 / 120;
+    Object.assign(state.dog, { y: GROUND_Y - 200, vy: -2 });  // keep it above everything
+    update(state, 1000 / 120, services, () => 0.99, now);
+  }
+  assert.equal(state.giantStreak, 0, 'the passed bone broke the streak');
+  assert.ok(state.score - before < BIRD_JUMP_BONUS, 'no bird-jump bonus over a bone');
+  assert.equal(effectsOfKind(state, 'birdJump').length, 0);
+});
+
+test('giant mode ending tallies its bonus points', () => {
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  const services = createTestServices();
+  activateGiantMode(state, services, 0);
+  giantWithBone(state);
+  checkCollision(state, services);
+  state.obstacles = [{ x: state.dog.x + 20, y: GROUND_Y + 4, width: 36, height: 22, type: 'hotdog' }];
+  checkCollision(state, services);
+  deactivateGiantMode(state, services, 15000);
+  assert.deepEqual(effectsOfKind(state, 'giantFeast').map(e => e.points), [GIANT_BONE_POINTS + GIANT_EAT_BONUS]);
+  activateGiantMode(state, services, 20000);
+  assert.equal(state.giantFeast, 0, 'the next giant mode starts its own tally');
+  assert.equal(state.giantStreak, 0);
 });
 
 test('ducking avoids a frisbee at head height', () => {

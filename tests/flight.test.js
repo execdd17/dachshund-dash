@@ -43,15 +43,15 @@ function lanesReached(obs) {
   });
 }
 
-// Gates by x: { x: { birds: [lanes], treats: [lanes] } }.
+// Gates by x: { x: { birds: [lanes], bones: [lanes] } }.
 function gatesOf(obstacles) {
   const gates = new Map();
   for (const o of obstacles) {
-    if (o.type !== 'bird' && o.type !== 'treat') continue;
-    const x = o.type === 'treat' ? o.x - 20 : o.x;
+    if (o.type !== 'bird' && o.type !== 'bone') continue;
+    const x = o.type === 'bone' ? o.x - 20 : o.x;
     const key = [...gates.keys()].find(k => Math.abs(k - x) < 1) ?? x;
-    const gate = gates.get(key) ?? { birds: [], treats: [] };
-    gate[o.type === 'bird' ? 'birds' : 'treats'].push(...lanesReached(o));
+    const gate = gates.get(key) ?? { birds: [], bones: [] };
+    gate[o.type === 'bird' ? 'birds' : 'bones'].push(...lanesReached(o));
     gates.set(key, gate);
   }
   return [...gates.entries()].sort(([a], [b]) => a - b).map(([, gate]) => gate);
@@ -59,7 +59,7 @@ function gatesOf(obstacles) {
 
 // --- Gates ---
 
-test('gate birds and treats each sit in exactly one lane, and every gate leaves one open', () => {
+test('gate birds and bones each sit in exactly one lane, and every gate leaves one open', () => {
   for (const seed of [0.05, 0.3, 0.5, 0.7, 0.95]) {
     const state = createState(() => 0.5);
     let n = 0;
@@ -67,9 +67,9 @@ test('gate birds and treats each sit in exactly one lane, and every gate leaves 
     for (const o of state.obstacles) assert.equal(lanesReached(o).length, 1, `${o.type} at y ${o.y}`);
     const gates = gatesOf(state.obstacles);
     assert.equal(gates.length, FLIGHT_GATES);
-    gates.forEach(({ birds, treats }, i) => {
+    gates.forEach(({ birds, bones }, i) => {
       assert.equal(birds.length, i < FLIGHT_EASY_GATES ? 1 : FLIGHT_LANES.length - 1, `gate ${i}`);
-      treats.forEach(lane => assert.ok(!birds.includes(lane), `gate ${i}: a treat in a bird's lane`));
+      bones.forEach(lane => assert.ok(!birds.includes(lane), `gate ${i}: a bone in a bird's lane`));
     });
   }
 });

@@ -38,7 +38,7 @@ const TONES = {
     { type: 'triangle', from: 200, to: 60, sweep: 0.1, gain: 0.2, dur: 0.16 },
     { type: 'sine', from: 120, to: 50, sweep: 0.08, gain: 0.1, dur: 0.12 },
   ],
-  playTreat: [880, 1320].map((from, i) => ({ type: 'square', from, gain: 0.05, dur: 0.07, at: i * 0.05 })),
+  playFetch: [660, 990].map((from, i) => ({ type: 'triangle', from, gain: 0.12, dur: 0.1, at: i * 0.05 })),
   playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
   playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),
 };

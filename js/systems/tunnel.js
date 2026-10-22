@@ -2,7 +2,7 @@
 // holes (systems/burrow.js moves the dog). Each stretch between two holes
 // either needs one layer — a hedge too tall to jump blocks the surface, a
 // rock blocks the tunnel — or leaves the choice open: the tunnel is safe and
-// empty, the surface pays treats or a bird bonus for a jump.
+// empty, the surface pays bones or a bird bonus for a jump.
 //   pending → active
 
 import {
@@ -21,7 +21,7 @@ export const TUNNEL_STRETCHES = {
   hedge: { needs: 'underground', obstacles: [[0.5, 'hedge']] },
   rock: { needs: 'surface', obstacles: [[0.5, 'rock'], [0.5, 'rockSign']] },
   rockThenBar: { needs: 'surface', obstacles: [[0.5, 'rock'], [0.5, 'rockSign'], [0.85, 'hotdog']] },
-  treatBar: { needs: null, obstacles: [[0.35, 'treat'], [0.5, 'hotdog'], [0.65, 'treat']] },
+  boneBar: { needs: null, obstacles: [[0.35, 'bone'], [0.5, 'hotdog'], [0.65, 'bone']] },
   bird: { needs: null, obstacles: [[0.5, 'bird', { y: BIRD_LOW_Y }]] },
 };
 

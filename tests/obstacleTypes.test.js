@@ -11,6 +11,7 @@ import { spawnObstacle } from '../js/systems/spawning.js';
 import { spawnTrampRep } from '../js/systems/trampoline.js';
 import { spawnTunnel } from '../js/systems/tunnel.js';
 import { flightScene } from '../js/systems/flight.js';
+import { GIANT_PATTERNS } from '../js/systems/giantBones.js';
 import { tutorialScene, TUTORIAL_STEP_COUNT } from '../js/systems/tutorial.js';
 import { createState } from '../js/core/state.js';
 import { CHASE_ACORN_Y, TRAMP_REPS, TUNNEL_LAYOUTS } from '../js/config.js';
@@ -38,10 +39,16 @@ test('every spawnable obstacle type is registered', () => {
     spawnTunnel(state, layout);
     state.obstacles.forEach(o => seen.add(o.type));
   }
-  // The flight scene opens with its cape (its gates are birds and treats).
+  // The flight scene opens with its cape (its gates are birds and bones).
   const flight = createState(() => 0.5);
   flightScene.start(flight, { id: 'flight', phase: 'pending', ...flightScene.initialData() });
   flight.obstacles.forEach(o => seen.add(o.type));
+  // Giant mode's bone round spawns bones.
+  for (const spawn of Object.values(GIANT_PATTERNS)) {
+    const giant = createState(() => 0.5);
+    spawn(giant, 800, () => 0.5);
+    giant.obstacles.forEach(o => seen.add(o.type));
+  }
   // The tutorial spawns its own practice obstacles, one step at a time.
   const tutorial = createState(() => 0.5);
   const scene = { id: 'tutorial', phase: 'pending', ...tutorialScene.initialData() };
@@ -56,7 +63,7 @@ test('every spawnable obstacle type is registered', () => {
 test('every registered type has a valid contact rule and a normal look', () => {
   for (const [type, def] of Object.entries(OBSTACLE_TYPES)) {
     assert.ok(['hazard', 'terrain', 'pickup', 'none'].includes(def.contact), type);
-    if (def.contact === 'hazard') assert.ok(['eat', 'bonk'].includes(def.giant), `${type} giant rule`);
+    if (def.contact === 'hazard') assert.ok(['eat', 'fetch', 'bonk'].includes(def.giant), `${type} giant rule`);
     if (def.contact === 'pickup') assert.equal(typeof COLLECT_ACTIONS[def.collect], 'function', `${type} collect rule`);
     assert.equal(typeof OBSTACLE_LOOKS[type]?.normal, 'function', `${type} look`);
   }

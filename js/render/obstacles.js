@@ -3,13 +3,13 @@
 // draw functions take (ctx, x, y, ...) so they stay independently reusable.
 
 import {
-  GROUND_Y, ACORN_W, ACORN_H,
+  GROUND_Y, ACORN_W, ACORN_H, GIANT_BONE_W, GIANT_BONE_H,
   BIRD_SPRITE_W, BIRD_SPRITE_FEET_FRAC,
 } from '../config.js';
-import { chaseAcornY } from '../systems/obstacleTypes.js';
+import { chaseAcornY, getObstacleHitbox } from '../systems/obstacleTypes.js';
 import { isChaseActive } from '../systems/chase.js';
 import { isGiant } from '../systems/giant.js';
-import { roundRect, drawSparkle, drawPixelHeart, HEART_BITMAP_W } from './primitives.js';
+import { roundRect, drawSparkle, drawPixelHeart, drawBone, HEART_BITMAP_W } from './primitives.js';
 import { isImageReady } from '../assets/images.js';
 import { TUNNEL_LOOKS } from './tunnel.js';
 import { FLIGHT_LOOKS } from './flight.js';
@@ -785,9 +785,26 @@ export function drawThorns(ctx, x, y, seed = 0) {
 }
 
 // Each type's look per skin: 'normal', 'chase' (acorns during the squirrel
-// chase) and 'giant' (edible hot dogs in giant mode); a missing skin falls
+// chase) and 'giant' (edible hot dogs and fetchable bones in giant mode); a missing skin falls
 // back to normal. view = { frameCount, sprites, now, acornY }.
 const drawAerialAcorn = (ctx, o, v) => drawAcorn(ctx, o.x, v.acornY, v.frameCount * 0.15);
+// The bone, the game's one collectible: cream, with a golden glow and a
+// twinkle, rocking so it reads as something to grab. Drawn to its box.
+function drawBonePickup(ctx, cx, cy, w, h, now) {
+  ctx.save();
+  ctx.shadowColor = '#FFD27A';
+  ctx.shadowBlur = 6;
+  drawBone(ctx, cx, cy, w, h, Math.sin(now * 0.006) * 0.18);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255, 245, 210, 0.9)';
+  drawSparkle(ctx, cx + w / 2 + 2, cy - h / 2 - 2, 1 + Math.max(0, Math.sin(now * 0.0096)) * 2.5);
+}
+const drawBoneLook = (ctx, o, v) => drawBonePickup(ctx, o.x + o.width / 2, o.y + o.height / 2, o.width, o.height, v.now);
+// A bird or frisbee left on the field when the dog grew: a giant-size bone on its hitbox.
+function drawGiantBone(ctx, o, v) {
+  const box = getObstacleHitbox(o);
+  drawBonePickup(ctx, box.x + box.w / 2, box.y + box.h / 2, GIANT_BONE_W, GIANT_BONE_H, v.now);
+}
 
 export const OBSTACLE_LOOKS = {
   hotdog: {
@@ -803,12 +820,15 @@ export const OBSTACLE_LOOKS = {
   frisbee: {
     normal: (ctx, o, v) => drawFrisbee(ctx, o.x, o.y, v.frameCount),
     chase: drawAerialAcorn,
+    giant: drawGiantBone,
   },
   bird: {
     normal: (ctx, o, v) => { if (!drawBirdSprite(ctx, v.sprites, o)) drawBird(ctx, o.x, o.y, v.frameCount); },
     chase: drawAerialAcorn,
+    giant: drawGiantBone,
   },
   golden: { normal: (ctx, o, v) => drawGoldenHotDog(ctx, o.x, o.y, v.frameCount) },
+  bone: { normal: drawBoneLook },
   heart: { normal: (ctx, o, v) => drawFloatingHeart(ctx, o.x, o.y, o.width, o.height, v.frameCount) },
   trampoline: { normal: (ctx, o, v) => drawTrampoline(ctx, o.x, o.y, o.width, v.frameCount, v.now < (o.squashUntil ?? 0)) },
   thorns: { normal: (ctx, o) => drawThorns(ctx, o.x, o.y, o.seed ?? 0) },

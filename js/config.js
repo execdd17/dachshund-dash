@@ -39,6 +39,11 @@ export const MAX_OBSTACLE_GAP = 500;
 // --- Bird obstacles (1.5× frisbee-tier sizing) ---
 export const BIRD_W = 66;
 export const BIRD_H = 51;
+export const BONE_W = 25;     // a bone (hitbox = drawing): the tunnel's and the flight's
+export const BONE_H = 10;
+export const GIANT_BONE_W = 33;  // giant mode's, sized for the giant dog (keep both about 2.5:1, or the knobs swallow the shaft)
+export const GIANT_BONE_H = 13;
+export const BONE_POINTS = 25;   // a bone outside giant mode (giant mode pays its streak instead)
 export const BIRD_LOW_Y = GROUND_Y - 49;   // solo bird and every wall's bottom row: duck height
 // Bird walls (systems/birdWalls.js), measured by sweeping jump and double-jump
 // timings against speed — re-sweep if jump physics or the bird hitbox change.
@@ -150,10 +155,25 @@ export const GIANT_SPAWN_CHANCE = 0.02;             // chance per obstacle spawn
 export const GIANT_DURATION = 15000;                // ms (15 seconds — matches giant music track)
 export const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
 export const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog
+export const GIANT_PIVOT_Y = GROUND_Y + 24;         // the giant dog grows about this height (its feet), drawn and hitbox alike
 export const GIANT_SCALE_TRANSITION = 500;          // ms for grow/shrink animation
 export const GIANT_SCORE_MULTIPLIER = 2;            // score multiplier while giant
-export const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten
-export const GIANT_BONK_BONUS = 15;                 // bonus points per frisbee bonked
+export const GIANT_EAT_BONUS = 25;                  // bonus points per obstacle eaten (hot dogs, towers)
+export const GIANT_BONE_POINTS = 10;                // a bone, times the streak level
+export const GIANT_STREAK_MAX = 3;                  // the streak level caps here: bones in a row pay 10, 20, 30, 30…
+export const GIANT_FEAST_MS = 2200;                 // the end-of-giant-mode tally
+
+// The bone round (systems/giantBones.js): while the dog is giant, normal
+// spawning stops and random bone patterns come one after another, a hot dog
+// in each gap between them.
+export const GIANT_ROUND = { arc: 3, run: 2, bobber: 2 };  // the patterns in one round, shuffled (never one twice running):
+                                                    // a fixed mix keeps every round's bones (23) and pace the same
+export const GIANT_PATTERN_GAP_FRAMES = 180;        // baseline frames from one pattern's end to the next one's start (~1.5s to land and get ready)
+export const GIANT_PATTERNS_STOP_MS = 3000;         // no new pattern this close to the end: the field clears before the shrink
+export const GIANT_ARC_BONES = 5;                   // bones along a jump's path; one jump timed right takes them all
+export const GIANT_RUN_BONES = 3;                   // bones in a line at running height
+export const GIANT_RUN_BONE_FRAMES = 22;            // baseline frames between them
+export const GIANT_BOB = { amp: 40, period: 110 };  // the bobbing bone: px up and down, baseline frames per cycle
 export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
 
@@ -208,13 +228,12 @@ export const TUNNEL_HOLE_SLACK = 10;     // px of forgiveness either side of a h
 export const TUNNEL_DEPTH = 25;          // how far below the path the dog crawls (inside the drawn bore)
 export const TUNNEL_POP_VY = -6;         // the hop out of a hole when duck is let go
 export const TUNNEL_DIVE_MS = 140;       // the dog sliding into / out of a hole (drawing only)
-export const TUNNEL_TREAT_POINTS = 25;
 export const TUNNEL_CAMERA_DROP = 20;    // the camera dips this far while the tunnel's ahead, lifting it clear of phone toolbars and home bars
 export const TUNNEL_CAMERA_SPEED = 0.35; // camera dip per frame, down and back
 export const TUNNEL_LAYOUTS = [
-  ['hedge', 'treatBar', 'rock', 'hedge', 'bird', 'rockThenBar'],
-  ['hedge', 'hedge', 'rock', 'treatBar', 'hedge', 'rock'],
-  ['hedge', 'bird', 'hedge', 'rock', 'rock', 'treatBar', 'hedge', 'rockThenBar'],
+  ['hedge', 'boneBar', 'rock', 'hedge', 'bird', 'rockThenBar'],
+  ['hedge', 'hedge', 'rock', 'boneBar', 'hedge', 'rock'],
+  ['hedge', 'bird', 'hedge', 'rock', 'rock', 'boneBar', 'hedge', 'rockThenBar'],
 ];
 
 // --- Flight scene ---
@@ -233,7 +252,7 @@ export const FLIGHT_GLIDE_PER_FRAME = 6;   // lane change speed
 export const FLIGHT_GATES = 14;
 export const FLIGHT_GATE_BEAT_FRAMES = 95; // baseline frames between gates (~0.8s)
 export const FLIGHT_EASY_GATES = 3;        // the first gates block one lane, the rest two
-export const FLIGHT_TREAT_CHANCE = 0.5;    // a treat in a gate's open lane
+export const FLIGHT_BONE_CHANCE = 0.5;     // a bone in a gate's open lane
 export const FLIGHT_CALL_MS = 1200;        // "SUPER DOG!" on grabbing the cape
 export const CAPE_AWAY_MS = 1100;          // the cape flying off after the landing
 
