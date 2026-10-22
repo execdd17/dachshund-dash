@@ -26,6 +26,8 @@ export function activateGiantMode(state, { sfx, music }, now = performance.now()
 export function deactivateGiantMode(state, { sfx, music }, now = performance.now()) {
   state.giantPhase = 'shrinking';
   state.giantTransitionStart = now;
+  // One giant mode earns more than GIANT_COOLDOWN, so the cooldown counts from here.
+  state.lastGoldenScore = state.score;
   // Grace period: the shrink can land the dog inside an obstacle the player
   // meant to eat, so reuse the post-hit i-frames instead of killing them.
   state.invulnUntil = Math.max(state.invulnUntil, now + GIANT_END_INVULN);

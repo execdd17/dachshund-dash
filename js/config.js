@@ -144,8 +144,9 @@ export const BOSS_SQUIRREL_SCALE = 2.5;            // drawn size vs the chase sq
 
 // --- Giant mode ---
 export const GIANT_FIRST_AT = 500;                  // golden hot dog can't appear before this score
-export const GIANT_COOLDOWN = 300;                  // minimum score between golden hot dog spawns
-export const GIANT_SPAWN_CHANCE = 0.06;             // 6% chance per obstacle spawn cycle when eligible
+export const GIANT_COOLDOWN = 300;                  // score from a golden's spawn, or its giant mode's end, to the next
+export const GIANT_SPAWN_CHANCE = 0.02;             // chance per obstacle spawn cycle when eligible (at most one per gap between scenes;
+                                                    // 2% gives about as many giant modes per run as each scene gets)
 export const GIANT_DURATION = 15000;                // ms (15 seconds — matches giant music track)
 export const GIANT_WARN_AT = 2500;                  // ms remaining before flashing warning
 export const GIANT_SCALE = 2.0;                     // visual scale multiplier for the dog

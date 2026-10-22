@@ -35,6 +35,12 @@ export const bossScene = {
     return true;
   },
 
+  // The first boss, at 1000, goes ahead of the scenes that armed earlier
+  // (otherwise it comes last in the first rotation, often after a short run
+  // has ended). Later bosses wait their turn: jumping every milestone would
+  // make every other scene a boss.
+  jumpsQueue: memory => memory.lastMilestone === 1,
+
   start(state, scene) {
     scene.phase = 'active';
     scene.squirrelX = BOSS_SQUIRREL_START_X;

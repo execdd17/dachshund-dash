@@ -242,6 +242,22 @@ test('a queued scene holds only one turn even if its condition re-fires', () => 
   assert.equal(state.sceneMemory.boss.lastMilestone, 2);
 });
 
+test('the first boss jumps the scene queue; later ones wait their turn', () => {
+  const services = createTestServices();
+  const state = createState(() => 0.5);
+  state.gameState = 'running';
+  setScenePhase(state, 'chase', 'active');
+  state.sceneQueue = ['tunnel', 'flight', 'tramp'];  // armed earlier, still waiting
+  state.score = BOSS_MILESTONE + 5;
+  updateBoss(state, 1, services, 0);
+  assert.deepEqual(state.sceneQueue, ['boss', 'tunnel', 'flight', 'tramp']);
+
+  state.sceneQueue = ['tunnel', 'flight'];  // the first boss has had its turn
+  state.score = BOSS_MILESTONE * 2 + 5;
+  updateBoss(state, 1, services, 0);
+  assert.deepEqual(state.sceneQueue, ['tunnel', 'flight', 'boss']);
+});
+
 test('boss waits for clear field, chases, then squirrel retreats', () => {
   const state = createState(() => 0.5);
   state.gameState = 'running';

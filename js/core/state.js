@@ -86,7 +86,8 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     giantPhase: 'off',          // 'off' | 'growing' | 'active' | 'shrinking' (systems/giant.js)
     giantStartTime: 0,
     giantTransitionStart: 0,
-    lastGoldenSpawnScore: 0,
+    lastGoldenScore: 0,         // the last golden's spawn score, then the score its giant mode ended at
+    goldenSinceScene: false,    // a golden has spawned since the last scene ended (one per gap)
 
     effects: [],  // popups + knocked-away obstacles: [{ kind, startTime, ... }] (systems/effects.js)
 

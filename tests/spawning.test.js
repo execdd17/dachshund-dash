@@ -5,13 +5,15 @@ import { spawnObstacle, SPAWN_PATTERNS, patternChance } from '../js/systems/spaw
 import { towerSize } from '../js/systems/obstacleTypes.js';
 import { createState } from '../js/core/state.js';
 import {
-  W, GROUND_Y, SQUIRREL_OFFSET, GIANT_FIRST_AT, MIN_OBSTACLE_GAP,
+  W, GROUND_Y, SQUIRREL_OFFSET, GIANT_FIRST_AT, GIANT_COOLDOWN, MIN_OBSTACLE_GAP,
   BIRD_LOW_Y, BIRD_STACK_HIGH_Y, BIRD_STACK_MID_Y,
   PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
   PATTERN_CHANCE, PATTERN_FIRST_AT, TOWER_BARS, TOWER_TALL_FROM_SPEED,
 } from '../js/config.js';
 import { setScenePhase } from '../js/systems/scenes.js';
-import { createSequenceRng } from './helpers.js';
+import { markSceneEnd } from '../js/systems/encounters.js';
+import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
+import { createSequenceRng, createTestServices } from './helpers.js';
 
 test('early game spawns only hotdogs regardless of roll', () => {
   const state = createState(() => 0.5);
@@ -62,7 +64,7 @@ test('golden hot dog spawns when eligible and roll succeeds', () => {
   state.score = GIANT_FIRST_AT + 700; // past first-at + cooldown
   spawnObstacle(state, createSequenceRng([0.01, 0.5]));
   assert.equal(state.obstacles[0].type, 'golden');
-  assert.equal(state.lastGoldenSpawnScore, state.score);
+  assert.equal(state.lastGoldenScore, state.score);
 });
 
 test('golden hot dog never spawns below GIANT_FIRST_AT', () => {
@@ -75,7 +77,7 @@ test('golden hot dog never spawns below GIANT_FIRST_AT', () => {
 test('golden hot dog respects cooldown and encounter exclusions', () => {
   const state = createState(() => 0.5);
   state.score = GIANT_FIRST_AT + 700;
-  state.lastGoldenSpawnScore = state.score - 10; // within cooldown
+  state.lastGoldenScore = state.score - 10; // within cooldown
   spawnObstacle(state, createSequenceRng([0.0, 0.99]));
   assert.notEqual(state.obstacles[0].type, 'golden');
 
@@ -84,6 +86,41 @@ test('golden hot dog respects cooldown and encounter exclusions', () => {
   setScenePhase(state2, 'boss', 'active');
   spawnObstacle(state2, createSequenceRng([0.0, 0.99]));
   assert.notEqual(state2.obstacles[0].type, 'golden');
+});
+
+// Spawns once with a winning golden roll; true if it was a golden.
+function goldenRoll(state) {
+  state.obstacles = [];
+  spawnObstacle(state, createSequenceRng([0.0, 0.99]));
+  return state.obstacles[0]?.type === 'golden';
+}
+
+test('the golden cooldown counts from the end of its giant mode', () => {
+  // One giant mode earns more than the cooldown, so counting from the spawn
+  // would let the next golden roll in the moment it ends.
+  const services = createTestServices();
+  const state = createState(() => 0.5);
+  state.score = GIANT_FIRST_AT;
+  assert.ok(goldenRoll(state));
+  markSceneEnd(state, 0);  // a scene in between, so only the cooldown is in play
+  activateGiantMode(state, services, 0);
+  state.score += GIANT_COOLDOWN * 2;  // what a giant mode earns
+  deactivateGiantMode(state, services, 15000);
+  state.giantPhase = 'off';
+  state.score += GIANT_COOLDOWN - 1;
+  assert.ok(!goldenRoll(state), 'still cooling down after the giant ended');
+  state.score += 1;
+  assert.ok(goldenRoll(state));
+});
+
+test('one golden per stretch between scenes, eaten or missed', () => {
+  const state = createState(() => 0.5);
+  state.score = GIANT_FIRST_AT;
+  assert.ok(goldenRoll(state));
+  state.score += GIANT_COOLDOWN * 10;  // a missed golden: no giant mode, cooldown long over
+  assert.ok(!goldenRoll(state), 'no second golden before a scene runs');
+  markSceneEnd(state, 0);
+  assert.ok(goldenRoll(state), 'a scene ended: the next stretch gets its golden');
 });
 
 test('type switch pads the next obstacle gap', () => {

@@ -140,14 +140,17 @@ function spawnSingleton(state, spawnX, skin, rng) {
 
 export function spawnObstacle(state, rng = Math.random) {
   // --- Golden hot dog spawn check ---
-  const goldenEligible = !giantBusy(state) && !anySceneBusy(state)
+  // At most one golden in each stretch between two scenes, so giant mode
+  // never chains or crowds the scenes out.
+  const goldenEligible = !giantBusy(state) && !anySceneBusy(state) && !state.goldenSinceScene
     && state.score >= GIANT_FIRST_AT
-    && state.score >= state.lastGoldenSpawnScore + GIANT_COOLDOWN
+    && state.score >= state.lastGoldenScore + GIANT_COOLDOWN
     && rng() < GIANT_SPAWN_CHANCE;
   if (goldenEligible) {
     state.activeSpawnPattern = null;
     state.obstacles.push(makeObstacle('golden', W + 10));
-    state.lastGoldenSpawnScore = state.score;
+    state.lastGoldenScore = state.score;
+    state.goldenSinceScene = true;
     state.nextObstacleIn = MIN_OBSTACLE_GAP + rng() * MAX_OBSTACLE_GAP;
     state.lastObstacleType = 'golden';
     return;

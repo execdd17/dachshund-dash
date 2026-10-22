@@ -12,6 +12,7 @@
 //   phases[phase](state, scene, ctx) — one frame of that phase; returns the
 //                                next phase name, 'done', or nothing to stay
 //   quietPhases                — phases (besides 'pending') with no normal spawning
+//   jumpsQueue(memory)         — optional: true when this turn joins the front of the scene queue
 //   timeScale(scene)           — optional: multiplier on game time (scenes.js)
 //   scoreless                  — optional: no distance points while it runs
 // ctx is { scale, services, now, rng } for the frame.
@@ -57,6 +58,7 @@ export function sceneGapElapsed(state, now) {
 
 export function markSceneEnd(state, now) {
   state.lastSceneEndAt = now;
+  state.goldenSinceScene = false;  // the next gap may get its golden
 }
 
 // --- Scene queue (fairness between scenes) ---
@@ -72,7 +74,7 @@ export function requestScene(state, id) {
 
 // A pending scene that stood down (giant mode won the race) goes back to the
 // head of the queue: it keeps its turn for after the giant ends instead of
-// rejoining behind everyone else.
+// rejoining behind everyone else. A `jumpsQueue` scene's turn starts there too.
 export function requeueSceneFront(state, id) {
   if (!state.sceneQueue.includes(id)) state.sceneQueue.unshift(id);
 }
@@ -131,7 +133,10 @@ export function stepScene(state, def, ctx) {
     }
     return;
   }
-  if (def.wantsTurn(state, sceneMemory(state, def.id))) requestScene(state, def.id);
+  const memory = sceneMemory(state, def.id);
+  if (def.wantsTurn(state, memory)) {
+    (def.jumpsQueue?.(memory) ? requeueSceneFront : requestScene)(state, def.id);
+  }
   if (tryStartScene(state, def.id, ctx.now)) {
     state.scene = { id: def.id, phase: 'pending', ...def.initialData() };
   }
