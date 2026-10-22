@@ -11,7 +11,7 @@ import {
 import { giantBusy, anySceneBusy } from './encounters.js';
 import { isChaseActive } from './chase.js';
 import { makeObstacle, towerSizeFor } from './obstacleTypes.js';
-import { birdStack, birdTriangle } from './birdWalls.js';
+import { birdStack } from './birdWalls.js';
 
 // Close-gap sequences: duck under the first beat, then answer the second
 // (or jump the ground beat, then duck the aerial one). Gaps are short enough
@@ -70,7 +70,6 @@ const SPAWN_KINDS = {
   },
   bird: (x, skin) => [makeObstacle('bird', x, { y: BIRD_LOW_Y, skin })],
   birdStack: (x, skin) => birdStack(x, { skin }),
-  birdTriangle: (x, skin) => birdTriangle(x, { skin }),
 };
 
 function spawnKind(state, spawnX, skin, kind) {
@@ -120,7 +119,6 @@ function spawnSingleton(state, spawnX, skin, rng) {
   } else if (state.score >= BIRD_WALL_FIRST_AT && r < aerial.below) {
     const r2 = rng();
     if (r2 < aerialSplit.birdStack) type = 'birdStack';
-    else if (r2 < aerialSplit.birdTriangle) type = 'birdTriangle';
     else if (!isChaseActive(state) && r2 < aerialSplit.bird) type = 'bird';
     else type = 'frisbee';
   } else if (state.score > frisbee.after && r < frisbee.below) {

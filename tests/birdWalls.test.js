@@ -1,5 +1,5 @@
-// Bird walls against the real jump physics: what each formation looks like it
-// asks of the player is what it actually takes.
+// The bird wall against the real jump physics: it looks like it has to be
+// ducked, and that's what it takes.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { createState } from '../js/core/state.js';
 import { update } from '../js/systems/update.js';
 import { jump, duck } from '../js/systems/control.js';
-import { birdStack, birdTriangle } from '../js/systems/birdWalls.js';
+import { birdStack } from '../js/systems/birdWalls.js';
 import { DT_BASELINE, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
@@ -45,11 +45,8 @@ function doubleJumpWindows(wall, speed) {
   return windows;
 }
 
-test('ducking passes under both walls at every speed', () => {
-  for (const speed of SPEEDS) {
-    assert.ok(passes(birdStack, speed, { ducking: true }), `stack at ${speed}`);
-    assert.ok(passes(birdTriangle, speed, { ducking: true }), `triangle at ${speed}`);
-  }
+test('ducking passes under the bird stack at every speed', () => {
+  for (const speed of SPEEDS) assert.ok(passes(birdStack, speed, { ducking: true }), `stack at ${speed}`);
 });
 
 test('the bird stack can only be ducked: no jump or double jump gets over or through it', () => {
@@ -58,12 +55,5 @@ test('the bird stack can only be ducked: no jump or double jump gets over or thr
       assert.equal(passes(birdStack, speed, { jumpAt }), false, `single jump at ${jumpAt}, speed ${speed}`);
     }
     assert.equal(Math.max(...doubleJumpWindows(birdStack, speed)), 0, `double jump at speed ${speed}`);
-  }
-});
-
-test('the bird triangle can be double-jumped at every speed, with a skilled but fair window', () => {
-  for (const speed of SPEEDS) {
-    const best = Math.max(...doubleJumpWindows(birdTriangle, speed));
-    assert.ok(best >= 12, `speed ${speed}: best second-press window ${best} frames (~${Math.round(best * DT_BASELINE)}ms)`);
   }
 });

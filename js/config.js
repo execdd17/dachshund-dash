@@ -43,13 +43,9 @@ export const BIRD_LOW_Y = GROUND_Y - 49;   // solo bird and every wall's bottom 
 // Bird walls (systems/birdWalls.js), measured by sweeping jump and double-jump
 // timings against speed — re-sweep if jump physics or the bird hitbox change.
 // The stack is a column with no gap a jump fits through and too tall to
-// double-jump: it must be ducked. The triangle (∧) can be ducked, or cleared
-// by a double jump: from the slowest speed the first press has ~90ms and the
-// second ~110ms, roomier as speed rises.
+// double-jump: it must be ducked.
 export const BIRD_STACK_HIGH_Y = 48;       // stack top
 export const BIRD_STACK_MID_Y = 100;       // stack middle: evenly spaced, filling the jump lane
-export const BIRD_TRI_APEX_Y = 118;        // triangle apex: center, above the wings
-export const BIRD_TRI_WING_DX = 18;        // triangle wings: low-row birds ± from center
 
 // Chase acorn footprint (drawObstacle renders bird/frisbee obstacles as acorns).
 // Solo chase aerials pin to CHASE_ACORN_Y so one acorn forces a duck. Wall
@@ -74,14 +70,14 @@ export const PATTERN_FIRST_AT = 300;         // score before patterns can arm
 // PATTERN_FIRST_AT to `full` at score `fullAt`, so the early game eases in.
 export const PATTERN_CHANCE = { start: 0.05, full: 0.22, fullAt: 1500 };
 export const PATTERN_CLOSE_GAP = 185;        // px between beats (~0.6s at mid speed)
-export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack / triangle solo spawns
+export const BIRD_WALL_FIRST_AT = 180;     // score before bird stack solo spawns
 
 // Solo spawn mix. One roll r is checked against each band in order (each
 // gated by score); an aerial or frisbee pick then rolls again for its variant.
 export const SPAWN_MIX = {
   tower: { after: 400, below: 0.15 },
   aerial: { below: 0.48 },                                     // from BIRD_WALL_FIRST_AT
-  aerialSplit: { birdStack: 0.34, birdTriangle: 0.67, bird: 0.82 },  // rest: frisbee pair
+  aerialSplit: { birdStack: 0.34, bird: 0.82 },  // rest: frisbee pair
   frisbee: { after: 80, below: 0.40 },
   frisbeeAsBird: 0.5,      // outside chase, a frisbee pick becomes a lone bird this often
   typeChangeGapMult: 1.5,  // extra breathing room when the obstacle type changes

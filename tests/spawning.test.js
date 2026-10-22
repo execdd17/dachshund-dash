@@ -6,7 +6,7 @@ import { towerSize } from '../js/systems/obstacleTypes.js';
 import { createState } from '../js/core/state.js';
 import {
   W, GROUND_Y, SQUIRREL_OFFSET, GIANT_FIRST_AT, MIN_OBSTACLE_GAP,
-  BIRD_LOW_Y, BIRD_STACK_HIGH_Y, BIRD_STACK_MID_Y, BIRD_TRI_APEX_Y, BIRD_TRI_WING_DX,
+  BIRD_LOW_Y, BIRD_STACK_HIGH_Y, BIRD_STACK_MID_Y,
   PATTERN_CLOSE_GAP, BIRD_WALL_FIRST_AT,
   PATTERN_CHANCE, PATTERN_FIRST_AT, TOWER_BARS, TOWER_TALL_FROM_SPEED,
 } from '../js/config.js';
@@ -110,19 +110,6 @@ test('bird stack spawns a column of three past BIRD_WALL_FIRST_AT', () => {
   assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall && o.x === W + 10));
   assert.deepEqual(state.obstacles.map(o => o.y), [BIRD_STACK_HIGH_Y, BIRD_STACK_MID_Y, BIRD_LOW_Y]);
   assert.deepEqual(state.obstacles.map(o => o.wallRow), ['high', 'mid', 'low']);
-});
-
-test('bird triangle: two low wings around a raised apex', () => {
-  const state = createState(() => 0.5);
-  state.score = BIRD_WALL_FIRST_AT;
-  const spawnX = W + 10;
-  spawnObstacle(state, createSequenceRng([0.2, 0.5]));  // below PATTERN_FIRST_AT: no pattern roll
-  assert.ok(state.obstacles.every(o => o.type === 'bird' && o.aerialWall));
-  assert.deepEqual(state.obstacles.map(o => [o.x, o.y, o.wallRow]), [
-    [spawnX - BIRD_TRI_WING_DX, BIRD_LOW_Y, 'low'],
-    [spawnX + BIRD_TRI_WING_DX, BIRD_LOW_Y, 'low'],
-    [spawnX, BIRD_TRI_APEX_Y, 'high'],
-  ]);
 });
 
 test('spawn pattern arms on a low roll and sets close gap between beats', () => {
