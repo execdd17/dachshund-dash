@@ -8,7 +8,6 @@ export function killDog(state, services, now = performance.now()) {
   state.sceneQueue = [];
   state.scene = null;
   state.giantPhase = 'off';
-  services.music.resetToNormal();
 
   state.gameState = 'dead';
   services.recordRun(state);

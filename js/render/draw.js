@@ -15,6 +15,7 @@ import { drawDachshund, drawSquirrel } from './actors.js';
 import { tunnelDiveOffset } from './tunnel.js';
 import { drawFlightWind, flightBobOffset, withFlightCape, drawFlightHint } from './flight.js';
 import { drawEffects, drawLandingParticles } from './effects.js';
+import { frenzyShake, drawInfernoSky, drawFireTrail, drawInfernoForeground } from './frenzy.js';
 import {
   drawScore, drawHearts, drawMusicIcon, drawIdleScreen, drawGameOverScreen, drawTutorialOverlay, drawTunnelHint,
 } from './hud.js';
@@ -65,6 +66,8 @@ export function draw(deps) {
       ctx.translate((Math.random() - 0.5) * 2 * intensity, (Math.random() - 0.5) * 2 * intensity);
     }
   }
+  const shake = frenzyShake(state, now);  // the frenzy's drop
+  if (shake) ctx.translate(shake.x, shake.y);
 
   // A scene can pan the camera (cameraLift): the flight pans up, the tunnel
   // down a little. The world moves by `lift`, while the sky, sun, and rain
@@ -75,10 +78,12 @@ export function draw(deps) {
   drawSky(ctx, state, extraTop + lift);
   drawSun(ctx, state, extraTop + lift);
   drawClouds(ctx, state, extraTop + lift / 2);
+  drawInfernoSky(ctx, state, extraTop + lift, now);
   drawFarHills(ctx, state);
   drawNearHills(ctx, state);
   drawGround(ctx, state);
   drawDecor(ctx, state);
+  drawFireTrail(ctx, state, now, flightBobOffset(state.dog, now));
   ctx.save();
   ctx.translate(0, -lift);
   drawRain(ctx, state);
@@ -142,6 +147,7 @@ export function draw(deps) {
 
   drawEffects(ctx, state, sprites, now);
   drawLandingParticles(ctx, state);
+  drawInfernoForeground(ctx, state, extraTop + lift, now);
   drawTunnelHint(ctx, state, now);
   ctx.restore();
 

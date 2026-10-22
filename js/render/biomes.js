@@ -13,6 +13,7 @@
 import { W, GROUND_Y, BIOME_CYCLES } from '../config.js';
 import { lerpColor } from '../core/color.js';
 import { DAY_CYCLE, SUNSET_END, NIGHT_END } from '../core/timeOfDay.js';
+import { hash01 } from './primitives.js';
 
 // --- Hill silhouettes: height above a layer's base at x (pure) ---
 
@@ -71,16 +72,12 @@ export function treelineY(x, offset, amp, freq) {
 // mixed heights, a few gaps between them. Each tree is a triangle around a
 // jittered spot every PINE_SPACING px; the outline is the tallest one there.
 const PINE_SPACING = 13;
-const hash = n => {
-  const v = Math.sin(n * 12.9898) * 43758.5453;
-  return v - Math.floor(v);
-};
 const ridgeY = (v, amp, freq) => amp * (0.3 + Math.sin(v * freq) * 0.12 + Math.sin(v * freq * 2.7 + 1.1) * 0.06);
 // Tree i's height above the ridge at v (0 off the tree, or in a gap).
 function pineAt(i, v, amp) {
-  if (hash(i) < 0.12) return 0;
-  const center = (i + 0.2 + hash(i + 0.5) * 0.6) * PINE_SPACING;
-  const height = amp * (0.35 + hash(i + 0.25) * 0.45);
+  if (hash01(i) < 0.12) return 0;
+  const center = (i + 0.2 + hash01(i + 0.5) * 0.6) * PINE_SPACING;
+  const height = amp * (0.35 + hash01(i + 0.25) * 0.45);
   return Math.max(0, height * (1 - Math.abs(v - center) / (height * 0.32)));
 }
 export function pinesY(x, offset, amp, freq) {
@@ -91,7 +88,7 @@ export function pinesY(x, offset, amp, freq) {
   return ridgeY(v, amp, freq) + tree;
 }
 
-// Layer details: each tree on the ridge in a color picked by hash(i) from
+// Layer details: each tree on the ridge in a color picked by hash01(i) from
 // the layer's `trees` ([share, palette], shares summing to 1), drawn over
 // the fill along the same outline, in order, so a later tree overlaps an
 // earlier one.
@@ -102,7 +99,7 @@ function drawPineColors(ctx, layer, offset, color) {
   for (let i = first; i <= last; i++) {
     const v0 = (i - 1) * PINE_SPACING;  // a tree stays within a slot of its own
     const v1 = (i + 2) * PINE_SPACING;
-    let pick = hash(i + 0.75);
+    let pick = hash01(i + 0.75);
     const [, palette] = trees.find(([share]) => (pick -= share) < 0) ?? trees.at(-1);
     ctx.fillStyle = color(palette);
     ctx.beginPath();

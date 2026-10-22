@@ -61,6 +61,7 @@ export function spawnTunnel(state, layout) {
 
 export const tunnelScene = {
   id: 'tunnel',
+  skipsFrenzy: true,  // ducking into a tunnel doesn't fit the frenzy
   quietPhases: ['active'],  // the scene spawns its own field
   initialData: () => ({ lift: 0 }),
   wantsTurn: (state, memory) => scoreCooldownTrigger(state, memory, TUNNEL_FIRST_AT, TUNNEL_COOLDOWN),

@@ -5,6 +5,7 @@
 import { GROUND_Y, FLIGHT_CALL_MS, CAPE_AWAY_MS } from '../config.js';
 import { inScene } from '../systems/encounters.js';
 import { drawPopupText, roundRect } from './primitives.js';
+import { flightWindAlight, FLIGHT_WIND_FIRE } from './frenzy.js';
 
 const FLIGHT_CAPE_ID = 'cape-hero';  // the body outfit worn while flying
 const CAPE_COLORS = { body: '#2F4FC8', fold: '#1E3590', outline: '#142466', gold: '#F2C230' };
@@ -32,10 +33,12 @@ const STREAKS = [
 export function drawFlightWind(ctx, state, now) {
   const dog = state.dog;
   if (!dog.flying) return;
+  const alight = flightWindAlight(state, now);  // in the frenzy (render/frenzy.js)
   ctx.save();
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#FFFFFF';
-  for (const s of STREAKS) {
+  for (const [i, s] of STREAKS.entries()) {
+    if (alight) ctx.strokeStyle = FLIGHT_WIND_FIRE[i % FLIGHT_WIND_FIRE.length];
     const t = (now / STREAK_PERIOD_MS + s.phase) % 1;
     const x = dog.x + STREAK_START_DX - t * STREAK_TRAVEL;
     const y = dog.y + s.dy + Math.sin(now * 0.006 + s.phase * 9) * 1.5;

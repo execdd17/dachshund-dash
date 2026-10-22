@@ -11,7 +11,6 @@ export function jump(state, services, now = performance.now()) {
   if (canStart) {
     state.gameState = 'running';
     resetRun(state);
-    services.music.resetToNormal();
   }
   if (state.gameState !== 'running') return;
   if (state.dog.flying) {

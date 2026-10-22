@@ -347,6 +347,18 @@ test('recorder: a global-board score waits for a name, then is submitted once un
   assert.equal(loadPlayerName(storage), 'REX', 'remembered to prefill next time');
 });
 
+test('recorder: a run boosted with the +500 debug key counts nowhere', () => {
+  const storage = createFakeStorage();
+  const globalScores = fakeGlobalBoard({ placement: 1 });
+  const state = finishedRun({ score: 9999, scoreBoosted: true, highScore: 5 });
+  createScoreRecorder({ storage, globalScores }).recordRun(state);
+  assert.equal(state.pendingScore, null, 'no name prompt, so nothing can be submitted');
+  assert.equal(state.highScore, 5);
+  assert.deepEqual(state.highScores, []);
+  assert.deepEqual(storage.dump(), {});
+  assert.deepEqual(globalScores.submitted, []);
+});
+
 test('recorder: skipping a global-board score writes nothing', () => {
   const globalScores = fakeGlobalBoard({ placement: 2 });
   const recorder = createScoreRecorder({ storage: createFakeStorage(), globalScores });

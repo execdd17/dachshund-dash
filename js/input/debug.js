@@ -20,6 +20,13 @@ export const DEBUG_KEYS = {
     run: state => { if (!isGiant(state)) state.obstacles.push(makeObstacle('golden', state.dog.x + 120)); },
   },
   KeyN: { label: 'next biome', run: state => { state.biomeSkip++; } },
+  // For testing late-game play. The run is marked, and a marked run never
+  // reaches a leaderboard (debug keys work on the live site too).
+  Equal: {
+    label: '+500 score (keeps the run off the leaderboards)',
+    running: true,
+    run: state => { state.score += 500; state.scoreBoosted = true; },
+  },
   KeyR: {
     label: 'rain',
     run: state => {

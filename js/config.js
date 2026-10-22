@@ -31,7 +31,7 @@ export const DOG_HITBOX_DUCK = { dx: 23, dy: 10, w: 50, h: 8 };
 // a bird that's already past the head doesn't count as a hit.
 export const DOG_HITBOX_RUN_REAR = { w: 16, dy: 3 };
 export const INITIAL_SPEED = 3.0;
-export const MAX_SPEED = 6.5;
+export const MAX_SPEED = 6.75;     // reached at score 7500, so speed keeps climbing into the frenzy (FRENZY_AT)
 export const SPEED_INCREMENT = 0.0005;
 export const MIN_OBSTACLE_GAP = 300;
 export const MAX_OBSTACLE_GAP = 500;
@@ -65,7 +65,8 @@ export const CHASE_ACORN_Y = GROUND_Y - 20;   // drawn y: hitbox clips a standin
 // TOWER_TALL_FROM_SPEED, 5 bars forgives an early or late second press
 // (110-250ms windows) while a single jump only flukes it (16-42ms); 6 bars
 // there demands a second press near the apex. From that speed on, 6 bars has
-// the tolerance and a single jump can't clear it (17ms at MAX_SPEED).
+// the tolerance and a single jump can't clear it (17ms at a top speed of
+// 6.5; raising it to 6.75 widened a single jump's window about 5%).
 export const TOWER_BARS = { short: 5, tall: 6 };
 export const TOWER_TALL_FROM_SPEED = 4.0;   // score ~2000
 
@@ -259,6 +260,17 @@ export const CAPE_AWAY_MS = 1100;          // the cape flying off after the land
 // --- Weather ---
 export const RAIN_CHANCE = 0.25;   // rolled at each dawn→day and sunset→night change
 export const RAIN_DROPS = 120;
+
+// --- Music (systems/soundtrack.js) ---
+export const MUSIC_FADE_MS = 1200;   // a track fades out over this, then the next fades in over it (giant mode cuts in at once)
+
+// --- Frenzy (systems/frenzy.js) ---
+export const FRENZY_AT = 5000;         // score from which the frenzy starts, and with it its music and the score's fire
+export const FRENZY_DROP_MS = 2200;    // the drop's banner; its flash, shockwave, and shake are shorter
+export const FRENZY_SHAKE_MS = 600;
+export const FRENZY_SHAKE_PX = 5;
+export const FRENZY_DROP_CALM = 400;   // px of travel before the next spawn after the drop clears the field
+export const BURST_MS = 750;         // a hazard's rainbow burst
 
 // --- Biomes (render/biomes.js; cosmetic) ---
 export const BIOME_CYCLES = 2;  // day cycles (700 pts each) per biome; the next takes over during the last night

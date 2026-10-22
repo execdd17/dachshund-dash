@@ -56,9 +56,10 @@ export function setScenePhase(state, id, phase) {
   }
 }
 
-// Debug keys: start scene `id` right away (clearing the field), unless a
-// scene is already running. Skips the queue and the gap between scenes, but
-// still stands down for giant mode like any pending scene.
+// Starts scene `id` right away (clearing the field), unless a scene is
+// already running: the debug keys, and the frenzy's drop with its boss
+// (frenzy.js). Skips the queue and the gap between scenes, but still stands
+// down for giant mode like any pending scene.
 export function forceScene(state, id) {
   if (state.scene) return;
   state.sceneQueue = state.sceneQueue.filter(queued => queued !== id);

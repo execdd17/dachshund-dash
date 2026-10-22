@@ -109,3 +109,10 @@ export function drawPopupText(ctx, text, x, y, { color, size, alpha, outline }) 
   ctx.fillText(text, x, y);
   ctx.restore();
 }
+
+// A repeatable pseudo-random value in [0, 1) for n: for details that must
+// look random but stay put frame to frame.
+export function hash01(n) {
+  const v = Math.sin(n * 12.9898) * 43758.5453;
+  return v - Math.floor(v);
+}

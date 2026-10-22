@@ -25,7 +25,7 @@ static server, `launchBrowser()` for the Playwright Chromium, and
 - Start/restart a run: `page.keyboard.press('Space')` or click the `#game` canvas.
 - To force collisions, just never jump — the dog hits the first obstacle in ~5s.
 - A fresh profile opens its first run with the controls tutorial, and debug scene keys do nothing while it runs. To skip it, `addInitScript` setting `localStorage.dachshundDashTutorial` to `JSON.stringify({ version: Number.MAX_SAFE_INTEGER, seenAt: Date.now() })` (not `Infinity`: JSON turns it into `null`). To drive it, wait for its gold prompt text, as `tools/verify/smoke.mjs` does.
-- Debug keys (`js/input/debug.js`): P slow-mo, C chase, B boss, T trampoline scene, U tunnel scene, F flight scene (sends its cape), G golden hot dog, N next biome (cosmetic), R rain, H hat. C/B/T/U/F/G only act mid-run; C/B/T/U/F never start a scene on top of a running one. In the tunnel, hold ArrowDown over a hole to drop in and release it to pop up at the next hole. In flight (run into the cape), ArrowUp/ArrowDown move a lane.
+- Debug keys (`js/input/debug.js`): P slow-mo, C chase, B boss, T trampoline scene, U tunnel scene, F flight scene (sends its cape), G golden hot dog, N next biome (cosmetic), + (Equal) +500 score for late-game testing (the run then counts on no leaderboard), R rain, H hat. C/B/T/U/F/G/+ only act mid-run; C/B/T/U/F never start a scene on top of a running one. In the tunnel, hold ArrowDown over a hole to drop in and release it to pop up at the next hole. In flight (run into the cape), ArrowUp/ArrowDown move a lane.
 - Collect `pageerror` / console errors — CLAUDE.md says asset/Firebase init errors show there.
 
 ## Reading game state (it's all canvas — no DOM text)

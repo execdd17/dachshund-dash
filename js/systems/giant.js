@@ -1,7 +1,8 @@
 // Giant mode lifecycle: triggered by eating a golden hot dog; scales the dog,
-// switches music, multiplies score, and makes obstacles edible. Hot dogs and
-// towers are eaten automatically; birds and frisbees turn into bones, and
-// bones fetched in a row pay more (a bone that gets past breaks the streak).
+// multiplies score, and makes obstacles edible (its music: systems/soundtrack.js).
+// Hot dogs and towers are eaten automatically; birds and frisbees turn into
+// bones, and bones fetched in a row pay more (a bone that gets past breaks the
+// streak).
 
 import {
   GIANT_SCALE, GIANT_SCALE_TRANSITION, GIANT_SCORE_MULTIPLIER, GIANT_END_INVULN, GIANT_PIVOT_Y,
@@ -23,7 +24,7 @@ export function giantScoreMultiplier(state) {
   return isGiant(state) ? GIANT_SCORE_MULTIPLIER : 1;
 }
 
-export function activateGiantMode(state, { sfx, music }, now = performance.now()) {
+export function activateGiantMode(state, { sfx }, now = performance.now()) {
   state.giantPhase = 'growing';
   state.giantStartTime = now;
   state.giantTransitionStart = now;
@@ -33,10 +34,9 @@ export function activateGiantMode(state, { sfx, music }, now = performance.now()
   state.giantLastPattern = null;
   state.giantPatternsLeft = { ...GIANT_ROUND };  // the bone round's patterns (giantBones.js)
   sfx.playGiantActivate();
-  if (music.isOn()) music.switchToGiant();
 }
 
-export function deactivateGiantMode(state, { sfx, music }, now = performance.now()) {
+export function deactivateGiantMode(state, { sfx }, now = performance.now()) {
   state.giantPhase = 'shrinking';
   state.giantTransitionStart = now;
   // One giant mode earns more than GIANT_COOLDOWN, so the cooldown counts from here.
@@ -46,7 +46,6 @@ export function deactivateGiantMode(state, { sfx, music }, now = performance.now
   // meant to eat, so reuse the post-hit i-frames instead of killing them.
   state.invulnUntil = Math.max(state.invulnUntil, now + GIANT_END_INVULN);
   sfx.playGiantDeactivate();
-  if (music.isGiantActive()) music.switchToNormal();
 }
 
 // Ends a grow or shrink once its GIANT_SCALE_TRANSITION has run. Called at

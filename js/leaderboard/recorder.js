@@ -11,6 +11,11 @@ export function createScoreRecorder({ storage, globalScores }) {
   // Called once per death (services.recordRun).
   function recordRun(state) {
     const { score, difficulty } = state;
+    // A run boosted with the +500 debug key counts nowhere.
+    if (state.scoreBoosted) {
+      state.pendingScore = null;
+      return;
+    }
     state.highScore = Math.max(state.highScore, score);
     if (qualifiesLocally(state.highScores, score)) {
       state.highScores = insertScore(state.highScores, state.playerName ?? '', score);

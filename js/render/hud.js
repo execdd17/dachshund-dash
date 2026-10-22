@@ -1,5 +1,6 @@
-// HUD: score readout, giant-mode timer, hearts, music icon,
-// idle/game-over text, tutorial prompts, the tunnel's HOLD ↓ hint.
+// HUD: score readout (on fire in the frenzy: render/frenzy.js), giant-mode timer,
+// hearts, music icon, idle/game-over text, tutorial prompts, the tunnel's
+// HOLD ↓ hint.
 
 import {
   W, GIANT_DURATION, GIANT_WARN_AT, GIANT_SCORE_MULTIPLIER,
@@ -10,6 +11,7 @@ import { formatOrdinal } from '../leaderboard/global.js';
 import { isGiant } from '../systems/giant.js';
 import { TUTORIAL_STEP_COUNT } from '../systems/tutorial.js';
 import { inScene } from '../systems/encounters.js';
+import { drawScoreFire } from './frenzy.js';
 
 // In app mode the HUD hugs the visible top edge (above world y=0, inside the
 // device safe areas) instead of the world's top — see view.js.
@@ -33,8 +35,15 @@ export function drawScore(ctx, state, view, now = performance.now()) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.fillText('HI ' + String(Math.floor(hi)).padStart(5, '0') + '  ', hud.right - 100, hud.top + 30);
   }
+  const scoreRight = hud.right - 15;
+  if (drawScoreFire(ctx, scoreRight - ctx.measureText(scoreStr).width, scoreRight, hud.top + 34, state, now)) {
+    ctx.strokeStyle = 'rgba(60, 10, 0, 0.85)';  // keeps the digits legible over the fire
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(scoreStr, scoreRight, hud.top + 30);
+  }
   ctx.fillStyle = '#fff';
-  ctx.fillText(scoreStr, hud.right - 15, hud.top + 30);
+  ctx.fillText(scoreStr, scoreRight, hud.top + 30);
 
   // Giant mode multiplier + timer bar
   if (isGiant(state)) {

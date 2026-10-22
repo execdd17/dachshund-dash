@@ -15,6 +15,7 @@
 //   jumpsQueue(memory)         — optional: true when this turn joins the front of the scene queue
 //   timeScale(scene)           — optional: multiplier on game time (scenes.js)
 //   scoreless                  — optional: no distance points while it runs
+//   skipsFrenzy                — optional: never asks for a turn once the frenzy starts (frenzy.js)
 // ctx is { scale, services, now, rng } for the frame.
 
 import { SCENE_MIN_GAP } from '../config.js';
@@ -134,7 +135,7 @@ export function stepScene(state, def, ctx) {
     return;
   }
   const memory = sceneMemory(state, def.id);
-  if (def.wantsTurn(state, memory)) {
+  if (!(def.skipsFrenzy && state.frenzyAt > 0) && def.wantsTurn(state, memory)) {
     (def.jumpsQueue?.(memory) ? requeueSceneFront : requestScene)(state, def.id);
   }
   if (tryStartScene(state, def.id, ctx.now)) {

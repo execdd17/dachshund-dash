@@ -14,7 +14,7 @@ import { flightScene, spawnGates, steerFlight } from '../js/systems/flight.js';
 import { sceneMemory } from '../js/systems/encounters.js';
 import {
   H, GROUND_Y, INITIAL_SPEED, MAX_SPEED, SPEED_INCREMENT,
-  FLIGHT_FIRST_AT, FLIGHT_COOLDOWN, FLIGHT_LANES, FLIGHT_HUD_BAND, FLIGHT_GATES, FLIGHT_EASY_GATES,
+  FLIGHT_FIRST_AT, FLIGHT_COOLDOWN, FLIGHT_LANES, FLIGHT_HUD_BAND, FLIGHT_GATES, FLIGHT_EASY_GATES, FRENZY_AT,
 } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
@@ -29,6 +29,7 @@ function capeState(speed = INITIAL_SPEED) {
   state.gameState = 'running';
   state.startingHearts = state.hearts = 99;
   state.score = scoreForSpeed(speed);
+  if (state.score >= FRENZY_AT) state.frenzyAt = 1;  // past the frenzy's drop, which would put the boss first
   forceScene(state, 'flight');
   return state;
 }

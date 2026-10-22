@@ -44,6 +44,7 @@ async function renderFrames() {
   let seed = 1;
   const rng = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const NOW = 100000;
+  Math.random = () => 0.5;  // the screen shakes (death, the frenzy's drop) hold still, so frames compare
   const fresh = () => {
     seed = 1;
     const s = createState(rng);
@@ -62,6 +63,20 @@ async function renderFrames() {
     for (const score of [0, 300, 450, 650]) add(`biome-${skip}-score-${score}`, s => { s.biomeSkip = skip; s.score = score; });
   }
   add('biome-handover', s => { s.score = 1175; });
+  // The frenzy (render/frenzy.js): the drop (flash, shockwave, banner),
+  // rainbow bursts, and the inferno with the score's fire as speed climbs.
+  const frenzy = (score, speed, since = 3000) => s => { Object.assign(s, { score, speed, frenzyAt: NOW - since }); };
+  add('frenzy', frenzy(5200, 5.6));
+  add('frenzy-hotter', frenzy(6600, 6.3));
+  add('frenzy-maxing', s => { frenzy(7510, 6.75)(s); });
+  add('frenzy-max', frenzy(8400, 6.75));
+  for (const t of [80, 350, 700]) {
+    add(`frenzy-drop-${t}`, s => { frenzy(5000, 5.5, t)(s); addEffect(s, 'frenzyDrop', NOW - t, { x: 110, y: 200 }); });
+  }
+  add('frenzy-bursts', s => {
+    frenzy(5400, 5.7)(s);
+    [[30, 60], [300, 250], [520, 450]].forEach(([x, age]) => addEffect(s, 'burst', NOW - age, { x, y: 205, size: 36 }));
+  });
   // Types without a default height (birds, the trampoline's heart) are placed by their spawner.
   const placed = type => (OBSTACLE_TYPES[type].y === undefined ? { y: 120 } : {});
   Object.keys(OBSTACLE_TYPES).forEach(type => add(`obstacle-${type}`, s => { s.obstacles = [makeObstacle(type, 260, placed(type)), makeObstacle(type, 520, placed(type))]; }));
@@ -100,6 +115,7 @@ async function renderFrames() {
     add('dog-flying', s => { fly(s, 2); s.flightHintPending = false; addEffect(s, 'flightCall', NOW - 300); });
     add('dog-flying-rain', s => { fly(s, 0); s.flightHintPending = false; s.weatherRain = true; initRain(s, rng); });
     add('cape-away', s => { addEffect(s, 'capeAway', NOW - 300, { x: 90, y: 180, vx: -1.2, vy: -1.6, rotation: -0.3 }); });
+    add('frenzy-flying', s => { fly(s, 1); Object.assign(s, { flightHintPending: false, score: 5600, speed: 5.8, frenzyAt: NOW - 3000 }); });
   }
   for (const phase of ['growing', 'active', 'shrinking']) {
     add(`giant-${phase}`, s => { s.giantPhase = phase; s.giantStartTime = NOW - 2000; s.giantTransitionStart = NOW - 300; });

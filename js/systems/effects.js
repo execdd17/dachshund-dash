@@ -2,7 +2,9 @@
 // list, state.effects: [{ kind, startTime, ...props }]. Gameplay adds them,
 // update() ages them out, and render/effects.js draws each kind.
 
-import { CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS, GIANT_FEAST_MS } from '../config.js';
+import {
+  CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS, GIANT_FEAST_MS, FRENZY_DROP_MS, BURST_MS,
+} from '../config.js';
 
 // Per kind: how long it lives (ms) and, optionally, how it moves each frame.
 export const EFFECT_KINDS = {
@@ -34,6 +36,12 @@ export const EFFECT_KINDS = {
       e.vy -= 0.01 * scale;
       e.rotation -= 0.03 * scale;
     },
+  },
+  // The frenzy (systems/frenzy.js): its drop, and a hazard bursting into a rainbow (drifting back a little).
+  frenzyDrop: { ttl: FRENZY_DROP_MS },
+  burst: {
+    ttl: BURST_MS,
+    step(e, scale) { e.x -= 1.2 * scale; },
   },
 };
 

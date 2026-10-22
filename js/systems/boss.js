@@ -22,6 +22,7 @@ export function bossSpeedMultiplier(state) {
 
 export const bossScene = {
   id: 'boss',
+  skipsFrenzy: true,  // the frenzy opens with a boss of its own (frenzy.js), and no more after it
   quietPhases: ['exiting'],
   initialData: () => ({ squirrelX: BOSS_SQUIRREL_START_X, chaseFrames: 0, dogShift: 0 }),
 

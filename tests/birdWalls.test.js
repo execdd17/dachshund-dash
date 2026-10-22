@@ -21,6 +21,7 @@ function passes(wall, speed, { jumpAt = null, doubleAfter = null, ducking = fals
   const services = createTestServices();
   state.gameState = 'running';
   state.score = (speed - INITIAL_SPEED) / SPEED_INCREMENT;
+  state.frenzyAt = 1;  // top speed is past FRENZY_AT: start after the frenzy's drop, which would clear the wall
   state.nextObstacleIn = Infinity;
   state.obstacles = wall(500);
   const hearts = state.hearts;

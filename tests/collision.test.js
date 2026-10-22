@@ -322,6 +322,7 @@ test('standing up once a ducked-under bird, tail and all, is past the shoulders 
     const services = createTestServices();
     state.gameState = 'running';
     state.score = (speed - INITIAL_SPEED) / SPEED_INCREMENT;
+    state.frenzyAt = 1;  // top speed is past FRENZY_AT: start after the frenzy's drop, which would clear the bird
     state.nextObstacleIn = Infinity;
     const bird = makeObstacle('bird', 400, { y: BIRD_LOW_Y });
     state.obstacles = [bird];

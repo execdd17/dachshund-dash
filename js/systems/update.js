@@ -23,8 +23,12 @@ import { updateScenes, scenesBlockSpawning, sceneTimeScale, scenesFreezeScore } 
 import { updateRain, rollWeatherOnStageChange } from './weather.js';
 import { addEffect, updateEffects } from './effects.js';
 import { killDog } from './death.js';
+import { soundtrackFor } from './soundtrack.js';
+import { stepFrenzy } from './frenzy.js';
 
 export function update(state, dt, services, rng = Math.random, now = performance.now()) {
+  // The music follows the game every frame, between runs too (back to the main track).
+  services.music.follow(soundtrackFor(state));
   if (state.gameState !== 'running') return;
 
   const scale = (dt / DT_BASELINE) * (state.slowMode ? 0.5 : 1) * sceneTimeScale(state);
@@ -109,6 +113,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   });
 
+  stepFrenzy(state, now);  // after the bird bonus, so a jumped bird still pays before it blows up
   state.obstacles = state.obstacles.filter(o => o.x + o.width > -10);
 
   // Landing dust particles
