@@ -1,0 +1,12 @@
+{
+  "model": "ai/models/tier4-from-tier3.json: tier 4 (trained on 2 → 3 → 4), generation 8",
+  "tier": 4,
+  "runs": 100,
+  "mean": 100000,
+  "median": 100000,
+  "min": 100000,
+  "max": 100000,
+  "cleared": "100/100 reached 100000",
+  "killedBy": {},
+  "speedAtDeath": "none"
+}

@@ -22,13 +22,17 @@ Nothing here is part of the game or touches the leaderboard.
   pairs), at the game's early odds. Tier 2: + the tower (a double jump; it
   grows to 6 bars at speed 4.0, as in the game). Tier 3: + the squirrel chase
   (the first scene: while it runs, the game's own spawner throws acorns from
-  the squirrel, close ahead of the dog). A new tier is one entry.
+  the squirrel, close ahead of the dog). Tier 4: + the bosses (at speeds 3.5
+  and 4.5: everything up to 25% faster, the dog pushed forward) and the
+  frenzy (from 5.5: the drop, its boss, then the rest of the run). A new tier
+  is one entry.
 - **Observation** (`observe.js`, `radar-1`): the dog's own state and the speed,
   plus a radar of the screen ahead in four height bands, cut where the dog's
   hitboxes change what an obstacle asks: ground (hits even a ducking dog),
   head (a standing dog, not a ducking one), low air and high air (a dog in the
   air). For each band, the next two things in it: when each reaches the dog's
-  nose and when it's past its tail, in time (distance ÷ speed). No obstacle
+  nose and when it's past its tail, in time (distance ÷ how fast things are
+  really coming, which a boss speeds up). No obstacle
   types: a bird stack is three bands at once, and a new obstacle needs no new
   inputs. 22 numbers.
 - **Actions**: 30 times a second, nothing, jump, or duck (held).
@@ -38,7 +42,8 @@ Nothing here is part of the game or touches the leaderboard.
   by crossover and mutation, on every core. Each generation's best is checked
   on 12 fixed validation runs; the best of those is saved. `--from` starts from
   an earlier model (a curriculum); `--name` names the model (`tier<N>` by
-  default).
+  default); `--cap` raises the score a run counts as cleared at, to train
+  for staying power once a tier is cleared.
 - **Models** (`models.js`, `models/<name>.json`): weights plus the observation
   version (a model won't load against other inputs), its tier, and the tiers
   it trained through.
@@ -51,7 +56,7 @@ A run counts as cleared at 8,000 points (`SCORE_CAP`), past top speed (7,500).
 
 ```bash
 node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1]
-node ai/evaluate.mjs --model ai/models/tier2.json [--tier 2] [--runs 50]
+node ai/evaluate.mjs --model ai/models/tier2.json [--tier 2] [--runs 50] [--cap 30000]
 ```
 
 Results land in `results/<name>/` (`curve.csv`, `train.log`,
@@ -122,4 +127,12 @@ Serve the repo root and open `/ai/watch.html`.
 | `tier2-from-tier1` | 2 | generation 26, 128 s | 292 / 300 |
 | `tier3-from-tier2` | 3 | generation 0 (the tier-2 champion's offspring already did) | 288 / 300 |
 | `tier3` | 3 | never (6,990 of 8,000 after 1,498 generations, 30 min) | 68 / 300 |
+| `tier4-from-tier3` | 4, to 30,000 | generation 8, 296 s | 100 / 100 to 30,000; 100 / 100 to 100,000; 9 / 10 to 1,000,000 |
+
+The tier-3 champion already cleared tier 4 to 8,000 (99 of 100 runs): the
+bosses and the frenzy asked nothing new of it. Its limit was staying power at
+top speed: to 30,000 it cleared 58 of 100 (33 deaths to the tall tower). So
+tier 4 trained with `--cap 30000`, and eight generations later the champion
+cleared all 100 runs to 30,000 and to 100,000, and nine of ten to a million
+points (the tenth fell to an acorn at 319,027).
 

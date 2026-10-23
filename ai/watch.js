@@ -152,9 +152,10 @@ function showPanel() {
   });
 }
 
-// What to draw: the environment holds the frenzy off by marking it started
-// (env.js), so draw it as never started, without its bursts.
+// What to draw: a tier without the frenzy holds it off by marking it started
+// (env.js), so draw that as never started, without its bursts.
 function shown(state) {
+  if (TIERS[tier].frenzy) return state;
   return { ...state, frenzyAt: 0, effects: state.effects.filter(e => e.kind !== 'burst') };
 }
 

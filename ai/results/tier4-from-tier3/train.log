@@ -1,0 +1,10 @@
+gen 0 (35s): best 30000, mean 4859, validation 28264, champion 28264 (gen 0)
+gen 1 (71s): best 30000, mean 4508, validation 22171, champion 28264 (gen 0)
+gen 2 (102s): best 30000, mean 4065, validation 22171, champion 28264 (gen 0)
+gen 3 (131s): best 30000, mean 3708, validation 22171, champion 28264 (gen 0)
+gen 4 (163s): best 30000, mean 4250, validation 22171, champion 28264 (gen 0)
+gen 5 (197s): best 30000, mean 4814, validation 22171, champion 28264 (gen 0)
+gen 6 (228s): best 30000, mean 4289, validation 22171, champion 28264 (gen 0)
+gen 7 (264s): best 30000, mean 5254, validation 22171, champion 28264 (gen 0)
+gen 8 (296s): best 30000, mean 4001, validation 30000, champion 30000 (gen 8)
+done: champion from generation 8, validation mean 30000

@@ -1,7 +1,8 @@
 // The training environment: the real game logic (js/) with the usual RL
 // contract. What spawns comes from a tier (tiers.js): the environment spawns
 // the tier's kinds at the game's own gaps and pattern odds, and the game's
-// golden hot dogs, frenzy, and the scenes the tier doesn't allow are held off.
+// golden hot dogs, the scenes the tier doesn't allow, and (unless the tier
+// has it) the frenzy are held off.
 // While an allowed scene holds the slot, the game's own spawner runs (the
 // chase's acorns come from the squirrel, by the game's rules). One heart: any
 // hit ends the run. Speed follows the normal ramp. A seed replays a run
@@ -44,7 +45,7 @@ function kindOf(o) {
 }
 
 export function createEnv({ seed, tier }) {
-  const { solo, patterns, scenes = [] } = TIERS[tier];
+  const { solo, patterns, scenes = [], frenzy = false } = TIERS[tier];
   const soloKinds = Object.entries(solo);
   const soloTotal = soloKinds.reduce((sum, [, w]) => sum + w, 0);
   const services = { sfx: createSilentSfx(), music: createSilentMusic(), recordRun() {} };
@@ -93,6 +94,7 @@ export function createEnv({ seed, tier }) {
 
   function frame() {
     const state = env.state;
+    env.lastScene = state.scene?.id ?? null;  // death clears the slot: play.js asks what was running
     const inScene = Boolean(state.scene);
     if (!inScene) state.nextObstacleIn = Infinity;  // the game's spawner runs only in a scene
     env.now += FRAME_MS;
@@ -117,7 +119,7 @@ export function createEnv({ seed, tier }) {
     state.gameState = 'running';
     state.startingHearts = 1;
     resetRun(state);
-    state.frenzyAt = 1;               // past the frenzy's drop, so it never brings its boss
+    if (!frenzy) state.frenzyAt = 1;  // past the frenzy's drop, so it never brings its boss
     Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null });
     return env;
   };

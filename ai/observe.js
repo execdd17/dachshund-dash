@@ -9,6 +9,7 @@
 
 import { GROUND_Y, INITIAL_SPEED, MAX_SPEED, DOG_HITBOX_STAND, DOG_HITBOX_DUCK } from '../js/config.js';
 import { OBSTACLE_TYPES, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
+import { bossSpeedMultiplier } from '../js/systems/boss.js';
 
 export const OBSERVATION = 'radar-1';
 
@@ -52,7 +53,8 @@ export function radar(state) {
 }
 
 export function observe(state) {
-  const { dog, speed } = state;
+  const { dog } = state;
+  const scroll = state.speed * bossSpeedMultiplier(state);  // how fast things come at the dog (a boss speeds it up)
   const nose = dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w;
   const tail = dog.x + DOG_HITBOX_STAND.dx;
   const inputs = [
@@ -61,12 +63,12 @@ export function observe(state) {
     dog.jumping ? 1 : 0,
     dog.doubleJumped ? 1 : 0,
     state.duckHeld ? 1 : 0,
-    (speed - INITIAL_SPEED) / (MAX_SPEED - INITIAL_SPEED),
+    (state.speed - INITIAL_SPEED) / (MAX_SPEED - INITIAL_SPEED),
   ];
   for (const band of radar(state)) {
     for (let i = 0; i < PER_BAND; i++) {
       const b = band[i];
-      inputs.push(b ? clampTime(b.x - nose, speed) : 1, b ? clampTime(b.x + b.w - tail, speed) : 1);
+      inputs.push(b ? clampTime(b.x - nose, scroll) : 1, b ? clampTime(b.x + b.w - tail, scroll) : 1);
     }
   }
   return inputs;

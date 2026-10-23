@@ -5,6 +5,7 @@
 //   solo: weights of the single-obstacle kinds
 //   patterns: whether the close-gap patterns come too
 //   scenes: scene ids allowed to take their turns (the rest are held off)
+//   frenzy: whether the frenzy runs (else it's held off, and its boss with it)
 
 export const TIERS = {
   // The first experiment: chocolate bars and lone birds.
@@ -19,4 +20,7 @@ export const TIERS = {
   // + the squirrel chase: it runs ahead and throws acorns from close range
   // (the game's own spawner, while it runs), ground ones to jump, high ones to duck.
   3: { name: 'the squirrel chase', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true, scenes: ['chase'] },
+  // + the bosses (at BOSS_SPEEDS: everything faster, the dog pushed forward)
+  // and the frenzy (from FRENZY_SPEED: the drop, its boss, then the rest of the run).
+  4: { name: 'bosses and the frenzy', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true, scenes: ['chase', 'boss'], frenzy: true },
 };

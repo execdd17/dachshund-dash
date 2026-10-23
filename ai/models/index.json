@@ -54,5 +54,16 @@
     ],
     "generation": 0,
     "validation": 8000
+  },
+  {
+    "name": "tier4-from-tier3",
+    "tier": 4,
+    "trainedOn": [
+      2,
+      3,
+      4
+    ],
+    "generation": 8,
+    "validation": 30000
   }
 ]

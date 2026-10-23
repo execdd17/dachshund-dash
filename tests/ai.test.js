@@ -11,7 +11,9 @@ import { observe, radar, INPUTS, BANDS, OBSERVATION } from '../ai/observe.js';
 import { createNet } from '../ai/net.js';
 import { saveable, loadNet } from '../ai/models.js';
 import { SPAWN_KINDS } from '../js/systems/spawning.js';
-import { PATTERN_CLOSE_GAP } from '../js/config.js';
+import { PATTERN_CLOSE_GAP, BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, DOG_HITBOX_STAND } from '../js/config.js';
+import { setScenePhase } from '../js/systems/scenes.js';
+import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
 import { seededRng } from '../ai/env.js';
 
 // Steps a tier with random actions until it ends (or `steps`), returning what it spawned and its score.
@@ -65,6 +67,36 @@ test('no two spawns come closer than the game\'s tightest gap, scenes ending inc
       assert.ok(closest >= PATTERN_CLOSE_GAP - 8, `tier ${tier}, seed ${seed}: spawns ${closest}px apart`);
     }
   }
+});
+
+test('tier 4: a dog that dodges everything outlasts the bosses and plays on through the frenzy', () => {
+  const env = createEnv({ seed: 7, tier: 4 }).reset();
+  const { state } = env;
+  const bosses = new Set();
+  let frame = 0;
+  while (state.score < 6500 && !env.step('none').done) {
+    state.invulnUntil = Infinity;  // obstacles can't hurt it; only the boss squirrel's catch could end the run
+    if (state.scene?.id === 'boss' && state.scene.phase === 'active') bosses.add(state.frenzyAt > 0 ? 'frenzy' : `speed ${state.speed.toFixed(1)}`.slice(0, 9));
+    frame++;
+  }
+  assert.equal(state.gameState, 'running', 'no boss caught it');
+  assert.ok(state.frenzyAt > 0, 'the frenzy started');
+  assert.ok(bosses.has('frenzy') && bosses.size >= 3, `bosses at ${[...bosses].join(', ')}`);
+});
+
+test('the radar times things by how fast they really come: faster in a boss', () => {
+  const env = createEnv({ seed: 1, tier: 4 }).reset();
+  const { state } = env;
+  const bar = makeObstacle('hotdog', 200);  // near enough to read under the radar's half-second cap
+  state.obstacles = [bar];
+  const nose = state.dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w;
+  const groundReaches = () => observe(state)[observe(state).length - 4];  // the ground band's 1st: reaches
+  const calm = groundReaches();
+  setScenePhase(state, 'boss', 'active');
+  state.scene.chaseFrames = BOSS_CHASE_DURATION / 2;  // the boss at full speed
+  const boss = groundReaches();
+  assert.ok(Math.abs(calm * state.speed * 60 - (getObstacleHitbox(bar).x - nose)) < 1e-6, 'distance ÷ speed, in half seconds');
+  assert.ok(Math.abs(boss - calm / BOSS_SPEED_MULTIPLIER) < 1e-9, 'a boss brings it sooner');
 });
 
 // The bands a kind fills, as the radar reads it in front of the dog.

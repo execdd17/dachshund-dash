@@ -6,7 +6,10 @@
 // With --from, the population starts as variations of an earlier model (a
 // curriculum: tier 1's champion continuing on tier 2).
 //
-//   node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1]
+//   node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1] [--cap 8000]
+//
+// --cap is the score a run counts as cleared at (SCORE_CAP); raise it once a
+// tier is cleared, to train for staying power at top speed.
 
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
@@ -30,13 +33,15 @@ const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 // Worker: score a batch of networks on the given seeds.
 if (!isMainThread) {
-  parentPort.on('message', ({ nets, seeds, tier }) => {
-    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed, tier).score))));
+  parentPort.on('message', ({ nets, seeds, tier, cap }) => {
+    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed, tier, cap).score))));
   });
 } else {
   const { values } = parseArgs({ options: {
     tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' }, name: { type: 'string' },
+    cap: { type: 'string', default: String(SCORE_CAP) },
   } });
+  const cap = Number(values.cap);
   const tier = Number(values.tier);
   const minutes = Number(values.minutes);
   const name = values.name ?? `tier${tier}`;
@@ -50,7 +55,7 @@ if (!isMainThread) {
     const chunk = Math.ceil(nets.length / workers.length);
     return Promise.all(workers.map((w, i) => new Promise(resolve => {
       w.once('message', resolve);
-      w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds, tier });
+      w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds, tier, cap });
     }))).then(parts => parts.flat());
   };
 
@@ -73,7 +78,7 @@ if (!isMainThread) {
     const [validation] = await score([ranked[0].net], VALIDATION_SEEDS);
     if (validation > champion.validation) {
       champion = { validation, gen, net: ranked[0].net };
-      const meta = { tier, trainedOn, generation: gen, validation, from: values.from ?? null };
+      const meta = { tier, trainedOn, generation: gen, validation, cap, from: values.from ?? null };
       writeFileSync(new URL(modelFile(name), dir), JSON.stringify(saveable(champion.net, meta)));
       writeModelIndex();
     }
@@ -82,7 +87,7 @@ if (!isMainThread) {
     curve.push([gen, seconds, fits[0], mean(fits), fits[Math.floor(fits.length / 2)], validation].map(v => Math.round(v)).join(','));
     writeFileSync(new URL('curve.csv', results), curve.join('\n') + '\n');
     console.log(`gen ${gen} (${seconds}s): best ${Math.round(fits[0])}, mean ${Math.round(mean(fits))}, validation ${Math.round(validation)}, champion ${Math.round(champion.validation)} (gen ${champion.gen})`);
-    if (champion.validation >= SCORE_CAP) break;  // clears every validation run
+    if (champion.validation >= cap) break;  // clears every validation run
 
     // Next generation: the elite, then children of tournament winners from the fitter half.
     const parents = ranked.slice(0, POPULATION / 2);
