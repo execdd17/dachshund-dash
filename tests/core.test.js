@@ -5,12 +5,13 @@ import { lerpColor } from '../js/core/color.js';
 import { getDogSpriteAnim } from '../js/assets/sprites.js';
 import { getTimeOfDay } from '../js/core/timeOfDay.js';
 import { createState, createRunState, resetRun } from '../js/core/state.js';
-import { difficultyAt, isDifficultyLabel, DEFAULT_DIFFICULTY } from '../js/core/difficulty.js';
+import { difficultyAt, isBoardLabel, BOARD_LABELS, DEFAULT_DIFFICULTY } from '../js/core/difficulty.js';
+import { readFileSync } from 'node:fs';
 import { getScenePhase, setScenePhase } from '../js/systems/scenes.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import {
   INITIAL_SPEED, GROUND_Y, DOG_BASE_X,
-  DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX,
+  DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY_INDEX, HYPER_LEVEL,
 } from '../js/config.js';
 
 test('lerpColor returns endpoints at t=0 and t=1', () => {
@@ -117,12 +118,24 @@ test('dog sprite anim per game state: setup and idle stand still, running runs',
   assert.equal(getDogSpriteAnim(s, 0), 'dead');
 });
 
-test('difficultyAt falls back to the default level; isDifficultyLabel matches labels only', () => {
+test('difficultyAt falls back to the default level; isBoardLabel matches board labels only', () => {
   assert.equal(difficultyAt(0).label, 'VERY EASY');
   assert.equal(difficultyAt(99), DEFAULT_DIFFICULTY);
   assert.equal(difficultyAt(Number('x')), DEFAULT_DIFFICULTY);
-  assert.equal(isDifficultyLabel('HARD'), true);
-  assert.equal(isDifficultyLabel('hard'), false);
+  assert.equal(isBoardLabel('HARD'), true);
+  assert.equal(isBoardLabel('HYPER'), true);
+  assert.equal(isBoardLabel('hard'), false);
+});
+
+test('the boards are each difficulty and HYPER, which plays with VERY EASY\'s hearts', () => {
+  assert.deepEqual(BOARD_LABELS, [...DIFFICULTY_LEVELS.map(l => l.label), HYPER_LEVEL.label]);
+  assert.equal(HYPER_LEVEL.hearts, DIFFICULTY_LEVELS[0].hearts);
+});
+
+test('firestore.rules accepts exactly the boards\' labels', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+  const list = rules.match(/data\.difficulty in \[([^\]]*)\]/)[1];
+  assert.deepEqual(list.split(',').map(s => s.trim().replace(/'/g, '')), BOARD_LABELS);
 });
 
 test('resetRun restores exactly the createRunState defaults and keeps the session', () => {

@@ -6,8 +6,7 @@
 //   node firebase/delete-scores-by-difficulty.mjs "VERY HARD" --dry-run
 
 import { getAdminDb } from './lib/init.mjs';
-
-const VALID = ['VERY EASY', 'EASY', 'NORMAL', 'HARD', 'VERY HARD'];
+import { BOARD_LABELS as VALID } from '../js/core/difficulty.js';
 const BATCH_SIZE = 500;
 
 function usage() {

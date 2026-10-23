@@ -20,7 +20,7 @@ On mobile, turn your phone sideways — tap the right side to jump, hold the lef
 
 - A hand-animated dachshund with pixel-art sprites
 - A day/night cycle with sunsets, starry skies, and dynamic weather, through changing scenery: a meadow, an autumn forest, and a desert, each giving way to the next overnight
-- A soulful soundtrack (with an EDM remix for special occasions), a HYPER mode, unlocked at 2,000 points, that starts fast, climbs faster, has its own soundtrack, and no golden hot dog, and a frenzy once a run is fast enough: the field bursts into rainbows, the music turns frantic, the boss comes for you, and everything you dodge bursts behind you
+- A soulful soundtrack (with an EDM remix for special occasions), a HYPER mode, unlocked at 2,000 points, that starts fast, climbs faster, has its own soundtrack and leaderboard, and no golden hot dog, and a frenzy once a run is fast enough: the field bursts into rainbows, the music turns frantic, the boss comes for you, and everything you dodge bursts behind you
 - Squirrel chases and a boss encounter
 - Giant mode — grab a golden hot dog and become unstoppable: hot dogs get gobbled and bones come in arcs to jump through; bones fetched in a row are worth more
 - Trampoline scenes — thorn patches where a super-bounce off a trampoline island is the only way through

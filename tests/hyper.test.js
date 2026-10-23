@@ -1,6 +1,6 @@
 // Hyper mode (core/speed.js): faster from the start and climbing faster, with
 // the bosses, the frenzy, and the obstacle ease-in following speed; no
-// leaderboard, no tutorial, and no golden hot dog.
+// tutorial and no golden hot dog; its own leaderboard board.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,7 @@ import { patternChance, spawnObstacle } from '../js/systems/spawning.js';
 import { createScoreRecorder } from '../js/leaderboard/recorder.js';
 import { HYPER_UNLOCK_AT, isHyperUnlocked } from '../js/systems/hyper.js';
 import {
-  SPEED_PROFILES, MAX_SPEED, FRENZY_SPEED, BOSS_SPEEDS, PATTERN_CHANCE, SPAWN_MIX, BIRD_WALL_FIRST_AT, GIANT_FIRST_AT,
+  SPEED_PROFILES, MAX_SPEED, FRENZY_SPEED, BOSS_SPEEDS, PATTERN_CHANCE, SPAWN_MIX, BIRD_WALL_FIRST_AT, GIANT_FIRST_AT, HYPER_LEVEL,
 } from '../js/config.js';
 import { createTestServices, createFakeStorage, createSequenceRng } from './helpers.js';
 
@@ -106,18 +106,18 @@ test('the tutorial waits for a normal run', () => {
   assert.ok(tutorialScene.wantsTurn(state, {}));
 });
 
-test('a hyper run records nothing: no leaderboard, no local best', () => {
+test('a hyper run goes on the HYPER board, and not on the device\'s list', () => {
   const storage = createFakeStorage();
-  const submitted = [];
-  const globalScores = { placement: () => 1, submit: (...a) => submitted.push(a), refreshIfStale() {} };
+  const asked = [];
+  const globalScores = { placement: (score, board) => { asked.push(board); return 1; }, submit() {}, refreshIfStale() {} };
   const state = runningState(9000);
-  state.gameState = 'dead';
+  Object.assign(state, { gameState: 'dead', difficulty: HYPER_LEVEL.label });
   createScoreRecorder({ storage, globalScores }).recordRun(state);
-  assert.equal(state.pendingScore, null);
-  assert.equal(state.highScore, 0);
+  assert.deepEqual(asked, ['HYPER']);
+  assert.deepEqual(state.pendingScore, { score: 9000, difficulty: 'HYPER', placement: 1 }, 'the name prompt opens for it');
+  assert.equal(state.highScore, 0, 'the HUD\'s HI and the unlock stay normal runs\'');
   assert.deepEqual(state.highScores, []);
   assert.deepEqual(storage.dump(), {});
-  assert.deepEqual(submitted, []);
 });
 
 // --- Unlocking it ---

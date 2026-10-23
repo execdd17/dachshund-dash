@@ -1,6 +1,7 @@
 // Firestore security rules for the global leaderboard. Source of truth in this
 // repo — deploy with `npm run firebase:deploy:rules` (see firebase/README.md).
-// Keep the field list in sync with js/leaderboard/global.js submit().
+// Keep the field list in sync with js/leaderboard/global.js submit(), and the
+// difficulty list with BOARD_LABELS (core/difficulty.js; a test checks it).
 //
 // Composite index: firestore.indexes.json (deploy with firebase:deploy:indexes).
 
@@ -17,7 +18,7 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 1
         && request.resource.data.name.size() <= 12
-        && request.resource.data.difficulty in ['VERY EASY', 'EASY', 'NORMAL', 'HARD', 'VERY HARD']
+        && request.resource.data.difficulty in ['VERY EASY', 'EASY', 'NORMAL', 'HARD', 'VERY HARD', 'HYPER']
         && request.resource.data.score is number
         && request.resource.data.score >= 0
         && request.resource.data.score <= 100000

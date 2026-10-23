@@ -128,6 +128,10 @@
     accent-color: #4a8f3f;
     cursor: pointer;
   }
+  #startOverlay .difficulty-row input[type="range"]:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
   #startOverlay .difficulty-ends {
     display: flex;
     justify-content: space-between;
@@ -212,6 +216,16 @@
     border-color: #535353;
     color: #fff;
     cursor: default;
+  }
+  #globalLeaderboard .lb-difficulty-tabs button.hyper {
+    color: #e0701a;
+    border-color: #ffb04a;
+    font-weight: bold;
+  }
+  #globalLeaderboard .lb-difficulty-tabs button.hyper.active {
+    background: #e0701a;
+    border-color: #e0701a;
+    color: #fff;
   }
   #globalLeaderboard .lb-controls {
     display: flex;

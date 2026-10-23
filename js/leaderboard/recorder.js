@@ -11,16 +11,19 @@ export function createScoreRecorder({ storage, globalScores }) {
   // Called once per death (services.recordRun).
   function recordRun(state) {
     const { score, difficulty } = state;
-    // A run boosted with the +500 debug key counts nowhere, and hyper mode has
-    // no leaderboard yet (its scores aren't comparable with normal ones).
-    if (state.scoreBoosted || state.hyper) {
+    // A run boosted with the +500 debug key counts nowhere.
+    if (state.scoreBoosted) {
       state.pendingScore = null;
       return;
     }
-    state.highScore = Math.max(state.highScore, score);
-    if (qualifiesLocally(state.highScores, score)) {
-      state.highScores = insertScore(state.highScores, state.playerName ?? '', score);
-      saveHighScores(storage, state.highScores);
+    // The device's best is normal runs' (the HUD's HI, and what unlocks hyper);
+    // a hyper run counts only on its own global board (`difficulty` 'HYPER').
+    if (!state.hyper) {
+      state.highScore = Math.max(state.highScore, score);
+      if (qualifiesLocally(state.highScores, score)) {
+        state.highScores = insertScore(state.highScores, state.playerName ?? '', score);
+        saveHighScores(storage, state.highScores);
+      }
     }
     const placement = globalScores.placement(score, difficulty);
     state.pendingScore = placement ? { score, difficulty, placement } : null;

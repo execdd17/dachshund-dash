@@ -54,7 +54,7 @@ node firebase/delete-scores-by-difficulty.mjs NORMAL
 node firebase/delete-scores-by-difficulty.mjs "VERY HARD"
 ```
 
-Valid labels: `VERY EASY`, `EASY`, `NORMAL`, `HARD`, `VERY HARD` (must match `DIFFICULTY_LEVELS` in `js/config.js` and `firestore.rules`).
+Valid labels: `VERY EASY`, `EASY`, `NORMAL`, `HARD`, `VERY HARD`, `HYPER` (must match `BOARD_LABELS` in `js/core/difficulty.js` and `firestore.rules`).
 
 ### Delete all scores for one player name
 

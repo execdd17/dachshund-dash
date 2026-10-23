@@ -1,9 +1,9 @@
-// HTML global-leaderboard table: difficulty tabs, search, pagination,
+// HTML global-leaderboard table: board tabs (each difficulty, and HYPER), search, pagination,
 // rendering. Browser-only (touches the DOM); list slicing/filtering itself
 // is the pure getFilteredScores() in global.js.
 
-import { GLOBAL_PAGE_SIZE, DIFFICULTY_LEVELS } from '../config.js';
-import { isDifficultyLabel } from '../core/difficulty.js';
+import { GLOBAL_PAGE_SIZE, HYPER_LEVEL } from '../config.js';
+import { BOARD_LABELS, isBoardLabel } from '../core/difficulty.js';
 import { getFilteredScores } from './global.js';
 
 export function createLeaderboardUi(globalScores) {
@@ -71,7 +71,7 @@ export function createLeaderboardUi(globalScores) {
   // Called when the player picks a difficulty on the start overlay — sets the
   // session board and the visible tab together.
   function setSessionDifficulty(label) {
-    if (!isDifficultyLabel(label)) return;
+    if (!isBoardLabel(label)) return;
     difficulty = label;
     page = 0;
     searchTerm = '';
@@ -82,7 +82,7 @@ export function createLeaderboardUi(globalScores) {
 
   // User clicked a different difficulty tab in the HTML leaderboard.
   function setDifficulty(label) {
-    if (!isDifficultyLabel(label) || label === difficulty) return;
+    if (!isBoardLabel(label) || label === difficulty) return;
     difficulty = label;
     page = 0;
     globalScores.loadView(label);
@@ -90,12 +90,13 @@ export function createLeaderboardUi(globalScores) {
 
   function wireControls() {
     const tabs = document.getElementById('lbDifficultyTabs');
-    for (const level of DIFFICULTY_LEVELS) {
+    for (const label of BOARD_LABELS) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.dataset.difficulty = level.label;
-      btn.textContent = level.label;
-      btn.addEventListener('click', () => setDifficulty(level.label));
+      btn.dataset.difficulty = label;
+      btn.textContent = label;
+      btn.classList.toggle('hyper', label === HYPER_LEVEL.label);
+      btn.addEventListener('click', () => setDifficulty(label));
       tabs.appendChild(btn);
     }
     document.getElementById('lbSearch').addEventListener('input', e => {
