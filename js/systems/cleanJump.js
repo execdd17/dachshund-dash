@@ -19,6 +19,7 @@
 import { CLEAN_JUMP_POINTS, CLEAN_STREAK_MAX, MAX_SPEED, SPEED_PROFILES, DOG_HITBOX_STAND } from '../config.js';
 import { addEffect } from './effects.js';
 import { getObstacleHitbox } from './obstacleTypes.js';
+import { pastDog } from './dogBody.js';
 
 // A clean jump's base points at `speed`: atStart at hyper's starting speed, down to atTop at MAX_SPEED.
 export function cleanJumpPoints(speed) {
@@ -29,21 +30,29 @@ export function cleanJumpPoints(speed) {
 
 // What a clean jump can clear: a chocolate bar, or a lone bird (not a wall's), but not the chase's acorns.
 export const isCleanJumpable = o => o.skin !== 'chase' && (o.type === 'hotdog' || (o.type === 'bird' && !o.aerialWall));
-const isLoneBird = o => o.type === 'bird';
+// How many clean jumps one cleared counts as: a lone bird, the risky one, counts double.
+const countOf = o => (o.type === 'bird' ? 2 : 1);
 
-// Every frame in hyper (update.js, after it marks `passedUnder` on anything
-// that crossed the dog's body with it on the ground): notes this jump's double
-// jump and towers, judges each bar and lone bird as its hitbox clears the
-// dog's tail, and settles the jump when the dog lands.
-export function stepCleanJumps(state, now) {
+// This jump so far (state.cleanArc; core/state.js starts each run with the same shape).
+const freshArc = () => ({ cleared: [], doubled: false, tower: false, broken: false });
+
+// Breaks the streak, and with it this jump: a hit mid-jump leaves nothing in
+// it to pay on landing, before or after the hit.
+export function breakCleanStreak(state) {
+  state.cleanStreak = 0;
+  state.cleanArc.broken = true;
+}
+
+// Every frame in hyper (jumpBonuses.js, after it marks `passedUnder` on
+// anything that crossed the dog's body with it on the ground): notes this
+// jump's double jump and towers, judges each bar and lone bird as its hitbox
+// clears the dog's tail, and settles the jump when the dog lands.
+export function stepCleanJumps(state, body, now) {
   const { dog } = state;
   const arc = state.cleanArc;
   if (dog.jumping && dog.doubleJumped) arc.doubled = true;
-  const tail = dog.x + DOG_HITBOX_STAND.dx;
   for (const o of state.obstacles) {
-    if (o.judged) continue;
-    const box = getObstacleHitbox(o);
-    if (box.x + box.w >= tail) continue;
+    if (o.judged || !pastDog(getObstacleHitbox(o), body)) continue;
     o.judged = true;
     if (o.type === 'tower') {
       if (dog.jumping) arc.tower = true;
@@ -60,32 +69,33 @@ export function judgeCleanJump(state, o) {
   const { dog } = state;
   if (dog.underground || dog.flying) return;  // the tunnel and the flight move the dog: no verdict
   if (o.passedUnder) {
-    state.cleanStreak = 0;  // ducked under a bird (a bar under the dog was a hit: hearts.js broke it already)
+    breakCleanStreak(state);  // ducked under a bird (a bar under the dog was a hit: hearts.js broke it already)
     return;
   }
   if (dog.jumping) state.cleanArc.cleared.push(o);
 }
 
 // The dog is down: pays the jump's clears if it never used its double jump;
-// with it used, breaks the streak, unless the jump also cleared a tower.
+// with it used, breaks the streak, unless the jump also cleared a tower. A
+// jump the streak broke in (a hit) pays nothing.
 export function settleCleanJump(state, now) {
   const arc = state.cleanArc;
-  if (arc.cleared.length) {
+  if (arc.cleared.length && !arc.broken) {
     if (!arc.doubled) payCleanJump(state, arc.cleared, now);
     else if (!arc.tower) state.cleanStreak = 0;
   }
-  state.cleanArc = { cleared: [], doubled: false, tower: false };
+  state.cleanArc = freshArc();
 }
 
 function payCleanJump(state, cleared, now) {
   let points = 0;
   for (const o of cleared) {
     o.clean = true;
-    const counts = isLoneBird(o) ? 2 : 1;
-    state.cleanStreak += counts;
-    points += cleanJumpPoints(state.speed) * counts * Math.min(state.cleanStreak, CLEAN_STREAK_MAX);
+    state.cleanStreak += countOf(o);
+    points += cleanJumpPoints(state.speed) * countOf(o) * Math.min(state.cleanStreak, CLEAN_STREAK_MAX);
   }
   state.score += points;
   const level = Math.min(state.cleanStreak, CLEAN_STREAK_MAX);
-  addEffect(state, 'cleanJump', now, { x: state.dog.x + 48, y: state.dog.y - 10, points, level, bird: cleared.some(isLoneBird) });
+  const x = state.dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w / 2;  // over the dog's middle
+  addEffect(state, 'cleanJump', now, { x, y: state.dog.y - 10, points, level, bird: cleared.some(o => countOf(o) > 1) });
 }

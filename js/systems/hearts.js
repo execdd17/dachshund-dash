@@ -3,11 +3,12 @@
 
 import { HEART_HIT_INVULN, HEART_FULL_BONUS } from '../config.js';
 import { addEffect } from './effects.js';
+import { breakCleanStreak } from './cleanJump.js';
 
 // Spends a heart and starts the post-hit i-frames. False when it was the last one.
 export function spendHeart(state, services, now) {
   state.hearts--;
-  state.cleanStreak = 0;  // a hit breaks the clean-jump streak (cleanJump.js)
+  breakCleanStreak(state);  // a hit breaks hyper's clean-jump streak
   if (state.hearts <= 0) return false;
   state.heartLostAt = now;
   state.invulnUntil = now + HEART_HIT_INVULN;

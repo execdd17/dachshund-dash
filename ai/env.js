@@ -19,8 +19,10 @@ import { SPAWN_KINDS, SPAWN_PATTERNS, patternChance } from '../js/systems/spawni
 import { paceOf, runSpeed } from '../js/core/speed.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
 import { createSilentMusic } from '../js/audio/music.js';
-import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE, FRENZY_DROP_CALM, DOG_HITBOX_STAND } from '../js/config.js';
+import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE, FRENZY_DROP_CALM } from '../js/config.js';
 import { TIERS } from './tiers.js';
+import { getObstacleHitbox } from '../js/systems/obstacleTypes.js';
+import { dogBody, pastDog } from '../js/systems/dogBody.js';
 
 export const ACTIONS = ['none', 'jump', 'duck'];
 export const DECIDE_EVERY = 4;     // frames per decision: 30 a second at 120Hz
@@ -108,7 +110,7 @@ export function createEnv({ seed, tier }) {
       // pass the dog. Kept, not tallied, because hyper pays a clean jump on landing, often after
       // the obstacle has left.
       if (o.counted) continue;
-      if (o.type === 'bird' && !o.aerialWall && o.skin !== 'chase' && o.x + o.width < state.dog.x + DOG_HITBOX_STAND.dx) {
+      if (o.type === 'bird' && !o.aerialWall && o.skin !== 'chase' && pastDog(getObstacleHitbox(o), dogBody(state.dog))) {
         o.counted = true;
         env.passedBirds.push(o);
       } else if (o.type === 'hotdog' && o.judged) {

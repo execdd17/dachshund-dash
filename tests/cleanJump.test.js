@@ -121,6 +121,16 @@ test('a hit breaks the streak', () => {
   assert.equal(state.cleanStreak, 0);
 });
 
+test('a hit mid-jump leaves nothing in that jump to pay on landing', () => {
+  // A bar cleared, then a bird hit, all in one jump: the landing pays nothing.
+  const state = hyperState();
+  state.cleanStreak = 3;
+  play(state, [obstacle('hotdog', 400), obstacle('bird', 440)], { jumpAt: 50 });
+  assert.ok(state.hearts < 99, 'the bird hit it');
+  assert.equal(state.effects.filter(e => e.kind === 'cleanJump').length, 0, 'no CLEAN for the bar');
+  assert.equal(state.cleanStreak, 0);
+});
+
 test('ducking under a lone bird, the safe way out, breaks the streak', () => {
   const state = hyperState();
   state.cleanStreak = 3;
