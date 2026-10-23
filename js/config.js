@@ -281,6 +281,7 @@ export const FRENZY_DROP_MS = 2200;    // the drop's banner; its flash, shockwav
 export const FRENZY_SHAKE_MS = 600;
 export const FRENZY_SHAKE_PX = 5;
 export const FRENZY_DROP_CALM = 400;   // px of travel before the next spawn after the drop clears the field
+export const HYPER_UNLOCKED_MS = 3200;   // the HYPER MODE UNLOCKED! popup (systems/hyper.js)
 export const BURST_MS = 750;         // a hazard's rainbow burst
 
 // --- Biomes (render/biomes.js; cosmetic) ---

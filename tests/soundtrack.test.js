@@ -44,12 +44,19 @@ test('the main track until the frenzy, giant mode its own; the frenzy track then
   }
 });
 
+test('hyper mode rests on its own track, in a run and between runs, and keeps the frenzy track', () => {
+  const hyper = Object.assign(runningState(300), { hyper: true });
+  assert.equal(soundtrackFor(hyper), 'hyper');
+  assert.equal(soundtrackFor({ ...hyper, gameState: 'dead' }), 'hyper');
+  assert.equal(soundtrackFor({ ...hyper, frenzyAt: 1 }), 'frenzy');
+});
+
 test('every track the game can ask for exists, with its file', () => {
-  for (const id of ['main', 'frenzy', 'giant']) {
+  for (const id of ['main', 'hyper', 'frenzy', 'giant']) {
     assert.ok(TRACKS[id], id);
     assert.ok(existsSync(new URL(`../${TRACKS[id].src}`, import.meta.url)), TRACKS[id].src);
   }
-  assert.equal(Object.values(TRACKS).filter(t => t.main).length, 1, 'one main track');
+  assert.deepEqual(Object.keys(TRACKS).filter(id => TRACKS[id].main), ['main', 'hyper'], 'each mode rests on one track');
 });
 
 test('update() keeps the music on the wanted track, between runs too', () => {

@@ -1,7 +1,7 @@
 // Frenzy: the run's last act, when the music turns frantic. From
-// FRENZY_SPEED (normal: score 5000; hyper gets there sooner), at the first moment the field is free (giant mode over, no
-// scene past waiting for its turn), it starts with the drop: everything on
-// screen bursts, the screen flashes, a shockwave rolls out from the dog, the
+// FRENZY_SPEED (normal: score 5000; hyper gets there sooner), at the first
+// moment the field is free (giant mode over, no scene past waiting for its
+// turn), it starts with the drop: everything on screen bursts, the screen flashes, a shockwave rolls out from the dog, the
 // camera shakes, FRENZY! comes up, and the boss starts that same frame — it
 // kicks the frenzy off. Its music (systems/soundtrack.js) and the score's
 // fire start with it. Scenes marked `skipsFrenzy` (the boss, the tunnel)

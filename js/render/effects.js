@@ -3,7 +3,7 @@
 
 import {
   W, BIRD_JUMP_BONUS, TRAMP_BOUNCE_BONUS, HEART_FULL_BONUS, CHOMP_EFFECT_MS, BONK_EFFECT_MS, BONK_TEXT_MS, SCORE_POPUP_MS,
-  GIANT_FEAST_MS,
+  GIANT_FEAST_MS, HYPER_UNLOCKED_MS,
 } from '../config.js';
 import { drawPopupText, drawSparkle } from './primitives.js';
 import { drawObstacleLook } from './obstacles.js';
@@ -86,6 +86,15 @@ export const EFFECT_DRAWERS = {
   heartGain: drawScorePopup('+1 HEART!', '#FF4D6D'),
   heartBonus: drawScorePopup('FULL! +' + HEART_FULL_BONUS, '#FF4D6D'),
   pointsPickup: (ctx, e, view) => drawScorePopup('+' + e.points, '#E08A1E')(ctx, e, view),
+  // Rises into place, holds, and fades, high above the dog.
+  hyperUnlocked(ctx, e, { now }) {
+    const t = (now - e.startTime) / HYPER_UNLOCKED_MS;
+    if (t > 1) return;
+    const alpha = Math.min(1, t * 6, (1 - t) * 4);
+    const y = 92 - 10 * (1 - Math.min(1, t * 5));
+    drawPopupText(ctx, 'HYPER MODE UNLOCKED!', W / 2, y, { color: '#FFB04A', size: 24, alpha, outline: '#3A1A04' });
+    drawPopupText(ctx, 'reload the game to play it', W / 2, y + 20, { color: '#FFFFFF', size: 11, alpha, outline: '#3A1A04' });
+  },
   ...FLIGHT_EFFECT_DRAWERS,
   ...FRENZY_EFFECT_DRAWERS,
 };

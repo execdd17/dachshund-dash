@@ -3,7 +3,7 @@
 // update() ages them out, and render/effects.js draws each kind.
 
 import {
-  CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS, GIANT_FEAST_MS, FRENZY_DROP_MS, BURST_MS,
+  CHOMP_EFFECT_MS, BONK_EFFECT_MS, SCORE_POPUP_MS, FLIGHT_CALL_MS, CAPE_AWAY_MS, GIANT_FEAST_MS, FRENZY_DROP_MS, BURST_MS, HYPER_UNLOCKED_MS,
 } from '../config.js';
 
 // Per kind: how long it lives (ms) and, optionally, how it moves each frame.
@@ -37,6 +37,8 @@ export const EFFECT_KINDS = {
       e.rotation -= 0.03 * scale;
     },
   },
+  // Hyper mode just unlocked (systems/hyper.js).
+  hyperUnlocked: { ttl: HYPER_UNLOCKED_MS },
   // The frenzy (systems/frenzy.js): its drop, and a hazard bursting into a rainbow (drifting back a little).
   frenzyDrop: { ttl: FRENZY_DROP_MS },
   burst: {

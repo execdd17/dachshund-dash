@@ -55,6 +55,7 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
   return {
     score: 0,
     frenzyAt: 0,            // when the frenzy started (ms; systems/frenzy.js), 0 = not yet
+    hyperUnlockShown: false,  // this run has shown HYPER MODE UNLOCKED! (systems/hyper.js)
     scoreBoosted: false,    // the +500 debug key was used: the run is kept off every leaderboard (leaderboard/recorder.js)
     globalPlacement: null,  // 1-based global-board rank of this run's saved score (null = none saved)
     pendingScore: null,     // { score, difficulty, placement } while the name prompt asks about a global-board score

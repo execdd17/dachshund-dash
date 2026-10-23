@@ -5,8 +5,9 @@
 //
 // A switch fades the old track out over MUSIC_FADE_MS, then fades the next
 // one in, except that `restart` tracks (giant mode) cut in at once and from
-// the top. A track resumes where it was paused, and going back to the `main`
-// track rewinds the rest (each run hears them from the start). Volume goes
+// the top. A track resumes where it was paused, and going back to a `main`
+// track (the one a mode rests on: normal's or hyper's) rewinds the rest
+// (each run hears them from the start). Volume goes
 // through a Web Audio gain per track, because iOS ignores an audio element's
 // own volume (no fades, no mix); without Web Audio, switches just cut.
 
@@ -14,6 +15,8 @@ import { MUSIC_FADE_MS } from '../config.js';
 
 export const TRACKS = {
   main: { src: 'sound/who_let_the_dogs_out_soul_version.mp3', volume: 0.30, main: true },
+  // Hyper mode's own, wherever the main track would play: "The Clockwork Run"
+  hyper: { src: 'sound/clockwork_run.mp3', volume: 0.25, main: true },
   // The frenzy, from its drop to the end of the run: "The Clockwork Gauntlet"
   frenzy: { src: 'sound/clockwork_gauntlet.mp3', volume: 0.25 },
   // Giant mode: 15s, matching GIANT_DURATION

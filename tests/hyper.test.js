@@ -13,6 +13,7 @@ import { tutorialScene } from '../js/systems/tutorial.js';
 import { inFrenzy } from '../js/systems/frenzy.js';
 import { patternChance, spawnObstacle } from '../js/systems/spawning.js';
 import { createScoreRecorder } from '../js/leaderboard/recorder.js';
+import { HYPER_UNLOCK_AT, isHyperUnlocked } from '../js/systems/hyper.js';
 import {
   SPEED_PROFILES, MAX_SPEED, FRENZY_SPEED, BOSS_SPEEDS, PATTERN_CHANCE, SPAWN_MIX, BIRD_WALL_FIRST_AT, GIANT_FIRST_AT,
 } from '../js/config.js';
@@ -117,4 +118,35 @@ test('a hyper run records nothing: no leaderboard, no local best', () => {
   assert.deepEqual(state.highScores, []);
   assert.deepEqual(storage.dump(), {});
   assert.deepEqual(submitted, []);
+});
+
+// --- Unlocking it ---
+
+test('hyper unlocks at 2000, the score where a normal run reaches hyper\'s starting speed', () => {
+  assert.equal(HYPER_UNLOCK_AT, 2000);
+  assert.equal(speedAt(HYPER_UNLOCK_AT, normal), hyper.start);
+  const best = (list, session = 0) => Object.assign(createState(() => 0.5), { highScores: list, highScore: session });
+  assert.ok(!isHyperUnlocked(best([])));
+  assert.ok(!isHyperUnlocked(best([{ name: '', score: 1999 }])));
+  assert.ok(isHyperUnlocked(best([{ name: '', score: 2000 }])), 'the device\'s best');
+  assert.ok(isHyperUnlocked(best([], 2400)), 'or this session\'s');
+});
+
+// Plays a normal-mode run from just under the mark past it; the popups it raised.
+function crossTheMark(setup = () => {}) {
+  const state = runningState(HYPER_UNLOCK_AT - 0.5, false);
+  state.nextObstacleIn = Infinity;
+  setup(state);
+  const services = createTestServices();
+  let now = 0;
+  for (let f = 0; f < 300; f++) update(state, 1000 / 120, services, () => 0.5, now += 1000 / 120);
+  assert.ok(state.score > HYPER_UNLOCK_AT);
+  return state.effects.filter(e => e.kind === 'hyperUnlocked').length;
+}
+
+test('the run that first crosses 2000 says HYPER MODE UNLOCKED!, once', () => {
+  assert.equal(crossTheMark(), 1);
+  assert.equal(crossTheMark(s => { s.highScore = 2100; }), 0, 'already unlocked');
+  assert.equal(crossTheMark(s => { s.scoreBoosted = true; }), 0, 'a boosted run unlocks nothing');
+  assert.equal(crossTheMark(s => { s.hyper = true; s.score = HYPER_UNLOCK_AT - 0.5; }), 0, 'not from hyper');
 });

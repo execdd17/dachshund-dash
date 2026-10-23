@@ -25,6 +25,7 @@ import { killDog } from './death.js';
 import { soundtrackFor } from './soundtrack.js';
 import { stepFrenzy } from './frenzy.js';
 import { runSpeed } from '../core/speed.js';
+import { stepHyperUnlock } from './hyper.js';
 
 export function update(state, dt, services, rng = Math.random, now = performance.now()) {
   // The music follows the game every frame, between runs too (back to the main track).
@@ -132,6 +133,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
   if (!scenesFreezeScore(state)) state.score += effectiveSpeed * 0.02 * scale * giantScoreMultiplier(state);
 
   rollWeatherOnStageChange(state, rng);
+  stepHyperUnlock(state, now);
 
   if (isGiant(state)) {
     const elapsed = now - state.giantStartTime;
