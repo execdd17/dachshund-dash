@@ -89,7 +89,9 @@ export function createRunState(startingHearts = DEFAULT_HEARTS) {
     giantStartTime: 0,
     giantTransitionStart: 0,
     giantStreak: 0,             // bones fetched in a row this giant mode (a bone that gets past breaks it)
-    cleanStreak: 0,             // hyper: chocolate bars cleared with a single jump in a row (systems/cleanJump.js)
+    cleanStreak: 0,             // hyper: bars and lone birds cleared with a single jump in a row (systems/cleanJump.js)
+    cleanPending: false,        // this jump cleared one with the double jump: a break on landing, unless…
+    cleanArcTower: false,       // …this jump also cleared a tower
     giantFeast: 0,              // bonus points this giant mode, tallied when it ends
     giantPatternIn: 0,          // px until the bone round's next pattern (systems/giantBones.js)
     giantLastPattern: null,     // so the same pattern never comes twice running

@@ -106,13 +106,14 @@ export function createEnv({ seed, tier }) {
       o.kind ??= kindOf(o);
       // A bird the game pays a jump bonus for (a lone one, or a chase's thrown
       // acorn), once it's behind the dog: passed, and jumped or not.
+      // In hyper, a bird jumped means a clean jump over it (cleanJump.js): its only bonus there.
       if (o.type === 'bird' && !o.aerialWall && !o.counted && o.x + o.width < state.dog.x + DOG_HITBOX_STAND.dx) {
         o.counted = true;
         env.birds.passed++;
-        if (o.jumped) env.birds.jumped++;
+        if (o.jumped || o.clean) env.birds.jumped++;
       }
       // A chocolate bar hyper judged (cleanJump.js): cleared with a single jump or not.
-      if (o.judged && !o.counted) {
+      if (o.type === 'hotdog' && o.judged && !o.counted) {
         o.counted = true;
         env.bars.passed++;
         if (o.clean) env.bars.clean++;

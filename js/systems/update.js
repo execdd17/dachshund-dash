@@ -13,7 +13,7 @@ import {
 } from '../config.js';
 import { applyDuck } from './control.js';
 import { spawnObstacle } from './spawning.js';
-import { judgeCleanJump } from './cleanJump.js';
+import { stepCleanJumps } from './cleanJump.js';
 import { stepGiantPatterns } from './giantBones.js';
 import { stepBob, getObstacleHitbox } from './obstacleTypes.js';
 import { checkCollision, getDogHitbox } from './collision.js';
@@ -104,28 +104,32 @@ export function update(state, dt, services, rng = Math.random, now = performance
     if (o.bob) stepBob(o, scale);
   });
 
-  // Jump bonuses: a solo bird (walls are meant to be ducked/jumped through,
-  // not bonused), and in hyper a chocolate bar cleared with a single jump
-  // (cleanJump.js). Each pays only if the dog was in the air the whole time it
-  // passed: one whose hitbox crossed over the dog's body with the dog on the
-  // ground (ducked or run under) is `passedUnder` and never pays, or ducking
-  // under a bird and jumping as it cleared the tail would (the AI found that
-  // one). Hitboxes, not sprites, so a jump that clears one pays.
+  // Jump bonuses: in normal mode a solo bird jumped (walls are meant to be
+  // ducked/jumped through, not bonused); in hyper a chocolate bar or solo bird
+  // cleared with a single jump, one streak for both (cleanJump.js). Each pays
+  // only if the dog was in the air the whole time it passed: one whose hitbox
+  // crossed over the dog's body with the dog on the ground (ducked or run
+  // under) is `passedUnder` and never pays, or ducking under a bird and
+  // jumping as it cleared the tail would (the AI found that one). Hitboxes,
+  // not sprites, so a jump that clears one pays.
   // A giant dog's birds are bones: one that gets past breaks the streak instead.
   if (isGiant(state)) missPassedBones(state, getDogHitbox(dog, true).x);
-  else state.obstacles.forEach(o => {
+  else {
     const tail = dog.x + DOG_HITBOX_STAND.dx;
-    const box = getObstacleHitbox(o);
-    if (!dog.jumping && box.x < tail + DOG_HITBOX_STAND.w && box.x + box.w > tail) o.passedUnder = true;
-    if (box.x + box.w >= tail) return;
-    if (o.type === 'bird' && !o.aerialWall && !o.jumped && !o.passedUnder && dog.jumping) {
-      o.jumped = true;
-      state.score += BIRD_JUMP_BONUS;
-      addEffect(state, 'birdJump', now, { x: o.x + o.width / 2, y: o.y });
-    } else if (state.hyper && o.type === 'hotdog' && !o.judged) {
-      judgeCleanJump(state, o, now);
+    for (const o of state.obstacles) {
+      const box = getObstacleHitbox(o);
+      if (!dog.jumping && box.x < tail + DOG_HITBOX_STAND.w && box.x + box.w > tail) o.passedUnder = true;
     }
-  });
+    if (state.hyper) stepCleanJumps(state, now);
+    else state.obstacles.forEach(o => {
+      const box = getObstacleHitbox(o);
+      if (o.type === 'bird' && !o.aerialWall && !o.jumped && !o.passedUnder && dog.jumping && box.x + box.w < tail) {
+        o.jumped = true;
+        state.score += BIRD_JUMP_BONUS;
+        addEffect(state, 'birdJump', now, { x: o.x + o.width / 2, y: o.y });
+      }
+    });
+  }
 
   stepFrenzy(state, services, now);  // after the jump bonuses, so a jumped bird or bar still pays before it blows up
   state.obstacles = state.obstacles.filter(o => o.x + o.width > -10);

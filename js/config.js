@@ -188,7 +188,7 @@ export const GIANT_RUN_BONE_FRAMES = 22;            // baseline frames between t
 export const GIANT_BOB = { amp: 40, period: 110 };  // the bobbing bone: px up and down, baseline frames per cycle
 export const GIANT_END_INVULN = 1500;               // ms of invulnerability after giant mode ends
 export const BIRD_JUMP_BONUS = 50;                  // bonus points for jumping over a bird
-// Hyper only: a chocolate bar cleared with a single jump (systems/cleanJump.js),
+// Hyper only: a chocolate bar or lone bird cleared with a single jump (systems/cleanJump.js),
 // from hyper's starting speed down to MAX_SPEED, times the streak level
 // (clean jumps in a row: 25, 50, 75… at the start, capped at CLEAN_STREAK_MAX).
 export const CLEAN_JUMP_POINTS = { atStart: 25, atTop: 5 };

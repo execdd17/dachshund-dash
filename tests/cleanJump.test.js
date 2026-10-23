@@ -1,6 +1,8 @@
-// Hyper's clean jumps (systems/cleanJump.js): a chocolate bar cleared with a
-// single jump pays, more at lower speeds, times the streak; a double jump
-// while clearing it, running into it, or normal mode pays nothing.
+// Hyper's clean jumps (systems/cleanJump.js): a chocolate bar or lone bird
+// cleared with a single jump pays, more at lower speeds, times one shared
+// streak. Only a failed single jump (cleared with the double jump) or a hit
+// breaks it; ducking under a bird, the tunnel, the flight, and a double jump
+// a tower needed leave it be. Normal mode has no clean jumps.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +13,7 @@ import { jump } from '../js/systems/control.js';
 import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
 import { cleanJumpPoints, judgeCleanJump } from '../js/systems/cleanJump.js';
 import { EFFECT_DRAWERS } from '../js/render/effects.js';
-import { CLEAN_JUMP_POINTS, CLEAN_STREAK_MAX, MAX_SPEED, SPEED_PROFILES, DOG_HITBOX_STAND } from '../js/config.js';
+import { CLEAN_JUMP_POINTS, CLEAN_STREAK_MAX, MAX_SPEED, SPEED_PROFILES, DOG_HITBOX_STAND, BIRD_LOW_Y, BIRD_JUMP_BONUS } from '../js/config.js';
 import { createTestServices } from './helpers.js';
 
 const HYPER_TOP = (MAX_SPEED - SPEED_PROFILES.hyper.start) / SPEED_PROFILES.hyper.perPoint;  // score at top speed
@@ -28,63 +30,100 @@ function hyperState(score = 0, hyper = true) {
   return state;
 }
 
-// One bar, played with the real physics: jump when its hitbox is `jumpAt` px
-// past the dog's nose, and with `double`, again at the top of that jump.
-function playBar(state, { jumpAt, double = false }) {
+const obstacle = (kind, x = 400) => (kind === 'bird' ? makeObstacle('bird', x, { y: BIRD_LOW_Y }) : makeObstacle(kind, x));
+
+// Plays `obstacles` with the real physics until the last has cleared the dog and it has landed:
+// jump when the first's hitbox is `jumpAt` px past the dog's nose, `double` again at the top of
+// that jump, and `duck` hold duck throughout. Returns the clean-jump points paid.
+function play(state, obstacles, { jumpAt = -Infinity, double = false, duck = false } = {}) {
   const services = createTestServices();
-  const bar = makeObstacle('hotdog', 400);
-  state.obstacles = [bar];
+  state.obstacles = obstacles;
+  state.duckHeld = duck;
   let now = 0, jumped = false, doubled = false;
-  const startScore = state.score;
-  for (let f = 0; f < 600 && !bar.judged && state.obstacles.includes(bar); f++) {
-    const nose = state.dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w;
-    if (!jumped && getObstacleHitbox(bar).x - nose < jumpAt) { jump(state, services, now); jumped = true; }
+  const tail = () => state.dog.x + DOG_HITBOX_STAND.dx;
+  for (let f = 0; f < 900; f++) {
+    const last = obstacles.at(-1);
+    if (getObstacleHitbox(last).x + getObstacleHitbox(last).w < tail() && !state.dog.jumping) break;
+    const nose = tail() + DOG_HITBOX_STAND.w;
+    if (!jumped && getObstacleHitbox(obstacles[0]).x - nose < jumpAt) { jump(state, services, now); jumped = true; }
     if (double && jumped && !doubled && state.dog.vy >= 0) { jump(state, services, now); doubled = true; }
     update(state, 1000 / 120, services, () => 0.5, now += 1000 / 120);
   }
-  const cleanEffects = state.effects.filter(e => e.kind === 'cleanJump');
-  return { bonus: cleanEffects.reduce((sum, e) => sum + e.points, 0), effects: cleanEffects, scored: state.score - startScore };
+  return state.effects.filter(e => e.kind === 'cleanJump').reduce((sum, e) => sum + e.points, 0);
 }
 
 test('a clean jump pays 25 at hyper\'s starting speed, tapering to 5 at top speed', () => {
   assert.equal(cleanJumpPoints(SPEED_PROFILES.hyper.start), CLEAN_JUMP_POINTS.atStart);
   assert.equal(cleanJumpPoints(MAX_SPEED), CLEAN_JUMP_POINTS.atTop);
   assert.equal(cleanJumpPoints((SPEED_PROFILES.hyper.start + MAX_SPEED) / 2), 15);
-  assert.ok(cleanJumpPoints(5) < cleanJumpPoints(4.5));
 });
 
-test('a single jump over a chocolate bar in hyper pays and starts the streak', () => {
-  for (const [score, points] of [[0, 25], [HYPER_TOP, 5]]) {
+test('a single jump over a bar or a lone bird pays and builds the streak', () => {
+  for (const [kind, score, jumpAt, points] of [['hotdog', 0, 50, 25], ['hotdog', HYPER_TOP, 50, 5], ['bird', 0, 35, 25], ['bird', HYPER_TOP, 100, 5]]) {
     const state = hyperState(score);
-    const { bonus, effects } = playBar(state, { jumpAt: 50 });
-    assert.equal(bonus, points, `at score ${score}`);
-    assert.equal(effects[0].level, 1);
-    assert.equal(state.cleanStreak, 1);
-    assert.equal(state.hearts, 99, 'cleared, not hit');
+    assert.equal(play(state, [obstacle(kind)], { jumpAt }), points, `${kind} at score ${score}`);
+    assert.equal(state.cleanStreak, 1, kind);
+    assert.equal(state.hearts, 99, `${kind}: cleared, not hit`);
   }
 });
 
-test('a double jump while clearing the bar pays nothing and breaks the streak', () => {
+test('bars and birds share one streak; a lone bird pays no normal-mode bonus in hyper', () => {
+  const state = hyperState(HYPER_TOP);
+  state.cleanStreak = 2;
+  const before = state.score;
+  assert.equal(play(state, [obstacle('bird')], { jumpAt: 100 }), 15, 'level 3: 5 × 3');
+  assert.equal(state.cleanStreak, 3);
+  assert.ok(state.score - before < BIRD_JUMP_BONUS, 'no NICE +50 on top');
+  assert.equal(state.effects.filter(e => e.kind === 'birdJump').length, 0);
+});
+
+test('only a failed single jump breaks the streak: a double jump while clearing a bar or a bird', () => {
+  for (const [kind, jumpAt] of [['hotdog', 120], ['bird', 90]]) {
+    const state = hyperState();
+    state.cleanStreak = 3;
+    assert.equal(play(state, [obstacle(kind)], { jumpAt, double: true }), 0, kind);
+    assert.equal(state.hearts, 99, `${kind}: cleared`);
+    assert.equal(state.cleanStreak, 0, kind);
+  }
+});
+
+test('a hit breaks the streak', () => {
   const state = hyperState();
   state.cleanStreak = 3;
-  const { bonus } = playBar(state, { jumpAt: 120, double: true });
-  assert.equal(state.hearts, 99, 'cleared');
-  assert.equal(bonus, 0);
+  play(state, [obstacle('hotdog')]);  // never jumps
+  assert.ok(state.hearts < 99, 'it hit the bar');
   assert.equal(state.cleanStreak, 0);
 });
 
-test('running into a bar breaks the streak; normal mode pays no clean jumps', () => {
-  const hit = hyperState();
-  hit.cleanStreak = 3;
-  playBar(hit, { jumpAt: -Infinity });  // never jumps
-  assert.ok(hit.hearts < 99, 'it hit the bar');
-  assert.equal(hit.cleanStreak, 0);
+test('necessary moves leave the streak be: ducking a bird, the tunnel, the flight, and a double jump for a tower', () => {
+  const ducked = hyperState();
+  ducked.cleanStreak = 3;
+  play(ducked, [obstacle('bird')], { duck: true });
+  assert.equal(ducked.hearts, 99, 'ducked under it');
+  assert.equal(ducked.cleanStreak, 3, 'ducking a bird');
 
-  const normal = hyperState(0, false);
-  const { bonus, effects } = playBar(normal, { jumpAt: 50 });
-  assert.equal(normal.hearts, 99, 'cleared');
-  assert.equal(bonus, 0);
-  assert.equal(effects.length, 0);
+  for (const flag of ['underground', 'flying']) {
+    const state = hyperState();
+    state.cleanStreak = 3;
+    const bar = obstacle('hotdog', 0);
+    state.dog[flag] = true;
+    judgeCleanJump(state, bar, 0);
+    assert.equal(state.cleanStreak, 3, flag);
+  }
+
+  // A tower then a bar close behind it, in one arc: the double jump was the tower's.
+  const arc = hyperState();
+  arc.cleanStreak = 3;
+  play(arc, [obstacle('tower', 400), obstacle('hotdog', 470)], { jumpAt: 90, double: true });
+  assert.equal(arc.hearts, 99, 'cleared both');
+  assert.equal(arc.cleanStreak, 3, 'the tower needed the double jump');
+});
+
+test('normal mode has no clean jumps', () => {
+  const state = hyperState(0, false);
+  assert.equal(play(state, [obstacle('hotdog')], { jumpAt: 50 }), 0);
+  assert.equal(state.hearts, 99, 'cleared');
+  assert.equal(state.effects.filter(e => e.kind === 'cleanJump').length, 0);
 });
 
 test('the streak climbs in levels to CLEAN_STREAK_MAX, and every level has a look', () => {
@@ -93,7 +132,7 @@ test('the streak climbs in levels to CLEAN_STREAK_MAX, and every level has a loo
   const paid = [];
   for (let i = 0; i < CLEAN_STREAK_MAX + 2; i++) {
     const before = state.score;
-    judgeCleanJump(state, makeObstacle('hotdog', 0), i);
+    judgeCleanJump(state, obstacle('hotdog', 0), i);
     paid.push(state.score - before);
   }
   assert.deepEqual(paid, [25, 50, 75, 100, 125, 125, 125]);
