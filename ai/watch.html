@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- The game loads sprites by paths relative to the page: resolve them from the repo root. -->
+  <base href="../" />
+  <title>Dachshund Dash AI</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #1b1d22; color: #e8e8e8; font-family: 'Courier New', monospace; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 16px; }
+    h1 { margin: 0; font-size: 16px; letter-spacing: 2px; color: #ffb04a; }
+    button { font: inherit; font-size: 13px; padding: 4px 10px; background: #2d3038; color: #e8e8e8; border: 1px solid #4a4f5c; border-radius: 3px; cursor: pointer; }
+    button.on { background: #e0701a; border-color: #e0701a; color: #fff; }
+    .stats { font-size: 13px; color: #b9bcc4; }
+    .stats b { color: #fff; }
+    #game { display: block; width: 100%; height: min(56vw, calc(100vh - 60px)); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DACHSHUND DASH · AI</h1>
+    <button type="button" id="newRun">New run</button>
+    <span>
+      <button type="button" data-speed="1" class="on">1×</button>
+      <button type="button" data-speed="2">2×</button>
+      <button type="button" data-speed="4">4×</button>
+    </span>
+    <span class="stats" id="stats"></span>
+  </header>
+  <canvas id="game"></canvas>
+  <script type="module" src="ai/watch.js"></script>
+</body>
+</html>

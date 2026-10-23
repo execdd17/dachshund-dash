@@ -34,6 +34,14 @@ node ai/train.mjs [minutes=30]    # → ai/models/best.json, ai/results/curve.cs
 node ai/evaluate.mjs [runs=50]    # → ai/results/evaluation.json
 ```
 
+## Watch it
+
+`ai/watch.html` plays the saved network in real time with the game's own
+graphics: the obstacle it's reacting to is outlined (the next one dashed), and
+its choice (JUMP / DUCK) shows above the dog. 1× / 2× / 4× speed; a run that
+ends restarts on a new random seed. Serve the repo root and open
+`/ai/watch.html` (dachshund-dash.home, or `python3 -m http.server` locally).
+
 ## What mattered
 
 Feeding each obstacle's *distance* (as a share of the screen) left the
