@@ -8,32 +8,121 @@
   <title>Dachshund Dash AI</title>
   <link rel="icon" type="image/png" href="icons/icon-192.png" />
   <style>
-    :root { color-scheme: light; }
+    :root { color-scheme: dark; --muted: #a3a7b1; --line: #3a3e48; --panel: #23262d; }
     body { margin: 0; background: #1b1d22; color: #e8e8e8; font-family: 'Courier New', monospace; }
-    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 10px 16px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 16px; }
     h1 { margin: 0; font-size: 16px; letter-spacing: 2px; color: #ffb04a; }
-    button { font: inherit; font-size: 13px; padding: 4px 10px; background: #2d3038; color: #e8e8e8; border: 1px solid #4a4f5c; border-radius: 3px; cursor: pointer; }
+    button, select { font: inherit; font-size: 13px; padding: 4px 8px; background: #2d3038; color: #e8e8e8; border: 1px solid #4a4f5c; border-radius: 3px; }
+    button { cursor: pointer; }
     button.on { background: #e0701a; border-color: #e0701a; color: #fff; }
-    .stats { font-size: 13px; color: #b9bcc4; }
+    select { max-width: 100%; }
+    .stats { font-size: 13px; color: var(--muted); }
     .stats b { color: #fff; }
-    #game { display: block; width: 100%; height: min(56vw, calc(100vh - 60px)); }
+    #game { display: block; width: 100%; height: min(56vw, 62vh); }
+
+    .panel, .about { margin: 12px 16px; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+    .panel h2, .about h2 { margin: 0 0 10px; font-size: 14px; letter-spacing: 1px; color: #ffb04a; }
+    .panel h2 small { color: var(--muted); font-weight: normal; letter-spacing: 0; }
+    .cols { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(280px, 2fr) minmax(160px, 1fr); gap: 16px 22px; }
+    @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+    h3 { margin: 0 0 8px; font-size: 12px; color: #e8e8e8; }
+    h3 small { color: var(--muted); font-weight: normal; }
+    .row { display: grid; grid-template-columns: 9.5em 1fr 3.5em; align-items: center; gap: 8px; font-size: 12px; margin: 5px 0; }
+    .row .label { color: var(--muted); }
+    .row .value { text-align: right; color: #fff; }
+    .bar { position: relative; height: 10px; background: #15171b; border-radius: 2px; overflow: hidden; }
+    .bar i { position: absolute; top: 0; bottom: 0; left: 0; background: #6fb6ff; }
+    .band { margin: 7px 0; font-size: 12px; }
+    .band .name { display: flex; justify-content: space-between; gap: 8px; }
+    .band .name span { color: var(--muted); text-align: right; }
+    .track { position: relative; height: 14px; margin-top: 3px; background: #15171b; border-radius: 2px; overflow: hidden; }
+    .track i { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; }
+    .track i.next { opacity: 0.45; }
+    .track::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--line); }
+    .axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .choice .row { grid-template-columns: 4.5em 1fr; }
+    .choice .chosen .label { color: #fff; font-weight: bold; }
+    .choice .chosen .bar i { background: #7cff8a; }
+
+    #net { display: block; width: 100%; height: 500px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .legend b { color: #e8e8e8; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+
+    .about { font-size: 13px; line-height: 1.55; color: #cfd2d8; }
+    .about p { margin: 0 0 8px; }
+    .about b { color: #fff; }
   </style>
 </head>
 <body>
   <header>
     <h1>DACHSHUND DASH · AI</h1>
+    <select id="model" aria-label="Model"></select>
     <button type="button" id="newRun">New run</button>
     <span>
       <button type="button" data-speed="1" class="on">1×</button>
       <button type="button" data-speed="2">2×</button>
       <button type="button" data-speed="4">4×</button>
+      <button type="button" data-speed="10">10×</button>
     </span>
     <span class="stats" id="stats"></span>
   </header>
   <canvas id="game"></canvas>
+
+  <section class="panel">
+    <h2>What the AI sees right now <small>(its 22 inputs, and what it does with them)</small></h2>
+    <div class="cols">
+      <div>
+        <h3>The dog <small>(6 inputs)</small></h3>
+        <div id="dogInputs"></div>
+      </div>
+      <div>
+        <h3>The radar <small>(16 inputs: 4 height bands × the next 2 things in each)</small></h3>
+        <div id="radarInputs"></div>
+        <div class="axis"><span>at the dog now</span><span>¼ s</span><span>½ s or more</span></div>
+      </div>
+      <div class="choice">
+        <h3>Its choice <small>(30 times a second)</small></h3>
+        <div id="choice"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>The network <small>(live: the same 22 inputs, flowing through its 24 hidden neurons to its 3 scores)</small></h2>
+    <canvas id="net"></canvas>
+    <div class="legend">
+      <span><b>Inputs:</b> no activation; each is the raw number above.</span>
+      <span><b>Hidden:</b> <b>tanh</b> &mdash; each neuron adds up its weighted inputs and its bias, and tanh squashes that into &minus;1&hellip;1.</span>
+      <span><b>Outputs:</b> <b>linear</b> &mdash; plain weighted sums of the hidden neurons (plus a bias); the highest score is the action it takes.</span>
+      <span><span class="swatch" style="background:#ff9a3c"></span>positive <span class="swatch" style="background:#4da3ff"></span>negative: a neuron's value, or what a line is adding right now.</span>
+      <span><b>Lines</b> are its weights; the brighter, the more that connection is pushing its neuron right now (weight &times; the value feeding it).</span>
+    </div>
+  </section>
+
+  <section class="about">
+    <h2>How this works</h2>
+    <p>This dog is played by a tiny neural network: 22 numbers in, 24 hidden neurons, 3 numbers out. Thirty times a second it reads the
+      inputs above and picks the action with the highest score: <b>nothing</b>, <b>jump</b>, or <b>duck</b> (held).</p>
+    <p><b>It isn't told the rules or what anything is,</b> and it never sees the picture: only the numbers above, read from the real
+      game. The radar splits the screen ahead into four height bands, cut where the dog's own hitbox changes: something in the
+      <b>ground</b> band would hit even a ducking dog, the <b>head</b> band only a standing one, and the two <b>air</b> bands only a dog
+      in the air. In each band it's told when the next two things <b>reach</b> the dog and when they've <b>gone past</b>, in time rather
+      than distance, so the right moment to act looks the same at any speed. A chocolate bar is just "something in the ground band"; a
+      bird stack is three bands filled at once; a tower is all four.</p>
+    <p><b>How it learned:</b> by evolution. A population of 150 random networks each played the same short runs; the best carried over
+      and the rest were bred from the fitter half, with small random changes. Within minutes, networks that happened to jump at the right
+      moment outscored the rest. Each tier adds what the game throws at it (0: chocolate and birds; 1: everything before the tower;
+      2: + the tower; 3: + the squirrel chase), and a model named <i>…-from-…</i> started from the previous tier's best. One hit ends its
+      run.</p>
+    <p>On the game: the <b>yellow boxes</b> are what its radar is tracking (solid: the nearest), and the tinted strips are the bands those
+      things are in, in the same colors as the radar rows above. Its current choice shows above the dog.</p>
+  </section>
+
   <script>
     // A script that fails to load or run says why in the stats bar, rather than leaving the page blank.
-    const showError = text => { document.getElementById('stats').textContent = `Error: ${text}`; };
+    // Most often after an update: the browser kept an old copy of some files. Clearing its cache fixes that.
+    const showError = text => { document.getElementById('stats').textContent = `Error: ${text} (just updated? clear this site's cached files and reload)`; };
     addEventListener('error', e => showError(e.message || `couldn't load ${e.target?.src ?? 'a script'}`), true);
     addEventListener('unhandledrejection', e => showError(e.reason?.message ?? String(e.reason)));
   </script>

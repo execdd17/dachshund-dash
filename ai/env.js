@@ -1,8 +1,10 @@
 // The training environment: the real game logic (js/) with the usual RL
-// contract. What spawns comes from a tier (tiers.js); the game's own spawner,
-// scenes, golden hot dogs, and frenzy are held off, and the environment
-// spawns the tier's kinds at the game's own gaps and pattern odds. One heart:
-// any hit ends the run. Speed follows the normal ramp. A seed replays a run
+// contract. What spawns comes from a tier (tiers.js): the environment spawns
+// the tier's kinds at the game's own gaps and pattern odds, and the game's
+// golden hot dogs, frenzy, and the scenes the tier doesn't allow are held off.
+// While an allowed scene holds the slot, the game's own spawner runs (the
+// chase's acorns come from the squirrel, by the game's rules). One heart: any
+// hit ends the run. Speed follows the normal ramp. A seed replays a run
 // exactly.
 //
 //   const env = createEnv({ seed, tier }).reset();
@@ -34,8 +36,15 @@ export function seededRng(seed) {
   };
 }
 
+// What spawned an obstacle the game put on the field (a scene's spawns).
+function kindOf(o) {
+  if (o.skin === 'chase') return 'chase';
+  if (o.aerialWall) return 'birdStack';
+  return o.type === 'frisbee' ? 'frisbeePair' : o.type;
+}
+
 export function createEnv({ seed, tier }) {
-  const { solo, patterns } = TIERS[tier];
+  const { solo, patterns, scenes = [] } = TIERS[tier];
   const soloKinds = Object.entries(solo);
   const soloTotal = soloKinds.reduce((sum, [, w]) => sum + w, 0);
   const services = { sfx: createSilentSfx(), music: createSilentMusic(), recordRun() {} };
@@ -84,11 +93,21 @@ export function createEnv({ seed, tier }) {
 
   function frame() {
     const state = env.state;
-    state.nextObstacleIn = Infinity;  // the game's spawner stays off
+    const inScene = Boolean(state.scene);
+    if (!inScene) state.nextObstacleIn = Infinity;  // the game's spawner runs only in a scene
     env.now += FRAME_MS;
     update(state, FRAME_MS, services, rng, env.now);
-    state.scene = null;               // and no scene ever takes a turn
-    state.sceneQueue = [];
+    // Scenes the tier doesn't allow never take a turn.
+    state.sceneQueue = state.sceneQueue.filter(id => scenes.includes(id));
+    if (state.scene && !scenes.includes(state.scene.id)) state.scene = null;
+    for (const o of state.obstacles) o.kind ??= kindOf(o);
+    if (inScene) {
+      // Taking spawning back as a scene ends, carry on with the game's gap to its
+      // next spawn: the environment's own count stopped when the scene began, and
+      // picking it up again dropped obstacles almost on top of the scene's last ones.
+      if (!state.scene) env.untilNext = state.nextObstacleIn;
+      return;
+    }
     env.untilNext -= state.speed;     // one 120Hz frame covers `speed` px
     if (env.untilNext <= 0) spawn();
   }

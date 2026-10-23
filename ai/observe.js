@@ -17,24 +17,34 @@ export const OBSERVATION = 'radar-1';
 // head band a standing dog but not a ducking one (duck); the air bands only a
 // dog in the air.
 export const BANDS = [
-  { name: 'high air', top: -Infinity, bottom: GROUND_Y - 60 },
-  { name: 'low air', top: GROUND_Y - 60, bottom: GROUND_Y + DOG_HITBOX_STAND.dy },
-  { name: 'head', top: GROUND_Y + DOG_HITBOX_STAND.dy, bottom: GROUND_Y + DOG_HITBOX_DUCK.dy },
-  { name: 'ground', top: GROUND_Y + DOG_HITBOX_DUCK.dy, bottom: Infinity },
+  { name: 'high air', means: 'only a dog jumping high meets these', top: -Infinity, bottom: GROUND_Y - 60 },
+  { name: 'low air', means: 'a dog in the air meets these', top: GROUND_Y - 60, bottom: GROUND_Y + DOG_HITBOX_STAND.dy },
+  { name: 'head', means: 'hits a standing dog, not a ducking one: duck', top: GROUND_Y + DOG_HITBOX_STAND.dy, bottom: GROUND_Y + DOG_HITBOX_DUCK.dy },
+  { name: 'ground', means: 'hits even a ducking dog: jump', top: GROUND_Y + DOG_HITBOX_DUCK.dy, bottom: Infinity },
 ];
-const PER_BAND = 2;
-const SOON_FRAMES = 60;  // times in half seconds (120Hz frames), clamped to ±1
+export const PER_BAND = 2;
+export const SOON_SECONDS = 0.5;  // times are in units of this, clamped to ±1
+const SOON_FRAMES = SOON_SECONDS * 120;  // 120Hz frames
 
-export const INPUTS = 6 + BANDS.length * PER_BAND * 2;
+// The dog's own inputs, by name, in the order observe() gives them.
+export const DOG_INPUTS = ['height', 'vertical speed', 'in the air', 'double jump used', 'ducking', 'game speed'];
+
+export const INPUTS = DOG_INPUTS.length + BANDS.length * PER_BAND * 2;
+
+// Every input's name, in order: the dog's, then each band's next things (when it reaches the dog, when it's past).
+export const INPUT_LABELS = [
+  ...DOG_INPUTS,
+  ...BANDS.flatMap(band => Array.from({ length: PER_BAND }, (_, k) => [`${band.name} ${k ? '2nd' : '1st'}: reaches`, `${band.name} ${k ? '2nd' : '1st'}: past`]).flat()),
+];
 
 const hurts = o => ['hazard', 'terrain'].includes(OBSTACLE_TYPES[o.type].contact);
 const clampTime = (px, speed) => Math.max(-1, Math.min(1, px / speed / SOON_FRAMES));
 
-// Per band, the not-yet-passed hitboxes in it, nearest first.
+// Per band, the not-yet-passed hitboxes in it, nearest first (each with its `obstacle`).
 export function radar(state) {
   const { dog } = state;
   const tail = dog.x + DOG_HITBOX_STAND.dx;
-  const boxes = state.obstacles.filter(hurts).map(getObstacleHitbox).filter(b => b.x + b.w > tail);
+  const boxes = state.obstacles.filter(hurts).map(o => ({ ...getObstacleHitbox(o), obstacle: o })).filter(b => b.x + b.w > tail);
   return BANDS.map(band => boxes
     .filter(b => b.y < band.bottom && b.y + b.h > band.top)
     .sort((a, b) => a.x - b.x)

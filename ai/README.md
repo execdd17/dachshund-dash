@@ -10,15 +10,19 @@ Nothing here is part of the game or touches the leaderboard.
 ## The pieces
 
 - **Environment** (`env.js`): `createEnv({ seed, tier }).reset()`, then
-  `step(action)` → `{ reward, done }`. The real `update()`, with the game's
-  spawner, scenes, golden hot dogs, and frenzy held off; it spawns the tier's
-  kinds itself, at the game's own gaps and close-gap pattern odds. One heart.
+  `step(action)` → `{ reward, done }`. The real `update()`, with golden hot
+  dogs, the frenzy, and the scenes the tier doesn't allow held off; it spawns
+  the tier's kinds itself, at the game's own gaps and close-gap pattern odds,
+  and hands spawning to the game's own spawner while an allowed scene runs
+  (carrying on the game's gap when it hands back). One heart.
   Normal speed ramp (3.0 up to 6.75). A seed replays a run exactly.
 - **Tiers** (`tiers.js`): what spawns, built from the game's own `SPAWN_KINDS`
   and `SPAWN_PATTERNS`. Tier 0: chocolate bars and lone birds. Tier 1:
   everything before the tower (+ frisbee pairs, bird stacks, the close-gap
   pairs), at the game's early odds. Tier 2: + the tower (a double jump; it
-  grows to 6 bars at speed 4.0, as in the game). A new tier is one entry.
+  grows to 6 bars at speed 4.0, as in the game). Tier 3: + the squirrel chase
+  (the first scene: while it runs, the game's own spawner throws acorns from
+  the squirrel, close ahead of the dog). A new tier is one entry.
 - **Observation** (`observe.js`, `radar-1`): the dog's own state and the speed,
   plus a radar of the screen ahead in four height bands, cut where the dog's
   hitboxes change what an obstacle asks: ground (hits even a ducking dog),
@@ -58,10 +62,16 @@ right bands.
 ## Watch it
 
 `ai/watch.html` plays a model in real time with the game's own graphics and
-its radar shown: a tinted strip in each height band over each thing it sees
-there, and its choice (JUMP / DUCK) above the dog. 1× / 2× / 4×; a run that
-ends restarts on a new seed. `?model=ai/models/tier1.json` picks the model
-(tier 2's by default). Serve the repo root and open `/ai/watch.html`.
+what it sees shown: on the game, the obstacles its radar tracks boxed and a
+tinted strip in each height band, with its choice (JUMP / DUCK) above the
+dog; below, a live panel of its 22 inputs and its scores, a live diagram of
+the network (each neuron colored by its value, each weight as bright as the
+signal it's passing, each layer's activation named), and a plain-language
+explanation of how it works. A picker lists every
+trained model (`models/index.json`, which training keeps up to date;
+`node ai/model-index.mjs` rebuilds it), and the URL keeps the choice
+(`?model=tier2`). 1× / 2× / 4× / 10×; a run that ends restarts on a new seed.
+Serve the repo root and open `/ai/watch.html`.
 
 ## What mattered
 
@@ -84,6 +94,17 @@ ends restarts on a new seed. `?model=ai/models/tier1.json` picks the model
   one ducks 17% of the time. Both double-jump every tower. The tier-1 model
   alone, on tier 2: 80 points on average, dead at the first tower.
 
+- **When it can't learn, suspect the environment.** Tier 3 first came out at
+  about 80% with no real gain from training, and its runs died to plain
+  chocolate bars at speed 3.15, nothing like tier 2's tall towers at top
+  speed. A post-mortem found 25 of 26 deaths came right after a chase ended,
+  with the next obstacle 9–70 px behind (the game never spawns closer than
+  ~185): taking spawning back from the game, the environment resumed its own
+  count, stopped since the chase began, and dropped obstacles almost on top
+  of the chase's last ones. Carrying on the game's own gap fixed it, a test
+  now holds every tier to the game's tightest spacing, and the tier-2
+  champion's offspring then cleared tier 3 at once.
+
 ## Results so far
 
 | Model | Tier | Validation cleared at | Unseen runs cleared |
@@ -93,4 +114,5 @@ ends restarts on a new seed. `?model=ai/models/tier1.json` picks the model
 | `tier1` | 1 | generation 12, 67 s | 300 / 300 |
 | `tier2` | 2 | generation 86, 199 s | 293 / 300 |
 | `tier2-from-tier1` | 2 | generation 26, 128 s | 292 / 300 |
+| `tier3-from-tier2` | 3 | generation 0 (the tier-2 champion's offspring already did) | 288 / 300 |
 

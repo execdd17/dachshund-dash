@@ -17,6 +17,7 @@ import { INPUTS } from './observe.js';
 import { ACTIONS, seededRng } from './env.js';
 import { playRun, SCORE_CAP } from './play.js';
 import { modelFile, resultsDir, saveable, loadNet } from './models.js';
+import { writeModelIndex } from './model-index.mjs';
 
 const SIZES = [INPUTS, 24, ACTIONS.length];
 const POPULATION = 150;
@@ -74,6 +75,7 @@ if (!isMainThread) {
       champion = { validation, gen, net: ranked[0].net };
       const meta = { tier, trainedOn, generation: gen, validation, from: values.from ?? null };
       writeFileSync(new URL(modelFile(name), dir), JSON.stringify(saveable(champion.net, meta)));
+      writeModelIndex();
     }
     const fits = ranked.map(r => r.fit);
     const seconds = Math.round((Date.now() - started) / 1000);

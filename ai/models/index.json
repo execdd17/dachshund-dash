@@ -1,0 +1,49 @@
+[
+  {
+    "name": "tier0",
+    "tier": 0,
+    "trainedOn": [
+      0
+    ],
+    "generation": 4,
+    "validation": 8000
+  },
+  {
+    "name": "tier1",
+    "tier": 1,
+    "trainedOn": [
+      1
+    ],
+    "generation": 12,
+    "validation": 8000
+  },
+  {
+    "name": "tier2",
+    "tier": 2,
+    "trainedOn": [
+      2
+    ],
+    "generation": 86,
+    "validation": 8000
+  },
+  {
+    "name": "tier2-from-tier1",
+    "tier": 2,
+    "trainedOn": [
+      1,
+      2
+    ],
+    "generation": 26,
+    "validation": 8000
+  },
+  {
+    "name": "tier3-from-tier2",
+    "tier": 3,
+    "trainedOn": [
+      2,
+      3
+    ],
+    "generation": 0,
+    "validation": 8000
+  }
+]

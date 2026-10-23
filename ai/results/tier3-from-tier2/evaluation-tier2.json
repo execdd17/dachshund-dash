@@ -1,0 +1,14 @@
+{
+  "model": "ai/models/tier3-from-tier2.json: tier 3 (trained on 2 → 3), generation 0",
+  "tier": 2,
+  "runs": 100,
+  "mean": 7980,
+  "median": 8000,
+  "min": 7262,
+  "max": 8000,
+  "cleared": "95/100 reached 8000",
+  "killedBy": {
+    "tower": 5
+  },
+  "speedAtDeath": "6.63–6.75"
+}

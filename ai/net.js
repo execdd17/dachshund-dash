@@ -14,21 +14,35 @@ function countWeights(sizes) {
   return n;
 }
 
-export function forward(net, inputs) {
-  let values = inputs;
+// The activation each layer after the inputs applies to its weighted sums:
+// tanh in the hidden layers, none (linear) at the outputs.
+export const activationOf = (net, layer) => (layer === net.sizes.length - 1 ? 'linear' : 'tanh');
+
+// Where neuron `j` of layer `layer` keeps its bias; its weight from input `i` follows at +1+i.
+export function weightIndex(net, layer, j) {
   let w = 0;
-  for (let l = 1; l < net.sizes.length; l++) {
-    const out = new Array(net.sizes[l]);
-    const last = l === net.sizes.length - 1;
-    for (let j = 0; j < out.length; j++) {
-      let sum = net.weights[w++];  // bias
-      for (const v of values) sum += v * net.weights[w++];
-      out[j] = last ? sum : Math.tanh(sum);
-    }
-    values = out;
-  }
-  return values;
+  for (let l = 1; l < layer; l++) w += (net.sizes[l - 1] + 1) * net.sizes[l];
+  return w + j * (net.sizes[layer - 1] + 1);
 }
+
+// Every layer's values for `inputs`: the inputs, then each layer's activations.
+export function activations(net, inputs) {
+  const layers = [inputs];
+  for (let l = 1; l < net.sizes.length; l++) {
+    const prev = layers[l - 1];
+    const out = new Array(net.sizes[l]);
+    for (let j = 0; j < out.length; j++) {
+      let w = weightIndex(net, l, j);
+      let sum = net.weights[w++];  // bias
+      for (const v of prev) sum += v * net.weights[w++];
+      out[j] = activationOf(net, l) === 'tanh' ? Math.tanh(sum) : sum;
+    }
+    layers.push(out);
+  }
+  return layers;
+}
+
+export const forward = (net, inputs) => activations(net, inputs).at(-1);
 
 export const choose = (net, inputs) => {
   const scores = forward(net, inputs);
