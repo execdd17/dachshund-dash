@@ -1,0 +1,14 @@
+{
+  "model": "rules-naive: 4 hand-written rules (the obvious ones, written once, never tuned)",
+  "tier": 0,
+  "runs": 100,
+  "mean": 82,
+  "median": 60,
+  "min": 28,
+  "max": 419,
+  "cleared": "0/100 reached 8000",
+  "killedBy": {
+    "hotdog": 100
+  },
+  "speedAtDeath": "3.01–3.21"
+}

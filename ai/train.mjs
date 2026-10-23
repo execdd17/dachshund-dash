@@ -21,7 +21,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createNet, mutate, crossover, toJSON, fromJSON } from './net.js';
 import { INPUTS } from './observe.js';
 import { ACTIONS, seededRng } from './env.js';
-import { playRun, SCORE_CAP } from './play.js';
+import { playRun, netPlayer, SCORE_CAP } from './play.js';
 import { modelFile, resultsDir, saveable, loadNet } from './models.js';
 import { writeModelIndex } from './model-index.mjs';
 
@@ -36,7 +36,7 @@ const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
 // Worker: score a batch of networks on the given seeds.
 if (!isMainThread) {
   parentPort.on('message', ({ nets, seeds, tier, cap }) => {
-    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed, tier, cap).score))));
+    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(netPlayer(fromJSON(json)), seed, tier, cap).score))));
   });
 } else {
   const { values } = parseArgs({ options: {

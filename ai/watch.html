@@ -49,6 +49,12 @@
     .legend b { color: #e8e8e8; }
     .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
 
+    .rules { margin: 0; padding-left: 1.6em; font-size: 13px; line-height: 1.5; color: var(--muted); }
+    .rules li { padding: 4px 6px; border-radius: 3px; }
+    .rules li b { color: #e8e8e8; }
+    .rules li.fired { background: #2f3a2f; color: #e8e8e8; }
+    .rules li.fired b { color: #7cff8a; }
+
     .about { font-size: 13px; line-height: 1.55; color: #cfd2d8; }
     .about p { margin: 0 0 8px; }
     .about b { color: #fff; }
@@ -58,6 +64,7 @@
   <header>
     <h1>DACHSHUND DASH · AI</h1>
     <select id="model" aria-label="Model"></select>
+    <label class="stats">on <select id="tier" aria-label="Tier"></select></label>
     <button type="button" id="newRun">New run</button>
     <span>
       <button type="button" data-speed="1" class="on">1×</button>
@@ -88,7 +95,12 @@
     </div>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="rulesPanel" hidden>
+    <h2>The rules <small>(hand-written if-statements on the same 22 inputs, tried top to bottom: the first that holds decides)</small></h2>
+    <ol class="rules" id="rules"></ol>
+  </section>
+
+  <section class="panel" id="netPanel">
     <h2>The network <small>(live: the same 22 inputs, flowing through its 24 hidden neurons to its 3 scores)</small></h2>
     <canvas id="net"></canvas>
     <div class="legend">
@@ -115,6 +127,12 @@
       moment outscored the rest. Each tier adds what the game throws at it (0: chocolate and birds; 1: everything before the tower;
       2: + the tower; 3: + the squirrel chase; 4: + the bosses and the frenzy), and a model named <i>…-from-…</i> started from the
       previous tier's best. One hit ends its run.</p>
+    <p><b>The rules-… choices aren't networks.</b> They're a baseline: hand-written if-statements reading the same 22 inputs, deciding
+      as often, measured the same way, so you can see what training adds over the obvious approach. Pick one, keep the tier, and compare
+      it with a network on the same tier. <i>rules-naive</i> is the obvious few rules (jump what's on the ground, duck what's at head
+      height, jump twice for a tower), written once and never tuned. <i>rules-tuned</i> is the best a handful of general rules did, with
+      four tuned numbers: it plays tiers 0 and 1 about as well as a network, but towers get it from speed 4.0, once in a while and
+      more often as speed climbs: a tall tower right behind a chocolate bar, with the dog still in the air from the bar.</p>
     <p>On the game: the <b>faint colored layers</b> ahead of the dog are the radar's four bands, in the same colors as the radar rows
       above. They run out to the <b>½ s ahead</b> line, which moves out as the game speeds up: anything past it reads the same as an
       empty band, so the radar can't tell it's there yet. An empty band still says something ("nothing coming"), which matters as much

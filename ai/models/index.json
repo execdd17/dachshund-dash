@@ -65,5 +65,15 @@
     ],
     "generation": 29,
     "validation": 30000
+  },
+  {
+    "name": "rules-naive",
+    "rules": 4,
+    "summary": "the obvious ones, written once, never tuned"
+  },
+  {
+    "name": "rules-tuned",
+    "rules": 5,
+    "summary": "a few general rules and 4 tuned numbers"
   }
 ]

@@ -1,11 +1,13 @@
 // models/index.json: what's in models/, for the viewer's picker (a browser
-// can't list a folder). Training rewrites it whenever it saves a model; run
-// this file to rebuild it by hand.
+// can't list a folder), then the hand-written rule sets (rules.js), which
+// have no tier. Training rewrites it whenever it saves a model; run this file
+// to rebuild it by hand.
 //
 //   node ai/model-index.mjs
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { RULE_SETS, RULES_PREFIX } from './rules.js';
 
 const MODELS = new URL('models/', import.meta.url);
 
@@ -17,6 +19,9 @@ export function writeModelIndex() {
       return { name: file.replace(/\.json$/, ''), tier, trainedOn, generation, validation: Math.round(validation) };
     })
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+  for (const [key, set] of Object.entries(RULE_SETS)) {
+    models.push({ name: RULES_PREFIX + key, rules: set.rules.length, summary: set.summary });
+  }
   writeFileSync(new URL('index.json', MODELS), JSON.stringify(models, null, 2) + '\n');
   return models;
 }

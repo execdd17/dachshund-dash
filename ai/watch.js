@@ -1,15 +1,18 @@
-// Watch a trained network play its tier in real time, drawn by the game's own
-// renderer, with what it sees shown: on the game, each obstacle its radar is
-// tracking boxed (the nearest solid), a strip in each height band over what's
-// in it, and its choice above the dog; below, a panel with its 22 inputs as it
-// last read them, its scores for each action, and the network itself, live. The picker lists the trained
-// models (models/index.json); ?model=tier2 opens one. 1× to 10× speed. A run
-// that ends restarts on a new random seed.
+// Watch a trained network, or a hand-written rule set (rules.js), play in real
+// time, drawn by the game's own renderer, with what it sees shown: on the
+// game, the radar's bands out to its horizon, each obstacle it's tracking
+// boxed (the nearest solid), and its choice above the dog; below, a panel with
+// its 22 inputs as it last read them and its choice, then the network itself
+// or the rules, live. The picker lists models/index.json; ?model=tier2 opens
+// one, on its own tier unless ?tier= says otherwise (a rule set has none, so
+// it keeps the tier). 1× to 10× speed. A run that ends restarts on a new
+// random seed.
 
 import { createEnv, ACTIONS, DECIDE_EVERY } from './env.js';
 import { observe, radar, radarSpan, BANDS, DOG_INPUTS, PER_BAND, INPUT_LABELS } from './observe.js';
 import { activations, activationOf, weightIndex } from './net.js';
 import { loadNet, modelFile } from './models.js';
+import { RULES_PREFIX, ruleSetNamed, decide } from './rules.js';
 import { TIERS } from './tiers.js';
 import { draw } from '../js/render/draw.js';
 import { createView } from '../js/render/view.js';
@@ -37,43 +40,80 @@ cosmetics.loadImages();
 const music = createSilentMusic();
 
 const picker = document.getElementById('model');
-let model, net, tier;
+const tierPicker = document.getElementById('tier');
+let net = null, ruleSet = null, tier = Math.max(...Object.keys(TIERS).map(Number));
 
-// The picker's models, labeled with their tier and what they trained through.
+// The picker's models, labeled with their tier and what they trained through; then the rule sets.
 const index = await (await fetch('ai/models/index.json')).json();
 for (const m of index) {
   const option = document.createElement('option');
   option.value = m.name;
-  option.textContent = `${m.name}: tier ${m.tier} (${TIERS[m.tier]?.name ?? '?'}), trained ${m.trainedOn.join(' → ')}, gen ${m.generation}`;
+  option.textContent = m.name.startsWith(RULES_PREFIX)
+    ? `${m.name}: ${m.rules} hand-written rules (${m.summary}), no training`
+    : `${m.name}: tier ${m.tier} (${TIERS[m.tier]?.name ?? '?'}), trained ${m.trainedOn.join(' → ')}, gen ${m.generation}`;
   picker.append(option);
 }
+for (const [t, { name }] of Object.entries(TIERS)) {
+  const option = document.createElement('option');
+  option.value = t;
+  option.textContent = `tier ${t} (${name})`;
+  tierPicker.append(option);
+}
 
-// Load a model by name and start a run with it; the URL keeps the choice.
-async function useModel(name) {
+// Remember the choice in the URL. Only the query changes: a relative URL here
+// would resolve against <base> (the repo root).
+function remember() {
+  const url = new URL(location.href);
+  url.searchParams.set('model', picker.value);
+  url.searchParams.set('tier', tier);
+  history.replaceState(null, '', url);
+}
+
+// Load a model or rule set by name and start a run with it: a model on its
+// own tier (or `onTier`), a rule set on the tier already showing.
+async function useModel(name, onTier) {
   try {
-    const path = `ai/${modelFile(name)}`;
-    const response = await fetch(path);
-    if (!response.ok) throw new Error(`${path}: ${response.status}`);
-    model = await response.json();
-    net = loadNet(model);
+    if (name.startsWith(RULES_PREFIX)) {
+      ruleSet = ruleSetNamed(name);
+      if (!ruleSet) throw new Error(`no rule set '${name}'`);
+      net = null;
+    } else {
+      const path = `ai/${modelFile(name)}`;
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`${path}: ${response.status}`);
+      const model = await response.json();
+      net = loadNet(model);
+      ruleSet = null;
+      tier = model.tier;
+    }
   } catch (e) {
     // Say why, rather than leave a blank page.
     document.getElementById('stats').textContent = `Couldn't load the model (${e.message}).`;
     throw e;
   }
-  tier = model.tier;
+  if (TIERS[onTier]) tier = Number(onTier);
   picker.value = name;
-  // Only the query changes: a relative URL here would resolve against <base> (the repo root).
-  const url = new URL(location.href);
-  url.searchParams.set('model', name);
-  history.replaceState(null, '', url);
+  tierPicker.value = tier;
+  document.getElementById('netPanel').hidden = !net;
+  document.getElementById('rulesPanel').hidden = !ruleSet;
+  if (ruleSet) showRules();
+  remember();
   best = 0;
   runs = 0;
   newRun();
 }
 
+// What the player makes of `inputs`: its action, plus every layer's values
+// for a network (`layers`, for the diagram) or the rule that fired.
+function think(inputs) {
+  if (ruleSet) return { inputs, ...decide(ruleSet, inputs) };
+  const layers = activations(net, inputs);
+  const scores = layers.at(-1);
+  return { inputs, layers, scores, action: ACTIONS[scores.indexOf(Math.max(...scores))] };
+}
+
 let env, action = 'none', speed = 1, budget = 0, endedAt = 0, runs = 0, best = 0;
-let layers = null, panelAt = 0;  // the network's last pass: its inputs, hidden values, and scores
+let thought = null, panelAt = 0;  // the player's last decision (think)
 const resize = () => {
   view.resize();
   if (env) env.state.skyTop = -view.extraTop;
@@ -87,7 +127,7 @@ function newRun() {
   budget = 0;
   endedAt = 0;
   action = 'none';
-  layers = activations(net, observe(env.state));
+  thought = think(observe(env.state));
 }
 
 // --- The inputs panel ---
@@ -124,9 +164,23 @@ const choiceRows = ACTIONS.map(name => {
   return r;
 });
 
-// Refresh the panel from what the network last read and how it scored the actions.
+// The rule set, listed; showPanel marks the rule that fired.
+let ruleItems = [];
+function showRules() {
+  const list = document.getElementById('rules');
+  list.replaceChildren();
+  ruleItems = ruleSet.rules.map(rule => {
+    const item = el('li', '', list);
+    const [condition, verdict] = rule.says.split(/:(?=[^:]*$)/);
+    item.append(`${condition}: `);
+    el('b', '', item, verdict.trim());
+    return item;
+  });
+}
+
+// Refresh the panel from what the player last read and what it chose.
 function showPanel() {
-  const [inputs, , scores] = layers;
+  const { inputs, scores } = thought;
   dogRows.forEach((r, i) => {
     const v = inputs[i];
     r.fill.style.width = `${Math.min(1, Math.abs(v)) * 100}%`;
@@ -142,14 +196,15 @@ function showPanel() {
     segment.style.left = `${from * 100}%`;
     segment.style.width = `${Math.max(0, to - from) * 100}%`;
   }));
-  // The scores as shares (softmax), the chosen action highlighted.
-  const top = Math.max(...scores);
-  const weights = scores.map(s => Math.exp(s - top));
+  // A network's scores as shares (softmax); a rule set's choice is all or nothing.
+  const top = scores ? Math.max(...scores) : 0;
+  const weights = scores ? scores.map(s => Math.exp(s - top)) : ACTIONS.map(a => (a === action ? 1 : 0));
   const total = weights.reduce((a, b) => a + b, 0);
   choiceRows.forEach((r, i) => {
     r.fill.style.width = `${(weights[i] / total) * 100}%`;
     r.row.classList.toggle('chosen', ACTIONS[i] === action);
   });
+  ruleItems.forEach((item, i) => item.classList.toggle('fired', i === thought.rule));
 }
 
 // What to draw: a tier without the frenzy holds it off by marking it started
@@ -281,6 +336,8 @@ function tint(v, alpha = 1) {
 // The network as columns of neurons, each colored by its value, joined by
 // lines as bright as the signal each weight is passing right now.
 function drawNetwork() {
+  if (!net) return;
+  const { layers } = thought;
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const width = netCanvas.clientWidth;
   const height = netCanvas.clientHeight;
@@ -371,9 +428,8 @@ function frame(t) {
   if (state.gameState === 'running') {
     budget += elapsed * speed;
     while (budget >= STEP_MS && state.gameState === 'running') {
-      layers = activations(net, observe(state));
-      const scores = layers.at(-1);
-      action = ACTIONS[scores.indexOf(Math.max(...scores))];
+      thought = think(observe(state));
+      action = thought.action;
       env.step(action);
       budget -= STEP_MS;
     }
@@ -401,7 +457,16 @@ for (const btn of document.querySelectorAll('[data-speed]')) {
 }
 
 picker.addEventListener('change', () => useModel(picker.value));
-const asked = new URLSearchParams(location.search).get('model')?.replace(/^.*\/|\.json$/g, '');
-await useModel(index.some(m => m.name === asked) ? asked : index.at(-1).name);
+tierPicker.addEventListener('change', () => {
+  tier = Number(tierPicker.value);
+  remember();
+  best = 0;
+  runs = 0;
+  newRun();
+});
+const params = new URLSearchParams(location.search);
+const asked = params.get('model')?.replace(/^.*\/|\.json$/g, '');
+const latestModel = index.filter(m => !m.name.startsWith(RULES_PREFIX)).at(-1).name;
+await useModel(index.some(m => m.name === asked) ? asked : latestModel, params.get('tier'));
 resize();
 requestAnimationFrame(frame);

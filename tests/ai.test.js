@@ -15,6 +15,9 @@ import { PATTERN_CLOSE_GAP, BOSS_SPEED_MULTIPLIER, BOSS_CHASE_DURATION, DOG_HITB
 import { setScenePhase } from '../js/systems/scenes.js';
 import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
 import { seededRng } from '../ai/env.js';
+import { RULE_SETS, decide } from '../ai/rules.js';
+import { playRun, rulesPlayer } from '../ai/play.js';
+import { DOG_INPUTS, PER_BAND } from '../ai/observe.js';
 
 // Steps a tier with random actions until it ends (or `steps`), returning what it spawned and its score.
 function run(tier, seed, steps = 4000) {
@@ -127,4 +130,51 @@ test('observations have a fixed size; a model only loads with the observation it
   const net = createNet([INPUTS, 4, ACTIONS.length], seededRng(1));
   assert.ok(loadNet(saveable(net, {})));
   assert.throws(() => loadNet({ ...saveable(net, {}), observation: 'slots-0' }), new RegExp(OBSERVATION));
+});
+
+// Inputs with nothing near, the dog on the ground, then `set` applied: dog inputs by name, things as [band, reaches, past].
+function inputsWith({ dog = {}, things = [] } = {}) {
+  const x = Array(INPUTS).fill(1);
+  DOG_INPUTS.forEach((name, i) => { x[i] = dog[name] ?? 0; });
+  for (const [band, reaches, past] of things) {
+    const at = DOG_INPUTS.length + band * PER_BAND * 2;
+    x[at] = reaches;
+    x[at + 1] = past;
+  }
+  return x;
+}
+
+test('the naive rules do what they say', () => {
+  const [HIGH_AIR, , HEAD, GROUND] = BANDS.keys();
+  const naive = RULE_SETS.naive;
+  const act = setup => decide(naive, inputsWith(setup)).action;
+  assert.equal(act(), 'none', 'nothing near: nothing');
+  assert.equal(act({ things: [[GROUND, 0.3, 0.6]] }), 'jump', 'a chocolate bar a fifth of a second off: jump');
+  assert.equal(act({ things: [[GROUND, 0.6, 0.9]] }), 'none', 'still too far: wait');
+  assert.equal(act({ dog: { 'in the air': 1 }, things: [[GROUND, 0.3, 0.6]] }), 'none', 'already in the air: no double jump for a bar');
+  assert.equal(act({ things: [[HEAD, 0.3, 0.6]] }), 'duck', 'a bird at head height: duck');
+  assert.equal(act({ things: [[HEAD, -0.2, 0.2]] }), 'duck', 'still at the dog: keep ducking');
+  const tower = { things: [[HIGH_AIR, 0.2, 0.5], [GROUND, 0.2, 0.5]] };
+  assert.equal(act({ ...tower, dog: { 'in the air': 1, 'vertical speed': -0.5 } }), 'none', 'a tower, still rising: wait');
+  assert.equal(act({ ...tower, dog: { 'in the air': 1, 'vertical speed': 0.1 } }), 'jump', 'a tower, starting to fall: jump again');
+  assert.equal(act({ ...tower, dog: { 'in the air': 1, 'vertical speed': 0.1, 'double jump used': 1 } }), 'none', 'double jump spent');
+  // And it plays a run like a network does, through the same playRun.
+  const run = playRun(rulesPlayer(naive), 1, 0);
+  assert.ok(run.score > 0 && run.killer, 'it runs, and the naive rules die');
+});
+
+test('the tuned rules: jump so it is past before landing; a tower is one column, not an empty field or a bird stack', () => {
+  const [HIGH_AIR, LOW_AIR, HEAD, GROUND] = BANDS.keys();
+  const act = setup => decide(RULE_SETS.tuned, inputsWith(setup)).action;
+  assert.equal(act(), 'none', 'nothing near: nothing');
+  assert.equal(act({ things: [[GROUND, 0.3, 0.6]] }), 'jump', 'a bar that will be past before a jump lands: jump');
+  assert.equal(act({ things: [[GROUND, 0.3, 0.8]] }), 'none', 'a wider one: not yet');
+  assert.equal(act({ dog: { 'in the air': 1, 'vertical speed': 0.5, height: 0.5 } }), 'none', 'empty bands are no tower: no double jump');
+  const stack = [[HIGH_AIR, 0.1, 0.4], [LOW_AIR, 0.1, 0.4], [HEAD, 0.1, 0.4]];
+  assert.equal(act({ things: [...stack, [GROUND, 0.9, 1]] }), 'duck', 'a bird stack with a bar behind it is no tower: duck');
+  const tower = [[HIGH_AIR, 0.5, 0.9], [LOW_AIR, 0.5, 0.9], [HEAD, 0.5, 0.9], [GROUND, 0.5, 0.9]];
+  assert.equal(act({ things: tower }), 'jump', 'a tower: jump early, for a double jump');
+  const falling = height => ({ 'in the air': 1, 'vertical speed': 0.3, height });
+  assert.equal(act({ things: tower, dog: falling(0.9) }), 'none', 'over a tower, still high: wait');
+  assert.equal(act({ things: tower, dog: falling(0.7) }), 'jump', 'over a tower, down to its height: jump again');
 });

@@ -1,0 +1,16 @@
+{
+  "model": "rules-tuned: 5 hand-written rules (a few general rules and 4 tuned numbers)",
+  "tier": 2,
+  "runs": 100,
+  "mean": 4537,
+  "median": 4326,
+  "min": 2067,
+  "max": 8000,
+  "cleared": "1/100 reached 8000",
+  "killedBy": {
+    "tower": 95,
+    "bird": 3,
+    "frisbeePair": 1
+  },
+  "speedAtDeath": "4.03–6.75"
+}

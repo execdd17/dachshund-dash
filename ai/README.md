@@ -49,6 +49,14 @@ Nothing here is part of the game or touches the leaderboard.
   version (a model won't load against other inputs), its tier, and the tiers
   it trained through.
 - **Evaluation** (`evaluate.mjs`): a model on 50 runs it never saw, in any tier.
+- **Rules** (`rules.js`): the baseline. Hand-written if-statements on the
+  same 22 inputs, deciding as often, played through the same `playRun` and
+  scored by the same `evaluate.mjs` on the same seeds (`play.js` takes any
+  player: `netPlayer(net)` or `rulesPlayer(ruleSet)`). A rule set is a list of
+  rules in plain words, each with its condition and action; the first that
+  holds decides. Named `rules-<key>` wherever a model has a name.
+  `tune-rules.mjs` picks the tuned set's numbers on seeds the evaluation
+  never uses.
 - **Viewer** (`watch.html`): see below.
 
 A run counts as cleared at 8,000 points (`SCORE_CAP`), past top speed (7,500).
@@ -58,6 +66,7 @@ A run counts as cleared at 8,000 points (`SCORE_CAP`), past top speed (7,500).
 ```bash
 node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1]
 node ai/evaluate.mjs --model ai/models/tier2.json [--tier 2] [--runs 50] [--cap 30000]
+node ai/evaluate.mjs --model rules-naive --tier 2      # a rule set: by name, with a tier
 ```
 
 Results land in `results/<name>/` (`curve.csv`, `train.log`,
@@ -74,9 +83,12 @@ dog; below, a live panel of its 22 inputs and its scores, a live diagram of
 the network (each neuron colored by its value, each weight as bright as the
 signal it's passing, each layer's activation named), and a plain-language
 explanation of how it works. A picker lists every
-trained model (`models/index.json`, which training keeps up to date;
-`node ai/model-index.mjs` rebuilds it), and the URL keeps the choice
-(`?model=tier2`). 1× / 2× / 4× / 10×; a run that ends restarts on a new seed.
+trained model and then the rule sets (`models/index.json`, which training
+keeps up to date; `node ai/model-index.mjs` rebuilds it), and a tier picker
+beside it: a model starts on its own tier, a rule set keeps the tier that's
+showing, so both play the same tier. For a rule set, the
+network diagram gives way to its rules, the one firing highlighted. The URL
+keeps both (`?model=tier2&tier=3`). 1× / 2× / 4× / 10×; a run that ends restarts on a new seed.
 Serve the repo root and open `/ai/watch.html`.
 
 ## What mattered
@@ -127,6 +139,90 @@ Serve the repo root and open `/ai/watch.html`.
   scratch, after 30 minutes and 1,498 generations, 68 of 300 (dying to 149
   towers and 67 acorns), having to learn the tower's double jump and the
   chase's short reaction times all at once.
+
+## The baseline: is a network worth it?
+
+A fair question: wouldn't a few if-statements do as well? The radar already
+does much of the work (times rather than distances, bands that say jump or
+duck), so the baseline gets exactly the network's inputs and nothing more.
+
+`rules-naive` is the obvious rules, written once and never tuned: something
+in the ground band within ⅕ s, on the ground: jump; something in the head
+band within ⅕ s: duck; a tower (ground and high air both near): jump, then
+again as it starts to fall. 100 unseen runs per tier, the same seeds as the
+networks:
+
+| Tier | Mean | Best | Cleared | What ended its runs |
+|---|---|---|---|---|
+| 0 | 82 | 419 | 0 / 100 | chocolate bar 100 |
+| 1 | 144 | 2,785 | 0 / 100 | chocolate bar 98, bird stack 2 |
+| 2 | 47 | 167 | 0 / 100 | tower 62, chocolate bar 38 |
+| 3–4 | 47 | 167 | 0 / 100 | the same: every run ends before the first chase or boss |
+
+The rules do what they say (`tests/ai.test.js` checks each one on hand-made
+inputs); the obvious number is what fails. A jump lasts about ⅓ s, and a
+chocolate bar plus the dog's own length take about 0.37 s to pass, so
+jumping when the bar is ⅕ s off lands the dog on its far end. Timing is the
+whole problem, and the network found its timings by itself, in 19 seconds
+for tier 0.
+
+`rules-tuned` is the best version that stays maintainable: a handful of
+general rules, each a principle rather than a case, with 4 named numbers
+(`TUNED`) tuned one at a time on separate seeds (`tune-rules.mjs`).
+
+1. A tower ahead (its high-air and ground parts arrive together: one
+   column), on the ground, and it'll be past within 0.95 (a double jump's
+   airtime): jump.
+2. In the air, falling, double jump unused, a tower still ahead, and down to
+   height 0.8: jump again.
+3. Something at head height comes first, within 0.2 (or it's at the dog):
+   duck.
+4. Something on the ground, on the ground, and it'll be past within 0.65
+   (before a jump lands): jump.
+5. Otherwise: do nothing.
+
+The same 100 unseen runs per tier, against the networks:
+
+| Tier | `rules-naive` | `rules-tuned` | The network |
+|---|---|---|---|
+| 0 | 0 / 100 (mean 82) | **100 / 100** | 50 / 50 (`tier0`, 19 s of training) |
+| 1 | 0 / 100 (mean 144) | **92 / 100** (mean 7,931) | 300 / 300 (`tier1`) |
+| 2 | 0 / 100 (mean 47) | 1 / 100 (mean 4,537) | 293 / 300 (`tier2`) |
+| 3 | 0 / 100 | 0 / 100 (mean 4,365) | 288 / 300 (`tier3-from-tier2`) |
+| 4 | 0 / 100 | 1 / 100 (mean 4,084) | 100 / 100, to 30,000 and to 100,000 (`tier4-from-tier3`) |
+
+Rule 4 is the whole difference on tiers 0 and 1: "jump so it's past before
+you land" covers every width at every speed with one number. Towers are what
+the rules can't manage, and not as a wall: below speed 4.0 they cleared all
+1,934 towers they met (100 tier-2 runs); from 4.0 each tower is a small risk
+that grows with speed, 1.7% at 4.0–4.5, 4–5% to 5.5, 7–9% above. A run meets
+dozens, so the risk adds up. It's a combination:
+
+- **A tower right behind a chocolate bar.** All 95 fatal towers came into
+  range with the dog in the air, 90 of them behind a bar within 0.6 s (of
+  the 2,141 cleared, 4% had anything that close). Spawn gaps are set in
+  pixels, so in time they shrink with speed: the shortest gap before a
+  change of type is 1.25 s at speed 3, 0.94 s at 4, and 0.56 s at the top.
+  The dog is still coming down from the bar when it should start the tower's
+  early jump.
+- **The sixth bar** (from `TOWER_TALL_FROM_SPEED`, 4.0) needs that early jump
+  more. With every tower kept at 5 bars (a temporary experiment), failures
+  start at 5.0 instead of 4.0 and run about a third as often.
+
+The radar can't tell a 5-bar tower from a 6-bar one (both fill all four
+bands), and they want different double jumps; nor does a rule know it's in
+a squeeze until it's in one. Tuning can't split the difference (the sweep
+moved the mean from 4,343 to 4,571), and the fixes tried each needed a new
+threshold to stop them misfiring (a fast-fall rule, to get down in time for
+the tower, dropped the dog onto the very tower it was jumping). The network
+handles it, from the same inputs; a rule would have to name the case ("a bar
+then a tower, above speed 4"), and that's the start of the mountain of
+if-statements.
+
+So the coworker is half right: a few well-chosen rules on these inputs play
+the early game as well as the network does. They don't scale. Each new thing
+the game throws needs a person to find the principle, the threshold, and
+the case it breaks; the network took each new tier in a few generations.
 
 ## Results so far
 

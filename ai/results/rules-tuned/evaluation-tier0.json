@@ -1,0 +1,12 @@
+{
+  "model": "rules-tuned: 5 hand-written rules (a few general rules and 4 tuned numbers)",
+  "tier": 0,
+  "runs": 100,
+  "mean": 8000,
+  "median": 8000,
+  "min": 8000,
+  "max": 8000,
+  "cleared": "100/100 reached 8000",
+  "killedBy": {},
+  "speedAtDeath": "none"
+}

@@ -1,0 +1,17 @@
+{
+  "model": "rules-tuned: 5 hand-written rules (a few general rules and 4 tuned numbers)",
+  "tier": 4,
+  "runs": 100,
+  "mean": 4084,
+  "median": 3951,
+  "min": 1347,
+  "max": 8000,
+  "cleared": "1/100 reached 8000",
+  "killedBy": {
+    "hotdog": 13,
+    "tower": 74,
+    "chase": 11,
+    "birdStack": 1
+  },
+  "speedAtDeath": "3.67–6.75"
+}
