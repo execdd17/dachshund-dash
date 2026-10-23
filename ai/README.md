@@ -261,6 +261,14 @@ closes it for players too. Under the fixed rule the exploit model scores
 8,483, worse than the champion it came from, still taking risks for a bonus
 that no longer pays.
 
+With the exploit closed, an hour on the faster PC (693 generations, about
+5.7 hours of the Beelink's) never beat 9,038 (`results/tier5-fixed-birds/`):
+the population got steadily better at surviving (its mean rose from 3,269 to
+7,587) and no network found a real bird jump. The exploit was one small
+change from ducking; a real jump means giving up the duck and timing a
+take-off, and the halfway versions hit the bird. Fitness is a whole run's
+points, so one jump's +50 is noise beside a death's thousands.
+
 It also forgot normal mode: on normal tier 4 it averaged 93 points, dying to
 chocolate bars at speed 3.0–3.2, where its parent clears 100 of 100. Hyper
 never goes below speed 4, and 187 generations without slow speeds were
