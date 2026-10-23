@@ -4,6 +4,7 @@
 // hand-written rule set (rulesPlayer), so both are measured the same way.
 
 import { createEnv, ACTIONS } from './env.js';
+import { TIERS } from './tiers.js';
 import { observe } from './observe.js';
 import { choose } from './net.js';
 import { decide } from './rules.js';
@@ -14,12 +15,20 @@ export const SCORE_CAP = 8000;  // past top speed (7500): a run this long counts
 export const netPlayer = net => inputs => ACTIONS[choose(net, inputs)];
 export const rulesPlayer = ruleSet => inputs => decide(ruleSet, inputs).action;
 
+// A timed tier's run ends when its time is up and keeps every point (no cap).
 export function playRun(player, seed, tier, cap = SCORE_CAP) {
+  const limit = TIERS[tier].minutes ? Infinity : cap;
   const env = createEnv({ seed, tier }).reset();
   const { state } = env;
-  while (!env.step(player(observe(state))).done && state.score < cap);
+  while (!env.step(player(observe(state))).done && state.score < limit);
   const dead = state.gameState !== 'running';
-  return { score: Math.min(state.score, cap), speed: state.speed, killer: dead ? killerOf(state, env.lastScene) : null };
+  return {
+    score: Math.min(state.score, limit),
+    speed: state.speed,
+    seconds: env.now / 1000,
+    birds: env.birds,
+    killer: dead ? killerOf(state, env.lastScene) : null,
+  };
 }
 
 // The obstacle the dog ran into, or the boss squirrel if none touches it.

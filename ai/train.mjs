@@ -22,6 +22,7 @@ import { createNet, mutate, crossover, toJSON, fromJSON } from './net.js';
 import { INPUTS } from './observe.js';
 import { ACTIONS, seededRng } from './env.js';
 import { playRun, netPlayer, SCORE_CAP } from './play.js';
+import { TIERS } from './tiers.js';
 import { modelFile, resultsDir, saveable, loadNet } from './models.js';
 import { writeModelIndex } from './model-index.mjs';
 
@@ -54,23 +55,32 @@ if (!isMainThread) {
   mkdirSync(new URL('models/', dir), { recursive: true });
 
   const workers = Array.from({ length: availableParallelism() }, () => new Worker(new URL(import.meta.url)));
-  const score = (nets, seeds) => {
-    const chunk = Math.ceil(nets.length / workers.length);
-    return Promise.all(workers.map((w, i) => new Promise(resolve => {
-      w.once('message', resolve);
-      w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds, tier, cap });
-    }))).then(parts => parts.flat());
+  // Every (network, seed) run is its own task, handed to whichever worker is
+  // free: runs last from seconds to a timed tier's full length, and equal
+  // chunks per worker left most of them idle while one finished its long runs.
+  const runAll = tasks => new Promise(resolve => {
+    const scores = new Array(tasks.length);
+    let next = 0, done = 0;
+    const feed = w => {
+      if (next >= tasks.length) return;
+      const i = next++;
+      w.once('message', ([s]) => {
+        scores[i] = s;
+        if (++done === tasks.length) resolve(scores);
+        else feed(w);
+      });
+      w.postMessage({ nets: [tasks[i].json], seeds: [tasks[i].seed], tier, cap });
+    };
+    workers.forEach(feed);
+  });
+  // Each network's mean score on `seeds`.
+  const score = async (nets, seeds) => {
+    const jsons = nets.map(toJSON);
+    const scores = await runAll(jsons.flatMap(json => seeds.map(seed => ({ json, seed }))));
+    return nets.map((_, n) => mean(scores.slice(n * seeds.length, (n + 1) * seeds.length)));
   };
-  // One network on many seeds: its seeds split across the workers.
-  const validate = async net => {
-    const chunk = Math.ceil(validationSeeds.length / workers.length);
-    const slices = workers.map((_, i) => validationSeeds.slice(i * chunk, (i + 1) * chunk)).filter(s => s.length);
-    const means = await Promise.all(slices.map((seeds, i) => new Promise(resolve => {
-      workers[i].once('message', ([m]) => resolve(m * seeds.length));
-      workers[i].postMessage({ nets: [toJSON(net)], seeds, tier, cap });
-    })));
-    return means.reduce((a, b) => a + b, 0) / validationSeeds.length;
-  };
+  // One network on the validation seeds.
+  const validate = async net => (await score([net], validationSeeds))[0];
 
   const rng = seededRng(12345);
   const ancestor = values.from && JSON.parse(readFileSync(values.from, 'utf8'));
@@ -100,7 +110,7 @@ if (!isMainThread) {
     curve.push([gen, seconds, fits[0], mean(fits), fits[Math.floor(fits.length / 2)], validation].map(v => Math.round(v)).join(','));
     writeFileSync(new URL('curve.csv', results), curve.join('\n') + '\n');
     console.log(`gen ${gen} (${seconds}s): best ${Math.round(fits[0])}, mean ${Math.round(mean(fits))}, validation ${Math.round(validation)}, champion ${Math.round(champion.validation)} (gen ${champion.gen})`);
-    if (champion.validation >= cap) break;  // clears every validation run
+    if (!TIERS[tier].minutes && champion.validation >= cap) break;  // clears every validation run (a timed tier has no cap: it trains to the end)
 
     // Next generation: the elite, then children of tournament winners from the fitter half.
     const parents = ranked.slice(0, POPULATION / 2);

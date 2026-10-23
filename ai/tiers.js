@@ -6,6 +6,9 @@
 //   patterns: whether the close-gap patterns come too
 //   scenes: scene ids allowed to take their turns (the rest are held off)
 //   frenzy: whether the frenzy runs (else it's held off, and its boss with it)
+//   hyper: hyper mode's speed (from 4.0, climbing twice as fast; core/speed.js)
+//   minutes: a run ends after this much game time, scored by its points (no
+//     score cap: bonuses count); without it, a run goes until death or a cap
 
 export const TIERS = {
   // The first experiment: chocolate bars and lone birds.
@@ -23,4 +26,9 @@ export const TIERS = {
   // + the bosses (at BOSS_SPEEDS: everything faster, the dog pushed forward)
   // and the frenzy (from FRENZY_SPEED: the drop, its boss, then the rest of the run).
   4: { name: 'bosses and the frenzy', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true, scenes: ['chase', 'boss'], frenzy: true },
+  // Tier 4's game in hyper mode, for points: a run is 10 minutes of game time
+  // (the boss at 4.5 comes about 50 s in, the frenzy about 2 minutes in, top
+  // speed about 3), and what counts is its points, a bird's jump bonus
+  // included. A bonus speeds the game up (speed follows score) until top speed.
+  5: { name: 'hyper, 10 minutes, for points', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true, scenes: ['chase', 'boss'], frenzy: true, hyper: true, minutes: 10 },
 };

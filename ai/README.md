@@ -24,8 +24,10 @@ Nothing here is part of the game or touches the leaderboard.
   (the first scene: while it runs, the game's own spawner throws acorns from
   the squirrel, close ahead of the dog). Tier 4: + the bosses (at speeds 3.5
   and 4.5: everything up to 25% faster, the dog pushed forward) and the
-  frenzy (from 5.5: the drop, its boss, then the rest of the run). A new tier
-  is one entry.
+  frenzy (from 5.5: the drop, its boss, then the rest of the run). Tier 5:
+  tier 4's game in hyper mode, for points: a run is 10 minutes of game time,
+  scored by its points with no cap, so a bird's jump bonus counts (and, since
+  speed follows score, brings top speed sooner). A new tier is one entry.
 - **Observation** (`observe.js`, `radar-1`): the dog's own state and the speed,
   plus a radar of the screen ahead in four height bands, cut where the dog's
   hitboxes change what an obstacle asks: ground (hits even a ducking dog),
@@ -67,7 +69,16 @@ A run counts as cleared at 8,000 points (`SCORE_CAP`), past top speed (7,500).
 node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1]
 node ai/evaluate.mjs --model ai/models/tier2.json [--tier 2] [--runs 50] [--cap 30000]
 node ai/evaluate.mjs --model rules-naive --tier 2      # a rule set: by name, with a tier
+AI_REMOTE=user@host ai/remote-train.sh --tier 5 ...   # train.mjs on a machine with more cores
 ```
+
+Training spreads every (network, seed) run over all cores, each to whichever
+worker is free (runs last from seconds to a timed tier's 10 minutes, so equal
+chunks left workers idle). `remote-train.sh` copies this tree to another
+machine, trains there detached, and copies the model and results back: on a
+Ryzen 7 7800X3D (16 threads) it's 5.7× the Beelink (Intel N150, 4 cores), and
+the same seeds give the same results generation for generation, so a model
+doesn't depend on where it trained. Use the same Node version on both.
 
 Results land in `results/<name>/` (`curve.csv`, `train.log`,
 `evaluation-tier<N>.json`). `tests/ai.test.js` checks the environment replays a seed,
@@ -223,6 +234,35 @@ So the coworker is half right: a few well-chosen rules on these inputs play
 the early game as well as the network does. They don't scale. Each new thing
 the game throws needs a person to find the principle, the threshold, and
 the case it breaks; the network took each new tier in a few generations.
+
+## Points, not just survival (tier 5)
+
+Every tier before 5 rewarded survival: fitness was the score at death,
+capped, so a run that reached the cap scored the same however it got there.
+The tier-4 champion ducked all 1,483 lone birds it met in 20 runs, leaving
+about 3,700 points a run uncollected (a jumped lone bird pays 50; ducking is
+safer, and a bonus also speeds the game up). Tier 5 fixes the objective: the
+most points in 10 minutes of hyper, where dying early costs everything after.
+Hyper reaches the 4.5 boss about 50 s in, the frenzy about 2 minutes in, and
+top speed about 3, so a run covers all of it; the game itself still has no
+time limit (`TIERS[5].minutes` is the environment's rule).
+
+On 100 unseen tier-5 runs:
+
+| Player | Points (mean) | Median | Lasted 10 min | Lone birds jumped |
+|---|---|---|---|---|
+| `tier4-from-tier3` | 9,077 | 9,038 | 100 / 100 | 14 / 8,095 (0%) |
+| `rules-tuned` | 1,531 | 1,439 | 0 / 100 | 0% |
+| `tier5-from-tier4` (187 generations, 60 min) | **10,919** | **11,836** | 88 / 100 | 2,499 / 7,139 (35%) |
+
+Training sat near 9,000 for 180 generations, then found bird jumping in the
+last few (validation 9,253 → 11,436) and ran out of time still climbing. It
+trades some safety for points: 12 runs ended early (8 towers, 4 acorns).
+
+**It forgot normal mode.** On normal tier 4 it averages 93 points and dies to
+chocolate bars at speed 3.0–3.2, where its parent clears 100 of 100: hyper
+never goes below speed 4, and 187 generations without slow speeds were
+enough to lose them.
 
 ## Results so far
 

@@ -1,0 +1,16 @@
+{
+  "model": "ai/models/tier5-from-tier4.json: tier 5 (trained on 2 → 3 → 4 → 5), generation 187",
+  "tier": 4,
+  "runs": 100,
+  "mean": 93,
+  "median": 69,
+  "min": 29,
+  "max": 348,
+  "cleared": "0/100 reached 8000",
+  "birdJumps": "0/117 lone birds jumped (0%)",
+  "killedBy": {
+    "hotdog": 96,
+    "chase": 4
+  },
+  "speedAtDeath": "3.01–3.17"
+}

@@ -16,10 +16,10 @@ import { createState, resetRun } from '../js/core/state.js';
 import { update } from '../js/systems/update.js';
 import { jump, duck } from '../js/systems/control.js';
 import { SPAWN_KINDS, SPAWN_PATTERNS, patternChance } from '../js/systems/spawning.js';
-import { paceOf } from '../js/core/speed.js';
+import { paceOf, runSpeed } from '../js/core/speed.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
 import { createSilentMusic } from '../js/audio/music.js';
-import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE, FRENZY_DROP_CALM } from '../js/config.js';
+import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE, FRENZY_DROP_CALM, DOG_HITBOX_STAND } from '../js/config.js';
 import { TIERS } from './tiers.js';
 
 export const ACTIONS = ['none', 'jump', 'duck'];
@@ -45,7 +45,7 @@ function kindOf(o) {
 }
 
 export function createEnv({ seed, tier }) {
-  const { solo, patterns, scenes = [], frenzy = false } = TIERS[tier];
+  const { solo, patterns, scenes = [], frenzy = false, hyper = false, minutes = Infinity } = TIERS[tier];
   const soloKinds = Object.entries(solo);
   const soloTotal = soloKinds.reduce((sum, [, w]) => sum + w, 0);
   const services = { sfx: createSilentSfx(), music: createSilentMusic(), recordRun() {} };
@@ -102,7 +102,16 @@ export function createEnv({ seed, tier }) {
     // Scenes the tier doesn't allow never take a turn.
     state.sceneQueue = state.sceneQueue.filter(id => scenes.includes(id));
     if (state.scene && !scenes.includes(state.scene.id)) state.scene = null;
-    for (const o of state.obstacles) o.kind ??= kindOf(o);
+    for (const o of state.obstacles) {
+      o.kind ??= kindOf(o);
+      // A bird the game pays a jump bonus for (a lone one, or a chase's thrown
+      // acorn), once it's behind the dog: passed, and jumped or not.
+      if (o.type === 'bird' && !o.aerialWall && !o.counted && o.x + o.width < state.dog.x + DOG_HITBOX_STAND.dx) {
+        o.counted = true;
+        env.birds.passed++;
+        if (o.jumped) env.birds.jumped++;
+      }
+    }
     if (!inScene && state.scene && state.nextObstacleIn === Infinity) {
       // A scene took over this frame, and it didn't set the game's spawn count
       // (the chase does; the boss doesn't): hand over the environment's count,
@@ -126,10 +135,17 @@ export function createEnv({ seed, tier }) {
     state.gameState = 'running';
     state.startingHearts = 1;
     resetRun(state);
+    state.hyper = hyper;
+    state.speed = runSpeed(state);
     if (!frenzy) state.frenzyAt = 1;  // past the frenzy's drop, so it never brings its boss
-    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null });
+    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null, birds: { passed: 0, jumped: 0 } });
     return env;
   };
+
+  // Out of game time: a timed tier's run is over, with the dog still running.
+  env.timeUp = () => env.now >= minutes * 60000;
+  // The run is over: the dog died, or time is up.
+  env.over = () => env.state.gameState !== 'running' || env.timeUp();
 
   // Hold `action` for DECIDE_EVERY frames: 'jump' presses once, 'duck' holds duck.
   env.step = action => {
@@ -137,8 +153,8 @@ export function createEnv({ seed, tier }) {
     const before = state.score;
     duck(state, action === 'duck', services);
     if (action === 'jump') jump(state, services, env.now);
-    for (let i = 0; i < DECIDE_EVERY && state.gameState === 'running'; i++) frame();
-    return { reward: state.score - before, done: state.gameState !== 'running' };
+    for (let i = 0; i < DECIDE_EVERY && !env.over(); i++) frame();
+    return { reward: state.score - before, done: env.over() };
   };
 
   return env;

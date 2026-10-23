@@ -11,6 +11,7 @@ import { parseArgs } from 'node:util';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { playRun, netPlayer, rulesPlayer, SCORE_CAP } from './play.js';
 import { RULES_PREFIX, ruleSetNamed } from './rules.js';
+import { TIERS } from './tiers.js';
 import { basename } from 'node:path';
 import { loadNet, resultsDir } from './models.js';
 
@@ -42,7 +43,12 @@ const report = {
   median: Math.round(scores[Math.floor(runs / 2)]),
   min: Math.round(scores[0]),
   max: Math.round(scores.at(-1)),
-  cleared: `${results.filter(r => r.score >= cap).length}/${runs} reached ${cap}`,
+  cleared: TIERS[tier].minutes
+    ? `${results.filter(r => !r.killer).length}/${runs} lasted the ${TIERS[tier].minutes} minutes`
+    : `${results.filter(r => r.score >= cap).length}/${runs} reached ${cap}`,
+  birdJumps: (({ passed, jumped }) => `${jumped}/${passed} lone birds jumped (${passed ? Math.round((100 * jumped) / passed) : 0}%)`)(
+    results.reduce((t, r) => ({ passed: t.passed + r.birds.passed, jumped: t.jumped + r.birds.jumped }), { passed: 0, jumped: 0 }),
+  ),
   killedBy,
   speedAtDeath: speeds.length ? `${Math.min(...speeds).toFixed(2)}–${Math.max(...speeds).toFixed(2)}` : 'none',
 };

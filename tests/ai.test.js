@@ -92,6 +92,27 @@ test('tier 4: obstacles keep coming through every boss, including the frenzy bos
   for (const { name, spawned } of bosses) assert.ok(spawned >= 8, `${name}: ${spawned} obstacles spawned during it`);
 });
 
+test('tier 5: hyper speed, its bosses and the frenzy, and a run that ends after 10 minutes with every point kept', () => {
+  const env = createEnv({ seed: 3, tier: 5 }).reset();
+  const { state } = env;
+  assert.equal(state.speed, 4, 'hyper starts at 4.0');
+  const bosses = [];
+  let wasBoss = false;
+  while (!env.step('none').done) {
+    state.invulnUntil = Infinity;  // a dog that never dies: only time ends the run
+    const boss = state.scene?.id === 'boss' && state.scene.phase === 'active';
+    if (boss && !wasBoss) bosses.push(state.frenzyAt > 0 ? 'frenzy' : state.speed.toFixed(1));
+    wasBoss = boss;
+  }
+  assert.ok(env.timeUp() && state.gameState === 'running', 'time, not death, ended it');
+  assert.ok(Math.abs(env.now - 10 * 60000) < 100, `ended at ${env.now} ms`);
+  assert.deepEqual(bosses, ['4.5', 'frenzy'], 'no 3.5 boss: hyper starts above it');
+  assert.ok(env.birds.passed > 20 && env.birds.jumped === 0, `${env.birds.passed} birds passed, none jumped by a dog that never jumps`);
+  const run = playRun(() => 'none', 3, 5);
+  assert.ok(run.killer, 'a dog that never jumps dies');
+  assert.ok(state.score > 8000, `no score cap on a timed tier: ${Math.round(state.score)}`);
+});
+
 test('the radar times things by how fast they really come: faster in a boss', () => {
   const env = createEnv({ seed: 1, tier: 4 }).reset();
   const { state } = env;

@@ -1,0 +1,19 @@
+{
+  "model": "rules-tuned: 5 hand-written rules (a few general rules and 4 tuned numbers)",
+  "tier": 5,
+  "runs": 100,
+  "mean": 1531,
+  "median": 1439,
+  "min": 135,
+  "max": 6159,
+  "cleared": "0/100 lasted the 10 minutes",
+  "birdJumps": "0/1457 lone birds jumped (0%)",
+  "killedBy": {
+    "chase": 16,
+    "hotdog": 6,
+    "tower": 73,
+    "frisbeePair": 4,
+    "bird": 1
+  },
+  "speedAtDeath": "4.13–6.75"
+}

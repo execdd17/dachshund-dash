@@ -301,7 +301,16 @@ function drawVision(state) {
   }
   ctx.setLineDash([]);
   const look = ACTION_LOOK[action];
-  if (look && state.gameState === 'running') {
+  if (env.timeUp()) {
+    ctx.font = 'bold 20px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.lineWidth = 4;
+    const text = `TIME'S UP: ${Math.floor(state.score)} POINTS`;
+    ctx.strokeText(text, W / 2, 80);
+    ctx.fillText(text, W / 2, 80);
+  } else if (look && state.gameState === 'running') {
     ctx.font = 'bold 12px Courier New';
     ctx.textAlign = 'center';
     ctx.fillStyle = look.color;
@@ -310,11 +319,19 @@ function drawVision(state) {
   ctx.restore();
 }
 
+// A timed tier's clock: what's left of the run, or that it's up.
+function timeLeft() {
+  const { minutes } = TIERS[tier];
+  if (!minutes) return '';
+  const left = Math.max(0, minutes * 60 - env.now / 1000);
+  return env.timeUp() ? ' · <b>time\'s up</b>' : ` · time <b>${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}</b>`;
+}
+
 function showStats(state) {
   best = Math.max(best, state.score);
   document.getElementById('stats').innerHTML =
     `run <b>${runs}</b> · score <b>${Math.floor(state.score)}</b> · speed <b>${state.speed.toFixed(2)}</b>` +
-    ` · best <b>${Math.floor(best)}</b>`;
+    ` · birds jumped <b>${env.birds.jumped}/${env.birds.passed}</b>${timeLeft()} · best <b>${Math.floor(best)}</b>`;
 }
 
 // --- The network diagram ---
@@ -425,15 +442,15 @@ function frame(t) {
   const elapsed = Math.min(t - last, 100);
   last = t;
   const { state } = env;
-  if (state.gameState === 'running') {
+  if (!env.over()) {
     budget += elapsed * speed;
-    while (budget >= STEP_MS && state.gameState === 'running') {
+    while (budget >= STEP_MS && !env.over()) {
       thought = think(observe(state));
       action = thought.action;
       env.step(action);
       budget -= STEP_MS;
     }
-    if (state.gameState !== 'running') endedAt = t;
+    if (env.over()) endedAt = t;
   } else if (t - endedAt > RESTART_MS) {
     newRun();
   }
