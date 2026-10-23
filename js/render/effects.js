@@ -31,6 +31,16 @@ const GIANT_POINTS_LOOK = [
   { color: '#FF9A3C', size: 18 },
 ];
 
+// Hyper's clean-jump popups by streak level (1…CLEAN_STREAK_MAX): bigger and hotter as the streak climbs.
+const CLEAN_TEXT_OUTLINE = '#1E2A3A';
+const CLEAN_JUMP_LOOK = [
+  { color: '#FFFFFF', size: 12 },
+  { color: '#8FE3FF', size: 13 },
+  { color: '#7CFF8A', size: 15 },
+  { color: '#FFD700', size: 17 },
+  { color: '#FF9A3C', size: 19 },
+];
+
 // One draw function per effect kind (systems/effects.js), in draw order.
 export const EFFECT_DRAWERS = {
   // Giant mode's points where the food or bone was: crumbs for food, a
@@ -82,6 +92,14 @@ export const EFFECT_DRAWERS = {
     }
   },
   birdJump: drawScorePopup('NICE! +' + BIRD_JUMP_BONUS, '#3B7DD8'),
+  // Hyper's clean jump: its points, and the streak, climbing in size and color like giant mode's.
+  cleanJump(ctx, e, { now }) {
+    const age = (now - e.startTime) / SCORE_POPUP_MS;
+    if (age > 1) return;
+    const { color, size } = CLEAN_JUMP_LOOK[e.level - 1];
+    const text = e.level > 1 ? `CLEAN x${e.level} +${e.points}` : `CLEAN +${e.points}`;
+    drawPopupText(ctx, text, e.x, e.y - 12 - age * 30, { color, size: size + age * 6, alpha: 1 - age, outline: CLEAN_TEXT_OUTLINE });
+  },
   trampBounce: drawScorePopup('BOING! +' + TRAMP_BOUNCE_BONUS, '#7A4FBF'),
   heartGain: drawScorePopup('+1 HEART!', '#FF4D6D'),
   heartBonus: drawScorePopup('FULL! +' + HEART_FULL_BONUS, '#FF4D6D'),

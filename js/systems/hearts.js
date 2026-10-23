@@ -7,6 +7,7 @@ import { addEffect } from './effects.js';
 // Spends a heart and starts the post-hit i-frames. False when it was the last one.
 export function spendHeart(state, services, now) {
   state.hearts--;
+  state.cleanStreak = 0;  // a hit breaks the clean-jump streak (cleanJump.js)
   if (state.hearts <= 0) return false;
   state.heartLostAt = now;
   state.invulnUntil = now + HEART_HIT_INVULN;

@@ -7,7 +7,7 @@ import { createState } from '../js/core/state.js';
 import { update } from '../js/systems/update.js';
 import { jump } from '../js/systems/control.js';
 import {
-  GROUND_Y, DT_BASELINE, GIANT_DURATION, BIRD_JUMP_BONUS,
+  GROUND_Y, DT_BASELINE, GIANT_DURATION, BIRD_JUMP_BONUS, DOG_HITBOX_STAND,
 } from '../js/config.js';
 import { getGiantPhase, setGiantPhase } from '../js/systems/encounters.js';
 import { giantScoreMultiplier } from '../js/systems/giant.js';
@@ -104,6 +104,25 @@ test('jumping over a bird awards the bonus once', () => {
   const after = state.score;
   update(state, DT, services, () => 0.99, 1);
   assert.ok(state.score < after + BIRD_JUMP_BONUS, 'bonus not granted twice');
+});
+
+test('ducking under a bird and jumping as it clears pays no bonus', () => {
+  const state = runningState();
+  const services = createTestServices();
+  const tail = state.dog.x + DOG_HITBOX_STAND.dx;
+  // The bird over the ducking dog's body, the dog on the ground...
+  state.duckHeld = true;
+  state.obstacles = [{ x: tail - 40, y: GROUND_Y - 49, width: 66, height: 51, type: 'bird' }];
+  update(state, DT, services, () => 0.99, 0);
+  // ...then the dog jumps just as the bird's back edge clears its tail.
+  state.duckHeld = false;
+  Object.assign(state.dog, { jumping: true, y: 180, vy: -9 });
+  state.obstacles[0].x = tail - 80;
+  const before = state.score;
+  update(state, DT, services, () => 0.99, 1);
+  assert.equal(state.obstacles[0].jumped, undefined);
+  assert.equal(effectsOfKind(state, 'birdJump').length, 0);
+  assert.ok(state.score - before < BIRD_JUMP_BONUS);
 });
 
 test('jumping over a bird wall does not award the solo-bird bonus', () => {

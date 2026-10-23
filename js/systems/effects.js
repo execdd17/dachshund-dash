@@ -26,6 +26,8 @@ export const EFFECT_KINDS = {
   heartGain: { ttl: SCORE_POPUP_MS },
   heartBonus: { ttl: SCORE_POPUP_MS },
   pointsPickup: { ttl: SCORE_POPUP_MS },
+  // Hyper's clean jump over a chocolate bar (level = its streak level).
+  cleanJump: { ttl: SCORE_POPUP_MS },
   // The flight scene's call on grabbing the cape, and the cape drifting off after the landing.
   flightCall: { ttl: FLIGHT_CALL_MS },
   capeAway: {
