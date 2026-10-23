@@ -67,7 +67,7 @@
     "validation": 30000
   },
   {
-    "name": "tier5-from-tier4",
+    "name": "tier5-exploit",
     "tier": 5,
     "trainedOn": [
       2,

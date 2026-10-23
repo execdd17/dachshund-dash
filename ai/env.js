@@ -111,6 +111,12 @@ export function createEnv({ seed, tier }) {
         env.birds.passed++;
         if (o.jumped) env.birds.jumped++;
       }
+      // A chocolate bar hyper judged (cleanJump.js): cleared with a single jump or not.
+      if (o.judged && !o.counted) {
+        o.counted = true;
+        env.bars.passed++;
+        if (o.clean) env.bars.clean++;
+      }
     }
     if (!inScene && state.scene && state.nextObstacleIn === Infinity) {
       // A scene took over this frame, and it didn't set the game's spawn count
@@ -138,7 +144,7 @@ export function createEnv({ seed, tier }) {
     state.hyper = hyper;
     state.speed = runSpeed(state);
     if (!frenzy) state.frenzyAt = 1;  // past the frenzy's drop, so it never brings its boss
-    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null, birds: { passed: 0, jumped: 0 } });
+    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null, birds: { passed: 0, jumped: 0 }, bars: { passed: 0, clean: 0 } });
     return env;
   };
 

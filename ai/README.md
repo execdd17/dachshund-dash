@@ -247,22 +247,32 @@ Hyper reaches the 4.5 boss about 50 s in, the frenzy about 2 minutes in, and
 top speed about 3, so a run covers all of it; the game itself still has no
 time limit (`TIERS[5].minutes` is the environment's rule).
 
-On 100 unseen tier-5 runs:
+**The first model found an exploit** (`tier5-exploit`). An hour of training
+sat near 9,000 for 180 generations, then jumped to 11,436 in the last few:
+10,919 points a run, 35% of lone birds "jumped". Watching it in the viewer,
+the bird count went up while the dog ducked. The game paid the bonus if the
+dog was in the air when the bird's back edge passed its tail, and never
+checked it had been over the bird: ducking under and hopping as the bird
+cleared paid the same. All 137 of its bonuses in 10 runs were that; it never
+jumped over a bird. Evolution optimized exactly what the score rewarded, not
+what it meant: reward hacking. The game now pays only if the dog was in the
+air the whole time the bird passed it (`update.js`, with a test), which
+closes it for players too. Under the fixed rule the exploit model scores
+8,483, worse than the champion it came from, still taking risks for a bonus
+that no longer pays.
+
+It also forgot normal mode: on normal tier 4 it averaged 93 points, dying to
+chocolate bars at speed 3.0–3.2, where its parent clears 100 of 100. Hyper
+never goes below speed 4, and 187 generations without slow speeds were
+enough to lose them. Hyper is the AI's mode from here.
+
+On 100 unseen tier-5 runs, under the fixed rule:
 
 | Player | Points (mean) | Median | Lasted 10 min | Lone birds jumped |
 |---|---|---|---|---|
-| `tier4-from-tier3` | 9,077 | 9,038 | 100 / 100 | 14 / 8,095 (0%) |
+| `tier4-from-tier3` | 9,038 | 9,038 | 100 / 100 | 0 / 8,106 (0%) |
 | `rules-tuned` | 1,531 | 1,439 | 0 / 100 | 0% |
-| `tier5-from-tier4` (187 generations, 60 min) | **10,919** | **11,836** | 88 / 100 | 2,499 / 7,139 (35%) |
-
-Training sat near 9,000 for 180 generations, then found bird jumping in the
-last few (validation 9,253 → 11,436) and ran out of time still climbing. It
-trades some safety for points: 12 runs ended early (8 towers, 4 acorns).
-
-**It forgot normal mode.** On normal tier 4 it averages 93 points and dies to
-chocolate bars at speed 3.0–3.2, where its parent clears 100 of 100: hyper
-never goes below speed 4, and 187 generations without slow speeds were
-enough to lose them.
+| `tier5-exploit` | 8,483 | 9,038 | 90 / 100 | 0% (its 35% was the exploit) |
 
 ## Results so far
 

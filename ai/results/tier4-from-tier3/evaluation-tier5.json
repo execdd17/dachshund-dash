@@ -2,12 +2,12 @@
   "model": "ai/models/tier4-from-tier3.json: tier 4 (trained on 2 → 3 → 4), generation 29",
   "tier": 5,
   "runs": 100,
-  "mean": 9077,
+  "mean": 9038,
   "median": 9038,
   "min": 9038,
-  "max": 9213,
+  "max": 9038,
   "cleared": "100/100 lasted the 10 minutes",
-  "birdJumps": "14/8095 lone birds jumped (0%)",
+  "birdJumps": "0/8106 lone birds jumped (0%)",
   "killedBy": {},
   "speedAtDeath": "none"
 }

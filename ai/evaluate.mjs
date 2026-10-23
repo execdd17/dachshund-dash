@@ -46,6 +46,9 @@ const report = {
   cleared: TIERS[tier].minutes
     ? `${results.filter(r => !r.killer).length}/${runs} lasted the ${TIERS[tier].minutes} minutes`
     : `${results.filter(r => r.score >= cap).length}/${runs} reached ${cap}`,
+  cleanJumps: (({ passed, clean }) => `${clean}/${passed} chocolate bars cleared with a single jump (${passed ? Math.round((100 * clean) / passed) : 0}%)`)(
+    results.reduce((t, r) => ({ passed: t.passed + r.bars.passed, clean: t.clean + r.bars.clean }), { passed: 0, clean: 0 }),
+  ),
   birdJumps: (({ passed, jumped }) => `${jumped}/${passed} lone birds jumped (${passed ? Math.round((100 * jumped) / passed) : 0}%)`)(
     results.reduce((t, r) => ({ passed: t.passed + r.birds.passed, jumped: t.jumped + r.birds.jumped }), { passed: 0, jumped: 0 }),
   ),

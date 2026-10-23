@@ -27,6 +27,7 @@ export function playRun(player, seed, tier, cap = SCORE_CAP) {
     speed: state.speed,
     seconds: env.now / 1000,
     birds: env.birds,
+    bars: env.bars,
     killer: dead ? killerOf(state, env.lastScene) : null,
   };
 }

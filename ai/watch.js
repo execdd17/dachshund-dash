@@ -331,7 +331,9 @@ function showStats(state) {
   best = Math.max(best, state.score);
   document.getElementById('stats').innerHTML =
     `run <b>${runs}</b> · score <b>${Math.floor(state.score)}</b> · speed <b>${state.speed.toFixed(2)}</b>` +
-    ` · birds jumped <b>${env.birds.jumped}/${env.birds.passed}</b>${timeLeft()} · best <b>${Math.floor(best)}</b>`;
+    ` · birds jumped <b>${env.birds.jumped}/${env.birds.passed}</b>` +
+    (state.hyper ? ` · clean jumps <b>${env.bars.clean}/${env.bars.passed}</b> (streak ${state.cleanStreak})` : '') +
+    `${timeLeft()} · best <b>${Math.floor(best)}</b>`;
 }
 
 // --- The network diagram ---
