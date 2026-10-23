@@ -1,0 +1,16 @@
+{
+  "model": "ai/models/tier3.json: tier 3 (trained on 3), generation 1498",
+  "tier": 3,
+  "runs": 300,
+  "mean": 7279,
+  "median": 7665,
+  "min": 2015,
+  "max": 8000,
+  "cleared": "68/300 reached 8000",
+  "killedBy": {
+    "tower": 149,
+    "chase": 67,
+    "hotdog": 16
+  },
+  "speedAtDeath": "4.01–6.75"
+}

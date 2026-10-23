@@ -104,6 +104,12 @@ Serve the repo root and open `/ai/watch.html`.
   of the chase's last ones. Carrying on the game's own gap fixed it, a test
   now holds every tier to the game's tightest spacing, and the tier-2
   champion's offspring then cleared tier 3 at once.
+- **The curriculum matters more as tiers stack up.** On tier 2, starting from
+  the tier-1 champion only saved generations. On tier 3, it decided the
+  outcome: from the tier-2 champion, 288 of 300 unseen runs at once; from
+  scratch, after 30 minutes and 1,498 generations, 68 of 300 (dying to 149
+  towers and 67 acorns), having to learn the tower's double jump and the
+  chase's short reaction times all at once.
 
 ## Results so far
 
@@ -115,4 +121,5 @@ Serve the repo root and open `/ai/watch.html`.
 | `tier2` | 2 | generation 86, 199 s | 293 / 300 |
 | `tier2-from-tier1` | 2 | generation 26, 128 s | 292 / 300 |
 | `tier3-from-tier2` | 3 | generation 0 (the tier-2 champion's offspring already did) | 288 / 300 |
+| `tier3` | 3 | never (6,990 of 8,000 after 1,498 generations, 30 min) | 68 / 300 |
 

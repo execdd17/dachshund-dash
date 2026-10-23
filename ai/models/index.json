@@ -37,6 +37,15 @@
     "validation": 8000
   },
   {
+    "name": "tier3",
+    "tier": 3,
+    "trainedOn": [
+      3
+    ],
+    "generation": 1498,
+    "validation": 6990
+  },
+  {
     "name": "tier3-from-tier2",
     "tier": 3,
     "trainedOn": [
