@@ -274,6 +274,8 @@ export const RAIN_DROPS = 120;
 
 // --- Music (systems/soundtrack.js) ---
 export const MUSIC_FADE_MS = 1200;   // a track fades out over this, then the next fades in over it (giant mode cuts in at once)
+export const TAPE_STOP_MS = 650;     // into the frenzy, the old track winds down over this...
+export const DROP_SILENCE_MS = 900;  // ...then this silence (the drop's boom rings through it)
 
 // --- Frenzy (systems/frenzy.js) ---
 export const FRENZY_SPEED = 5.5;       // the speed from which the frenzy starts (normal: 5000), and with it its music and the score's fire

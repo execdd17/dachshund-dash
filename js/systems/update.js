@@ -114,7 +114,7 @@ export function update(state, dt, services, rng = Math.random, now = performance
     }
   });
 
-  stepFrenzy(state, now);  // after the bird bonus, so a jumped bird still pays before it blows up
+  stepFrenzy(state, services, now);  // after the bird bonus, so a jumped bird still pays before it blows up
   state.obstacles = state.obstacles.filter(o => o.x + o.width > -10);
 
   // Landing dust particles

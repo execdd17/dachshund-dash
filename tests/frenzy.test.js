@@ -33,17 +33,17 @@ test('the drop: at FRENZY_AT everything on screen bursts and the field clears fo
     makeObstacle('hotdog', 300), makeObstacle('bird', 500, { y: 150 }), makeObstacle('bone', 400),
     makeObstacle('golden', 600), makeObstacle('tower', W + 50),
   ];
-  stepFrenzy(state, 1000);
+  stepFrenzy(state, createTestServices(), 1000);
   assert.ok(!inFrenzy(state), 'not before the score gets there');
   state.score = FRENZY_AT;
-  stepFrenzy(state, 2000);
+  stepFrenzy(state, createTestServices(), 2000);
   assert.equal(state.frenzyAt, 2000);
   assert.deepEqual(state.obstacles, [], 'no golden hot dog left to beat the boss to it');
   assert.equal(kinds(state).filter(k => k === 'burst').length, 4, 'the four on screen burst');
   assert.ok(kinds(state).includes('frenzyDrop'));
   assert.equal(state.scene?.id, 'boss');
   assert.ok(state.nextObstacleIn >= FRENZY_DROP_CALM, 'a breath before the next spawn');
-  stepFrenzy(state, 3000);
+  stepFrenzy(state, createTestServices(), 3000);
   assert.equal(state.frenzyAt, 2000, 'it drops once');
 });
 
@@ -51,18 +51,18 @@ test('the drop waits for giant mode and for a running scene, but not for one sti
   const services = createTestServices();
   const giant = runningState(FRENZY_AT);
   activateGiantMode(giant, services, 0);
-  stepFrenzy(giant, 100);
+  stepFrenzy(giant, createTestServices(), 100);
   assert.ok(!inFrenzy(giant));
   giant.giantPhase = 'off';
-  stepFrenzy(giant, 200);
+  stepFrenzy(giant, createTestServices(), 200);
   assert.ok(inFrenzy(giant));
 
   const scene = runningState(FRENZY_AT);
   setScenePhase(scene, 'chase', 'active');
-  stepFrenzy(scene, 100);
+  stepFrenzy(scene, createTestServices(), 100);
   assert.ok(!inFrenzy(scene));
   setScenePhase(scene, 'chase', 'pending');
-  stepFrenzy(scene, 200);
+  stepFrenzy(scene, createTestServices(), 200);
   assert.ok(inFrenzy(scene), 'the drop clears the field the waiting scene needs');
 });
 
@@ -73,19 +73,19 @@ test('after the drop a hazard the dog gets past bursts behind it, scenes include
   state.obstacles = [
     makeObstacle('hotdog', dogX - 37), makeObstacle('hotdog', dogX - 30), makeObstacle('bone', dogX - 40),
   ];
-  stepFrenzy(state, 500);
+  stepFrenzy(state, createTestServices(), 500);
   assert.deepEqual(state.obstacles.map(o => o.x), [dogX - 30, dogX - 40], 'only the one wholly behind the dog');
   assert.deepEqual(kinds(state), ['burst']);
 
   setScenePhase(state, 'flight', 'active');
   state.obstacles = [makeObstacle('bird', dogX - 120, { y: 100, aerialWall: true })];
-  stepFrenzy(state, 600);
+  stepFrenzy(state, createTestServices(), 600);
   assert.equal(state.obstacles.length, 0, 'a gate bird behind the flying dog bursts too');
 
   state.scene = null;
   activateGiantMode(state, createTestServices(), 700);
   state.obstacles = [makeObstacle('hotdog', dogX - 60)];
-  stepFrenzy(state, 800);
+  stepFrenzy(state, createTestServices(), 800);
   assert.equal(state.obstacles.length, 1, 'giant mode keeps its own field');
 });
 
@@ -93,7 +93,7 @@ test('the boss opens the frenzy and never comes again; the tunnel is out', () =>
   const state = runningState(FRENZY_AT);
   state.sceneQueue = ['chase', 'tunnel', 'flight'];
   setScenePhase(state, 'tramp', 'pending');
-  stepFrenzy(state, 1000);
+  stepFrenzy(state, createTestServices(), 1000);
   assert.equal(state.scene?.id, 'boss', 'the boss takes the slot');
   assert.deepEqual(state.sceneQueue, ['tramp', 'chase', 'flight'], 'the waiting trampoline goes next; the tunnel is out');
 

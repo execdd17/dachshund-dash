@@ -3,25 +3,30 @@
 // Browser-only module (uses HTMLAudioElement and Web Audio); gameplay systems
 // depend on the returned interface only — tests pass createSilentMusic().
 //
-// A switch fades the old track out over MUSIC_FADE_MS, then fades the next
-// one in, except that `restart` tracks (giant mode) cut in at once and from
-// the top. A track resumes where it was paused, and going back to a `main`
-// track (the one a mode rests on: normal's or hyper's) rewinds the rest
-// (each run hears them from the start). Volume goes
-// through a Web Audio gain per track, because iOS ignores an audio element's
-// own volume (no fades, no mix); without Web Audio, switches just cut.
+// Switches: the old track fades out over MUSIC_FADE_MS, then the next fades
+// in. A `restart` track (giant mode) cuts in at once, from the top. A `drop`
+// track (the frenzy's) follows a tape-stop instead: the old track winds down,
+// pitch falling, over TAPE_STOP_MS, then DROP_SILENCE_MS of silence, then it
+// starts from the top at full volume, so songs in different keys never meet.
+// A track resumes where it paused; going back to a `main` track (a mode's
+// resting one: normal's or hyper's) rewinds the rest. Volume goes through a
+// Web Audio gain per track, since iOS ignores an element's own volume;
+// without Web Audio, fades become cuts.
 
-import { MUSIC_FADE_MS } from '../config.js';
+import { MUSIC_FADE_MS, TAPE_STOP_MS, DROP_SILENCE_MS } from '../config.js';
 
 export const TRACKS = {
   main: { src: 'sound/who_let_the_dogs_out_soul_version.mp3', volume: 0.30, main: true },
-  // Hyper mode's own, wherever the main track would play: "The Clockwork Run"
-  hyper: { src: 'sound/clockwork_run.mp3', volume: 0.25, main: true },
+  // Hyper mode's in place of main: "Golden Ascent" (or sound/clockwork_run.mp3, "The Clockwork Run")
+  hyper: { src: 'sound/golden_ascent.mp3', volume: 0.25, main: true },
   // The frenzy, from its drop to the end of the run: "The Clockwork Gauntlet"
-  frenzy: { src: 'sound/clockwork_gauntlet.mp3', volume: 0.25 },
+  frenzy: { src: 'sound/clockwork_gauntlet.mp3', volume: 0.25, drop: true },
   // Giant mode: 15s, matching GIANT_DURATION
   giant: { src: 'sound/who_let_the_dogs_out_edm_short.mp3', volume: 0.25, restart: true },
 };
+
+const TAPE_STEP_MS = 30;    // how often a tape-stop slows the track
+const TAPE_MIN_RATE = 0.1;  // its slowest, just before it stops
 
 export function createMusic() {
   let musicOn = true;
@@ -30,6 +35,7 @@ export function createMusic() {
   let gains = null;  // { id: GainNode } once the first interaction builds the Web Audio graph
   let audioCtx = null;
   const timers = {};  // per track: its pending fade-in start or fade-out pause
+  const winding = {};  // per track: the interval of a tape-stop in progress
 
   const audio = Object.fromEntries(Object.entries(TRACKS).map(([id, track]) => {
     const a = new Audio(track.src);
@@ -54,9 +60,44 @@ export function createMusic() {
     timers[id] = setTimeout(fn, ms);
   }
 
-  function stop(id) {
+  // An element's pitch normally holds when its rate changes; a tape-stop lets it fall.
+  function lockPitch(a, on) {
+    a.preservesPitch = on;
+    a.webkitPreservesPitch = on;
+  }
+
+  // Slows track `id` like a tape losing power, faster toward the end, its
+  // pitch (and with Web Audio, its volume) falling with it; follow() stops it.
+  function tapeStop(id) {
+    const a = audio[id];
+    unwind(id);
+    lockPitch(a, false);
+    if (gains) setVolume(id, 0, TAPE_STOP_MS);
+    const steps = Math.max(1, Math.round(TAPE_STOP_MS / TAPE_STEP_MS));
+    let step = 0;
+    winding[id] = setInterval(() => {
+      step = Math.min(steps, step + 1);
+      a.playbackRate = 1 - (1 - TAPE_MIN_RATE) * (step / steps) ** 2;
+    }, TAPE_STOP_MS / steps);
+  }
+
+  // Back to normal speed and pitch (a tape-stop over, or cut short).
+  function unwind(id) {
+    clearInterval(winding[id]);
+    winding[id] = null;
+    audio[id].playbackRate = 1;
+    lockPitch(audio[id], true);
+  }
+
+  // Silences track `id` where it is: no pending switch, normal speed, paused.
+  function halt(id) {
     clearTimeout(timers[id]);
+    unwind(id);
     audio[id].pause();
+  }
+
+  function stop(id) {
+    halt(id);
     if (TRACKS[currentId].main && !TRACKS[id].main) audio[id].currentTime = 0;
   }
 
@@ -116,7 +157,7 @@ export function createMusic() {
   function toggle() {
     musicOn = !musicOn;
     if (musicOn) start(currentId);
-    else Object.keys(audio).forEach(id => { clearTimeout(timers[id]); audio[id].pause(); });
+    else Object.keys(audio).forEach(halt);
   }
 
   // Switch to track `id` (a TRACKS key); a no-op while it's already the one.
@@ -129,6 +170,15 @@ export function createMusic() {
     }
     if (TRACKS[id].restart) audio[id].currentTime = 0;
     clearTimeout(timers[id]);
+    unwind(id);  // coming back mid tape-stop
+
+    if (TRACKS[id].drop && playing()) {
+      tapeStop(old);
+      later(old, TAPE_STOP_MS, () => stop(old));
+      audio[id].currentTime = 0;
+      later(id, TAPE_STOP_MS + DROP_SILENCE_MS, () => start(id));
+      return;
+    }
 
     const fade = playing() && gains && !TRACKS[id].restart;
     if (!fade) {

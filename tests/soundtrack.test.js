@@ -12,7 +12,7 @@ import { soundtrackFor } from '../js/systems/soundtrack.js';
 import { killDog } from '../js/systems/death.js';
 import { activateGiantMode, deactivateGiantMode } from '../js/systems/giant.js';
 import { TRACKS, createMusic } from '../js/audio/music.js';
-import { FRENZY_SPEED, MUSIC_FADE_MS, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED } from '../js/config.js';
+import { FRENZY_SPEED, MUSIC_FADE_MS, TAPE_STOP_MS, DROP_SILENCE_MS, INITIAL_SPEED, SPEED_INCREMENT, MAX_SPEED } from '../js/config.js';
 import { createTestServices, normalScoreAt } from './helpers.js';
 import { drawScore } from '../js/render/hud.js';
 
@@ -155,40 +155,42 @@ function withFakeBrowser(fn, { webAudio = null } = {}) {
   }
 }
 
-test('without Web Audio the player cuts: it resumes tracks, restarts giant mode, and rewinds the rest on the main track', () => {
+test('without Web Audio the player cuts: main tracks resume, giant mode restarts, and going back rewinds the rest', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   withFakeBrowser((music, audioOf) => {
     const playing = () => Object.keys(TRACKS).filter(id => !audioOf(id).paused);
     assert.deepEqual(playing(), ['main']);
 
     audioOf('main').currentTime = 40;
-    music.follow('frenzy');
-    assert.deepEqual(playing(), ['frenzy']);
-    assert.equal(audioOf('frenzy').currentTime, 0);
-
-    audioOf('frenzy').currentTime = 12;
     music.follow('giant');
+    assert.deepEqual(playing(), ['giant']);
     audioOf('giant').currentTime = 15;
-    music.follow('frenzy');
-    assert.equal(audioOf('frenzy').currentTime, 12, 'the frenzy track resumes after giant mode');
+    music.follow('main');
+    assert.equal(audioOf('main').currentTime, 40, 'the main track resumes');
+    assert.equal(audioOf('giant').currentTime, 0, 'rewound for next time');
     music.follow('giant');
     assert.equal(audioOf('giant').currentTime, 0, 'giant mode starts from the top every time');
 
     music.follow('main');
+    music.follow('frenzy');
+    t.mock.timers.tick(TAPE_STOP_MS + DROP_SILENCE_MS);
+    assert.deepEqual(playing(), ['frenzy']);
+    audioOf('frenzy').currentTime = 12;
+    music.follow('main');
     assert.deepEqual(playing(), ['main']);
-    assert.equal(audioOf('main').currentTime, 40, 'the main track resumes');
     assert.equal(audioOf('frenzy').currentTime, 0, 'the next run hears the frenzy track from the start');
 
     music.toggle();
     assert.deepEqual(playing(), []);
-    music.follow('frenzy');
+    music.follow('giant');
     assert.deepEqual(playing(), [], 'muted: switching plays nothing');
     music.toggle();
-    assert.deepEqual(playing(), ['frenzy'], 'unmuted: the wanted track');
+    assert.deepEqual(playing(), ['giant'], 'unmuted: the wanted track');
   });
 });
 
 test('with Web Audio a switch fades out, then in; giant mode cuts in; the mix holds on iOS', (t) => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   const ramps = [];
   withFakeBrowser((music, audioOf, gainOf) => {
     const playing = () => Object.keys(TRACKS).filter(id => !audioOf(id).paused);
@@ -196,17 +198,16 @@ test('with Web Audio a switch fades out, then in; giant mode cuts in; the mix ho
     assert.equal(gainOf('main').value, TRACKS.main.volume);
 
     music.follow('frenzy');
-    assert.deepEqual(playing(), ['main'], 'the old track fades out first');
-    assert.equal(gainOf('main').value, 0);
-    t.mock.timers.tick(MUSIC_FADE_MS);
-    assert.deepEqual(playing(), ['frenzy'], 'then the next one fades in');
-    assert.equal(gainOf('frenzy').value, TRACKS.frenzy.volume);
-    assert.deepEqual(ramps, [MUSIC_FADE_MS / 1000, MUSIC_FADE_MS / 1000]);
-
+    t.mock.timers.tick(TAPE_STOP_MS + DROP_SILENCE_MS);
     audioOf('frenzy').currentTime = 30;
+    ramps.length = 0;
     music.follow('main');  // game over
+    assert.deepEqual(playing(), ['frenzy'], 'the old track fades out first');
+    assert.equal(gainOf('frenzy').value, 0);
     t.mock.timers.tick(MUSIC_FADE_MS);
-    assert.deepEqual(playing(), ['main']);
+    assert.deepEqual(playing(), ['main'], 'then the next one fades in');
+    assert.equal(gainOf('main').value, TRACKS.main.volume);
+    assert.deepEqual(ramps, [MUSIC_FADE_MS / 1000, MUSIC_FADE_MS / 1000]);
     assert.equal(audioOf('frenzy').currentTime, 0, 'rewound for the next run once faded out');
 
     music.follow('giant');
@@ -218,6 +219,38 @@ test('with Web Audio a switch fades out, then in; giant mode cuts in; the mix ho
     t.mock.timers.tick(MUSIC_FADE_MS * 3);
     assert.deepEqual(playing(), ['giant'], 'a cancelled fade-in never starts');
   }, { webAudio: fakeAudioContext(ramps) });
+});
+
+test('into the frenzy the old track tape-stops, a beat of silence, then the frenzy track from the top at full volume', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  withFakeBrowser((music, audioOf, gainOf) => {
+    const playing = () => Object.keys(TRACKS).filter(id => !audioOf(id).paused);
+    const main = audioOf('main');
+    audioOf('frenzy').currentTime = 50;
+    music.follow('frenzy');
+    assert.deepEqual(playing(), ['main'], 'the old track winds down');
+    assert.equal(main.preservesPitch, false, 'its pitch falls with its speed');
+    assert.equal(gainOf('main').value, 0, 'and its volume tapers');
+    t.mock.timers.tick(TAPE_STOP_MS / 2);
+    assert.ok(main.playbackRate < 1 && main.playbackRate > 0.1, `halfway: rate ${main.playbackRate}`);
+    t.mock.timers.tick(TAPE_STOP_MS / 2);
+    assert.deepEqual(playing(), [], 'stopped: the beat of silence');
+    assert.equal(main.playbackRate, 1, 'back to normal speed for next time');
+    assert.equal(main.preservesPitch, true);
+    t.mock.timers.tick(DROP_SILENCE_MS);
+    assert.deepEqual(playing(), ['frenzy']);
+    assert.equal(audioOf('frenzy').currentTime, 0, 'from the top');
+    assert.equal(gainOf('frenzy').value, TRACKS.frenzy.volume, 'at full volume, no fade');
+
+    music.follow('main');
+    t.mock.timers.tick(MUSIC_FADE_MS * 2);
+    music.follow('frenzy');
+    t.mock.timers.tick(TAPE_STOP_MS / 2);
+    music.follow('main');  // game over in the middle of the drop
+    t.mock.timers.tick(MUSIC_FADE_MS * 3);
+    assert.deepEqual(playing(), ['main'], 'the frenzy track never comes in');
+    assert.equal(main.playbackRate, 1, 'and the main track plays at normal speed');
+  }, { webAudio: fakeAudioContext([]) });
 });
 
 test('with Web Audio a suspended context (iOS, after the page was hidden) resumes on return or the next touch', () => {

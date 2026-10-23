@@ -38,18 +38,19 @@ function detonate(state, o, now) {
   addEffect(state, 'burst', now, { x: o.x + o.width / 2, y: o.y + o.height / 2, size: Math.max(o.width, Math.min(o.height, 60)) });
 }
 
-function drop(state, now) {
+function drop(state, services, now) {
   state.frenzyAt = now;
   state.obstacles.forEach(o => { if (o.x < W) detonate(state, o, now); });  // the rest go with the clear
   state.nextObstacleIn = Math.max(state.nextObstacleIn, FRENZY_DROP_CALM);
   addEffect(state, 'frenzyDrop', now, { x: state.dog.x + 50, y: state.dog.y });
+  services.sfx.playFrenzyDrop();
   bossNow(state);
 }
 
 // Once per frame, after obstacles move.
-export function stepFrenzy(state, now) {
+export function stepFrenzy(state, services, now) {
   if (!inFrenzy(state)) {
-    if (runSpeed(state) >= FRENZY_SPEED && fieldIsFree(state)) drop(state, now);
+    if (runSpeed(state) >= FRENZY_SPEED && fieldIsFree(state)) drop(state, services, now);
     return;
   }
   if (state.giantPhase !== 'off') return;  // giant mode eats or fetches what it meets

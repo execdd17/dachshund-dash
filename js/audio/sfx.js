@@ -40,6 +40,14 @@ const TONES = {
   playFetch: [660, 990].map((from, i) => ({ type: 'triangle', from, gain: 0.12, dur: 0.1, at: i * 0.05 })),
   playGiantActivate: [330, 440, 660].map((from, i) => ({ type: 'square', from, gain: 0.1, dur: 0.15, at: i * 0.08 })),
   playGiantDeactivate: [660, 440, 330].map((from, i) => ({ type: 'square', from, gain: 0.08, dur: 0.12, at: i * 0.08 })),
+  // The frenzy's drop (systems/frenzy.js): a boom with the flash, and a rumble
+  // through the silence while the old track tape-stops (audio/music.js)
+  playFrenzyDrop: [
+    { type: 'sine', from: 150, to: 34, sweep: 1.1, gain: 0.45, dur: 1.6 },
+    { type: 'triangle', from: 95, to: 28, sweep: 0.9, gain: 0.22, dur: 1.2 },
+    { type: 'square', from: 65, to: 30, sweep: 0.3, gain: 0.05, dur: 0.35 },
+    { type: 'sine', from: 48, to: 30, sweep: 1.4, gain: 0.3, dur: 1.5, at: 0.15 },
+  ],
 };
 
 export const SFX_NAMES = [...Object.keys(TONES), 'playCrunch'];
