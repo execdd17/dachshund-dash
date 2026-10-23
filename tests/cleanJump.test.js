@@ -13,7 +13,7 @@ import { update } from '../js/systems/update.js';
 import { jump } from '../js/systems/control.js';
 import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
 import { SPAWN_KINDS } from '../js/systems/spawning.js';
-import { cleanJumpPoints, judgeCleanJump } from '../js/systems/cleanJump.js';
+import { cleanJumpPoints, judgeCleanJump, settleCleanJump } from '../js/systems/cleanJump.js';
 import { EFFECT_DRAWERS } from '../js/render/effects.js';
 import { CLEAN_JUMP_POINTS, CLEAN_STREAK_MAX, MAX_SPEED, SPEED_PROFILES, DOG_HITBOX_STAND, BIRD_LOW_Y, BIRD_JUMP_BONUS } from '../js/config.js';
 import { createTestServices } from './helpers.js';
@@ -82,7 +82,7 @@ test('bars and birds share one streak; a lone bird pays no normal-mode bonus in 
   assert.equal(state.effects.filter(e => e.kind === 'birdJump').length, 0);
 });
 
-test('only a failed single jump breaks the streak: a double jump while clearing a bar or a bird', () => {
+test('a double jump while clearing a bar or a bird breaks the streak', () => {
   for (const [kind, jumpAt] of [['hotdog', 120], ['bird', 90]]) {
     const state = hyperState();
     state.cleanStreak = 3;
@@ -90,6 +90,27 @@ test('only a failed single jump breaks the streak: a double jump while clearing 
     assert.equal(state.hearts, 99, `${kind}: cleared`);
     assert.equal(state.cleanStreak, 0, kind);
   }
+});
+
+test('a double jump after the bar has passed still makes the jump unclean (the crutch at speed)', () => {
+  // At top speed a bar is past before the top of the jump, where the second press usually comes.
+  const state = hyperState(HYPER_TOP);
+  state.cleanStreak = 3;
+  const bar = obstacle('hotdog');
+  let doubledAfterPass = false;
+  const services = createTestServices();
+  state.obstacles = [bar];
+  let now = 0, jumped = false;
+  for (let f = 0; f < 600 && !(jumped && !state.dog.jumping); f++) {
+    const nose = state.dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w;
+    if (!jumped && getObstacleHitbox(bar).x - nose < 60) { jump(state, services, now); jumped = true; }
+    if (jumped && !state.dog.doubleJumped && state.dog.vy >= 0) { doubledAfterPass = bar.judged; jump(state, services, now); }
+    update(state, 1000 / 120, services, () => 0.5, now += 1000 / 120);
+  }
+  assert.ok(doubledAfterPass, 'the second press came after the bar had passed');
+  assert.equal(state.hearts, 99, 'cleared');
+  assert.equal(state.effects.filter(e => e.kind === 'cleanJump').length, 0, 'no CLEAN');
+  assert.equal(state.cleanStreak, 0, 'and the streak breaks');
 });
 
 test('a hit breaks the streak', () => {
@@ -150,11 +171,13 @@ test('normal mode has no clean jumps', () => {
 
 test('the streak climbs in levels to CLEAN_STREAK_MAX, and every level has a look', () => {
   const state = hyperState();
-  Object.assign(state.dog, { jumping: true, doubleJumped: false });
   const paid = [];
   for (let i = 0; i < CLEAN_STREAK_MAX + 2; i++) {
     const before = state.score;
-    judgeCleanJump(state, obstacle('hotdog', 0), i);
+    state.dog.jumping = true;
+    judgeCleanJump(state, obstacle('hotdog', 0));
+    state.dog.jumping = false;  // lands: the jump is settled
+    settleCleanJump(state, i);
     paid.push(state.score - before);
   }
   assert.deepEqual(paid, [25, 50, 75, 100, 125, 125, 125]);

@@ -104,19 +104,16 @@ export function createEnv({ seed, tier }) {
     if (state.scene && !scenes.includes(state.scene.id)) state.scene = null;
     for (const o of state.obstacles) {
       o.kind ??= kindOf(o);
-      // A bird the game pays a jump bonus for (a lone one, or a chase's thrown
-      // acorn), once it's behind the dog: passed, and jumped or not.
-      // In hyper, a bird jumped means a clean jump over it (cleanJump.js): its only bonus there.
-      if (o.type === 'bird' && !o.aerialWall && !o.counted && o.x + o.width < state.dog.x + DOG_HITBOX_STAND.dx) {
+      // Lone birds (not the chase's acorns) and (in hyper) judged chocolate bars, once each as they
+      // pass the dog. Kept, not tallied, because hyper pays a clean jump on landing, often after
+      // the obstacle has left.
+      if (o.counted) continue;
+      if (o.type === 'bird' && !o.aerialWall && o.skin !== 'chase' && o.x + o.width < state.dog.x + DOG_HITBOX_STAND.dx) {
         o.counted = true;
-        env.birds.passed++;
-        if (o.jumped || o.clean) env.birds.jumped++;
-      }
-      // A chocolate bar hyper judged (cleanJump.js): cleared with a single jump or not.
-      if (o.type === 'hotdog' && o.judged && !o.counted) {
+        env.passedBirds.push(o);
+      } else if (o.type === 'hotdog' && o.judged) {
         o.counted = true;
-        env.bars.passed++;
-        if (o.clean) env.bars.clean++;
+        env.passedBars.push(o);
       }
     }
     if (!inScene && state.scene && state.nextObstacleIn === Infinity) {
@@ -145,9 +142,16 @@ export function createEnv({ seed, tier }) {
     state.hyper = hyper;
     state.speed = runSpeed(state);
     if (!frenzy) state.frenzyAt = 1;  // past the frenzy's drop, so it never brings its boss
-    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null, birds: { passed: 0, jumped: 0 }, bars: { passed: 0, clean: 0 } });
+    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null, passedBirds: [], passedBars: [] });
     return env;
   };
+
+  // Lone birds passed and jumped (in hyper, a clean jump over one: its only bonus there), and
+  // chocolate bars hyper judged and cleared with a single jump (cleanJump.js).
+  Object.defineProperties(env, {
+    birds: { get: () => ({ passed: env.passedBirds.length, jumped: env.passedBirds.filter(o => o.jumped || o.clean).length }) },
+    bars: { get: () => ({ passed: env.passedBars.length, clean: env.passedBars.filter(o => o.clean).length }) },
+  });
 
   // Out of game time: a timed tier's run is over, with the dog still running.
   env.timeUp = () => env.now >= minutes * 60000;
