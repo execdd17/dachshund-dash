@@ -12,7 +12,12 @@
 // tier is cleared, to train for staying power at top speed. --validation is
 // how many fixed runs pick the champion and end training once all clear: at
 // a high cap, a model that clears 93% of runs clears 12 in a row 4 times in
-// 10, so use more (48: 3 in 100).
+// 10, so use more (48: 3 in 100). --mix adds other tiers' runs to every
+// network's fitness (as many seeds each as the tier's own): rehearsal of old
+// skills, or drills that make a new one cheap to try (tier 6). The champion
+// is still judged on the tier's own validation runs.
+//
+//   node ai/train.mjs --tier 5 --mix 6 --minutes 60 --validation 48 --from ai/models/tier4-from-tier3.json
 
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
@@ -43,7 +48,9 @@ if (!isMainThread) {
   const { values } = parseArgs({ options: {
     tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' }, name: { type: 'string' },
     cap: { type: 'string', default: String(SCORE_CAP) }, validation: { type: 'string', default: '12' },
+    mix: { type: 'string', default: '' },
   } });
+  const mix = values.mix ? values.mix.split(',').map(Number) : [];
   const cap = Number(values.cap);
   const validationSeeds = Array.from({ length: Number(values.validation) }, (_, i) => 900000 + i);
   const tier = Number(values.tier);
@@ -69,18 +76,18 @@ if (!isMainThread) {
         if (++done === tasks.length) resolve(scores);
         else feed(w);
       });
-      w.postMessage({ nets: [tasks[i].json], seeds: [tasks[i].seed], tier, cap });
+      w.postMessage({ nets: [tasks[i].json], seeds: [tasks[i].seed], tier: tasks[i].tier, cap });
     };
     workers.forEach(feed);
   });
-  // Each network's mean score on `seeds`.
-  const score = async (nets, seeds) => {
+  // Each network's mean score over `runs` ([{ seed, tier }]).
+  const score = async (nets, runs) => {
     const jsons = nets.map(toJSON);
-    const scores = await runAll(jsons.flatMap(json => seeds.map(seed => ({ json, seed }))));
-    return nets.map((_, n) => mean(scores.slice(n * seeds.length, (n + 1) * seeds.length)));
+    const scores = await runAll(jsons.flatMap(json => runs.map(({ seed, tier: runTier }) => ({ json, seed, tier: runTier }))));
+    return nets.map((_, n) => mean(scores.slice(n * runs.length, (n + 1) * runs.length)));
   };
-  // One network on the validation seeds.
-  const validate = async net => (await score([net], validationSeeds))[0];
+  // One network on the validation seeds, in the tier it trains for.
+  const validate = async net => (await score([net], validationSeeds.map(seed => ({ seed, tier }))))[0];
 
   const rng = seededRng(12345);
   const ancestor = values.from && JSON.parse(readFileSync(values.from, 'utf8'));
@@ -93,15 +100,16 @@ if (!isMainThread) {
   let champion = { validation: -1 };
 
   for (let gen = 0; (Date.now() - started) / 60000 < minutes; gen++) {
-    const seeds = Array.from({ length: SEEDS_PER_GENERATION }, () => Math.floor(rng() * 1e9));
-    const fitness = await score(population, seeds);
+    // This generation's runs: the tier's own fresh seeds, then as many for each --mix tier.
+    const runs = [tier, ...mix].flatMap(runTier => Array.from({ length: SEEDS_PER_GENERATION }, () => ({ seed: Math.floor(rng() * 1e9), tier: runTier })));
+    const fitness = await score(population, runs);
     const ranked = population.map((net, i) => ({ net, fit: fitness[i] })).sort((a, b) => b.fit - a.fit);
 
     // The generation's best, on the fixed validation seeds: the champion is the best of those.
     const validation = await validate(ranked[0].net);
     if (validation > champion.validation) {
       champion = { validation, gen, net: ranked[0].net };
-      const meta = { tier, trainedOn, generation: gen, validation, cap, validationRuns: validationSeeds.length, from: values.from ?? null };
+      const meta = { tier, trainedOn, generation: gen, validation, cap, validationRuns: validationSeeds.length, mix, from: values.from ?? null };
       writeFileSync(new URL(modelFile(name), dir), JSON.stringify(saveable(champion.net, meta)));
       writeModelIndex();
     }

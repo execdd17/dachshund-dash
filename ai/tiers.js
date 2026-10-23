@@ -9,6 +9,9 @@
 //   hyper: hyper mode's speed (from 4.0, climbing twice as fast; core/speed.js)
 //   minutes: a run ends after this much game time, scored by its points (no
 //     score cap: bonuses count); without it, a run goes until death or a cap
+//   hearts: hearts a run starts with (1 unless set: every mistake ends it)
+
+import { HYPER_LEVEL } from '../js/config.js';
 
 export const TIERS = {
   // The first experiment: chocolate bars and lone birds.
@@ -31,4 +34,10 @@ export const TIERS = {
   // speed about 3), and what counts is its points, a bird's jump bonus
   // included. A bonus speeds the game up (speed follows score) until top speed.
   5: { name: 'hyper, 10 minutes, for points', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true, scenes: ['chase', 'boss'], frenzy: true, hyper: true, minutes: 10 },
+  // Drills, not a step up: hyper's chocolate bars and lone birds only, with
+  // the hearts hyper gives players, so a failed single jump or bird jump
+  // costs a heart rather than the run. Trained alongside tier 5 (train.mjs
+  // --mix 6), it makes those jumps cheap to try while tier 5's runs keep
+  // everything else from being forgotten.
+  6: { name: 'hyper drills: chocolate and birds', solo: { hotdog: 0.6, bird: 0.4 }, patterns: false, hyper: true, minutes: 10, hearts: HYPER_LEVEL.hearts },
 };

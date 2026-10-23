@@ -45,7 +45,7 @@ function kindOf(o) {
 }
 
 export function createEnv({ seed, tier }) {
-  const { solo, patterns, scenes = [], frenzy = false, hyper = false, minutes = Infinity } = TIERS[tier];
+  const { solo, patterns, scenes = [], frenzy = false, hyper = false, minutes = Infinity, hearts = 1 } = TIERS[tier];
   const soloKinds = Object.entries(solo);
   const soloTotal = soloKinds.reduce((sum, [, w]) => sum + w, 0);
   const services = { sfx: createSilentSfx(), music: createSilentMusic(), recordRun() {} };
@@ -139,7 +139,7 @@ export function createEnv({ seed, tier }) {
   env.reset = () => {
     const state = createState(rng);
     state.gameState = 'running';
-    state.startingHearts = 1;
+    state.startingHearts = hearts;
     resetRun(state);
     state.hyper = hyper;
     state.speed = runSpeed(state);
