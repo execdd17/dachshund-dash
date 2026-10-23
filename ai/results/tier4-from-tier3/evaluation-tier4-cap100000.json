@@ -1,5 +1,5 @@
 {
-  "model": "ai/models/tier4-from-tier3.json: tier 4 (trained on 2 → 3 → 4), generation 8",
+  "model": "ai/models/tier4-from-tier3.json: tier 4 (trained on 2 → 3 → 4), generation 29",
   "tier": 4,
   "runs": 100,
   "mean": 100000,

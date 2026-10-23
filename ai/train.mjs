@@ -6,10 +6,13 @@
 // With --from, the population starts as variations of an earlier model (a
 // curriculum: tier 1's champion continuing on tier 2).
 //
-//   node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1] [--cap 8000]
+//   node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1] [--cap 8000] [--validation 12]
 //
 // --cap is the score a run counts as cleared at (SCORE_CAP); raise it once a
-// tier is cleared, to train for staying power at top speed.
+// tier is cleared, to train for staying power at top speed. --validation is
+// how many fixed runs pick the champion and end training once all clear: at
+// a high cap, a model that clears 93% of runs clears 12 in a row 4 times in
+// 10, so use more (48: 3 in 100).
 
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
@@ -26,7 +29,6 @@ const SIZES = [INPUTS, 24, ACTIONS.length];
 const POPULATION = 150;
 const ELITE = 6;                   // carried over unchanged (and re-tested on new seeds)
 const SEEDS_PER_GENERATION = 3;    // every network plays the same fresh seeds
-const VALIDATION_SEEDS = Array.from({ length: 12 }, (_, i) => 900000 + i);
 const MUTATION = { sigma: 0.25, rate: 0.15 };
 
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -39,9 +41,10 @@ if (!isMainThread) {
 } else {
   const { values } = parseArgs({ options: {
     tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' }, name: { type: 'string' },
-    cap: { type: 'string', default: String(SCORE_CAP) },
+    cap: { type: 'string', default: String(SCORE_CAP) }, validation: { type: 'string', default: '12' },
   } });
   const cap = Number(values.cap);
+  const validationSeeds = Array.from({ length: Number(values.validation) }, (_, i) => 900000 + i);
   const tier = Number(values.tier);
   const minutes = Number(values.minutes);
   const name = values.name ?? `tier${tier}`;
@@ -57,6 +60,16 @@ if (!isMainThread) {
       w.once('message', resolve);
       w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds, tier, cap });
     }))).then(parts => parts.flat());
+  };
+  // One network on many seeds: its seeds split across the workers.
+  const validate = async net => {
+    const chunk = Math.ceil(validationSeeds.length / workers.length);
+    const slices = workers.map((_, i) => validationSeeds.slice(i * chunk, (i + 1) * chunk)).filter(s => s.length);
+    const means = await Promise.all(slices.map((seeds, i) => new Promise(resolve => {
+      workers[i].once('message', ([m]) => resolve(m * seeds.length));
+      workers[i].postMessage({ nets: [toJSON(net)], seeds, tier, cap });
+    })));
+    return means.reduce((a, b) => a + b, 0) / validationSeeds.length;
   };
 
   const rng = seededRng(12345);
@@ -75,10 +88,10 @@ if (!isMainThread) {
     const ranked = population.map((net, i) => ({ net, fit: fitness[i] })).sort((a, b) => b.fit - a.fit);
 
     // The generation's best, on the fixed validation seeds: the champion is the best of those.
-    const [validation] = await score([ranked[0].net], VALIDATION_SEEDS);
+    const validation = await validate(ranked[0].net);
     if (validation > champion.validation) {
       champion = { validation, gen, net: ranked[0].net };
-      const meta = { tier, trainedOn, generation: gen, validation, cap, from: values.from ?? null };
+      const meta = { tier, trainedOn, generation: gen, validation, cap, validationRuns: validationSeeds.length, from: values.from ?? null };
       writeFileSync(new URL(modelFile(name), dir), JSON.stringify(saveable(champion.net, meta)));
       writeModelIndex();
     }

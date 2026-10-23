@@ -2,13 +2,13 @@
   "model": "ai/models/tier3-from-tier2.json: tier 3 (trained on 2 → 3), generation 0",
   "tier": 4,
   "runs": 100,
-  "mean": 7994,
+  "mean": 7720,
   "median": 8000,
-  "min": 7369,
+  "min": 3017,
   "max": 8000,
-  "cleared": "99/100 reached 8000",
+  "cleared": "93/100 reached 8000",
   "killedBy": {
-    "hotdog": 1
+    "tower": 7
   },
-  "speedAtDeath": "6.68–6.68"
+  "speedAtDeath": "4.51–6.75"
 }

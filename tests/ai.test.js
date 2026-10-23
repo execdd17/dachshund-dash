@@ -69,19 +69,24 @@ test('no two spawns come closer than the game\'s tightest gap, scenes ending inc
   }
 });
 
-test('tier 4: a dog that dodges everything outlasts the bosses and plays on through the frenzy', () => {
+test('tier 4: obstacles keep coming through every boss, including the frenzy boss, and no boss catches the dog', () => {
   const env = createEnv({ seed: 7, tier: 4 }).reset();
   const { state } = env;
-  const bosses = new Set();
-  let frame = 0;
+  const bosses = [];  // each boss as it starts, and how many obstacles came while it ran
+  const seen = new Set();
+  let current = null;
   while (state.score < 6500 && !env.step('none').done) {
     state.invulnUntil = Infinity;  // obstacles can't hurt it; only the boss squirrel's catch could end the run
-    if (state.scene?.id === 'boss' && state.scene.phase === 'active') bosses.add(state.frenzyAt > 0 ? 'frenzy' : `speed ${state.speed.toFixed(1)}`.slice(0, 9));
-    frame++;
+    const active = state.scene?.id === 'boss' && state.scene.phase === 'active';
+    if (active && !current) bosses.push(current = { name: state.frenzyAt > 0 ? 'the frenzy boss' : `the boss at ${Math.round(state.score)}`, spawned: 0 });
+    if (!active) current = null;
+    for (const o of state.obstacles) if (!seen.has(o)) { seen.add(o); if (current) current.spawned++; }
   }
   assert.equal(state.gameState, 'running', 'no boss caught it');
   assert.ok(state.frenzyAt > 0, 'the frenzy started');
-  assert.ok(bosses.has('frenzy') && bosses.size >= 3, `bosses at ${[...bosses].join(', ')}`);
+  assert.deepEqual(bosses.map(b => b.name.replace(/\d+/, 'N')), ['the boss at N', 'the boss at N', 'the frenzy boss']);
+  // The real game spawns 10-21 in a boss (at a boss's wider gaps); before the fix, the environment spawned none.
+  for (const { name, spawned } of bosses) assert.ok(spawned >= 8, `${name}: ${spawned} obstacles spawned during it`);
 });
 
 test('the radar times things by how fast they really come: faster in a boss', () => {

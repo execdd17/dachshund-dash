@@ -19,7 +19,7 @@ import { SPAWN_KINDS, SPAWN_PATTERNS, patternChance } from '../js/systems/spawni
 import { paceOf } from '../js/core/speed.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
 import { createSilentMusic } from '../js/audio/music.js';
-import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE } from '../js/config.js';
+import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE, FRENZY_DROP_CALM } from '../js/config.js';
 import { TIERS } from './tiers.js';
 
 export const ACTIONS = ['none', 'jump', 'duck'];
@@ -103,6 +103,13 @@ export function createEnv({ seed, tier }) {
     state.sceneQueue = state.sceneQueue.filter(id => scenes.includes(id));
     if (state.scene && !scenes.includes(state.scene.id)) state.scene = null;
     for (const o of state.obstacles) o.kind ??= kindOf(o);
+    if (!inScene && state.scene && state.nextObstacleIn === Infinity) {
+      // A scene took over this frame, and it didn't set the game's spawn count
+      // (the chase does; the boss doesn't): hand over the environment's count,
+      // which the frenzy's drop holds back as the game would. Left at Infinity,
+      // nothing spawned all through a boss.
+      state.nextObstacleIn = state.frenzyAt === env.now ? Math.max(env.untilNext, FRENZY_DROP_CALM) : env.untilNext;
+    }
     if (inScene) {
       // Taking spawning back as a scene ends, carry on with the game's gap to its
       // next spawn: the environment's own count stopped when the scene began, and

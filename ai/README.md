@@ -40,10 +40,11 @@ Nothing here is part of the game or touches the leaderboard.
 - **Training** (`train.mjs`): 150 networks play the same 3 fresh runs a
   generation; the best 6 carry over, the rest are bred from the fitter half
   by crossover and mutation, on every core. Each generation's best is checked
-  on 12 fixed validation runs; the best of those is saved. `--from` starts from
-  an earlier model (a curriculum); `--name` names the model (`tier<N>` by
-  default); `--cap` raises the score a run counts as cleared at, to train
-  for staying power once a tier is cleared.
+  on fixed validation runs (12; `--validation` sets how many); the best of
+  those is saved, and training ends once one clears them all. `--from`
+  starts from an earlier model (a curriculum); `--name` names the model
+  (`tier<N>` by default); `--cap` raises the score a run counts as cleared
+  at, to train for staying power once a tier is cleared.
 - **Models** (`models.js`, `models/<name>.json`): weights plus the observation
   version (a model won't load against other inputs), its tier, and the tiers
   it trained through.
@@ -109,6 +110,17 @@ Serve the repo root and open `/ai/watch.html`.
   of the chase's last ones. Carrying on the game's own gap fixed it, a test
   now holds every tier to the game's tightest spacing, and the tier-2
   champion's offspring then cleared tier 3 at once.
+- **The same bug, twice.** Tier 4's first model was trained with no
+  obstacles during the bosses: the environment keeps the game's spawner off
+  by setting its count to Infinity, and the chase resets it when it starts,
+  but the boss doesn't, so a boss was 27 empty seconds. Found by watching a
+  run in the viewer. Handing the environment's count to the game as a scene
+  starts fixed it, and the tier-4 test now requires obstacles in every boss.
+- **Validate on enough runs for the goal.** Retrained on the fixed tier 4,
+  training stopped after 2 generations on a model that cleared 12 of 12
+  validation runs but only 93 of 100 unseen ones: at a 30,000 cap a 93% model
+  clears 12 in a row 4 times in 10. With 48 validation runs (3 in 100), it
+  trained 29 generations to a model that clears all 100.
 - **The curriculum matters more as tiers stack up.** On tier 2, starting from
   the tier-1 champion only saved generations. On tier 3, it decided the
   outcome: from the tier-2 champion, 288 of 300 unseen runs at once; from
@@ -127,12 +139,11 @@ Serve the repo root and open `/ai/watch.html`.
 | `tier2-from-tier1` | 2 | generation 26, 128 s | 292 / 300 |
 | `tier3-from-tier2` | 3 | generation 0 (the tier-2 champion's offspring already did) | 288 / 300 |
 | `tier3` | 3 | never (6,990 of 8,000 after 1,498 generations, 30 min) | 68 / 300 |
-| `tier4-from-tier3` | 4, to 30,000 | generation 8, 296 s | 100 / 100 to 30,000; 100 / 100 to 100,000; 9 / 10 to 1,000,000 |
+| `tier4-from-tier3` | 4, to 30,000 | generation 29, 21 min (48 validation runs) | 100 / 100 to 30,000; 100 / 100 to 100,000 |
 
-The tier-3 champion already cleared tier 4 to 8,000 (99 of 100 runs): the
-bosses and the frenzy asked nothing new of it. Its limit was staying power at
-top speed: to 30,000 it cleared 58 of 100 (33 deaths to the tall tower). So
-tier 4 trained with `--cap 30000`, and eight generations later the champion
-cleared all 100 runs to 30,000 and to 100,000, and nine of ten to a million
-points (the tenth fell to an acorn at 319,027).
+The tier-3 champion already cleared tier 4 to 8,000 in 93 of 100 runs: the
+bosses and the frenzy asked little new of it. Its limit was staying power at
+top speed: to 30,000 it cleared 61 of 100 (31 deaths to the tall tower). So
+tier 4 trained with `--cap 30000` and `--validation 48`, and the champion
+clears every run to 30,000 and to 100,000.
 

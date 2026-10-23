@@ -7,7 +7,7 @@
 // that ends restarts on a new random seed.
 
 import { createEnv, ACTIONS, DECIDE_EVERY } from './env.js';
-import { observe, radar, BANDS, DOG_INPUTS, PER_BAND, INPUT_LABELS } from './observe.js';
+import { observe, radar, radarSpan, BANDS, DOG_INPUTS, PER_BAND, INPUT_LABELS } from './observe.js';
 import { activations, activationOf, weightIndex } from './net.js';
 import { loadNet, modelFile } from './models.js';
 import { TIERS } from './tiers.js';
@@ -172,11 +172,58 @@ function outlineOf(o) {
 // What it sees: a strip in each band (clipped to the visible sky) over what's
 // in it, and a box around each obstacle it's tracking, the nearest solid.
 function drawVision(state) {
-  const bands = radar(state);
+  const { tail, horizon } = radarSpan(state);
+  // What it can make out: beyond the horizon a thing reads the same as nothing.
+  const bands = radar(state).map(boxes => boxes.filter(b => b.x < horizon));
   const seen = [...new Set(bands.flat().map(b => b.obstacle))].sort((a, b) => a.x - b.x);
   ctx.save();
   ctx.scale(view.scale, view.scale);
   ctx.translate(view.offsetX, view.extraTop);
+  // The radar itself, empty or not: a faint layer per band from the dog's tail
+  // out to the half-second horizon, beyond which it sees nothing. High air
+  // reaches up forever; only its lower part is drawn, fading upward.
+  const reach = Math.min(horizon, W) - tail;
+  const highAirShown = 50;
+  BANDS.forEach((band, i) => {
+    const bottom = Math.min(band.bottom, 250);
+    const top = Math.max(i === 0 ? bottom - highAirShown : band.top, -view.extraTop);
+    const fade = ctx.createLinearGradient(tail, 0, tail + reach, 0);
+    fade.addColorStop(0, BAND_COLORS[i]);
+    fade.addColorStop(1, 'transparent');
+    ctx.fillStyle = fade;
+    if (i === 0) {
+      const slices = 10;  // fading upward, a slice at a time
+      for (let k = 0; k < slices; k++) {
+        ctx.globalAlpha = 0.24 * (1 - k / slices);
+        ctx.fillRect(tail, bottom - (k + 1) * (bottom - top) / slices, reach, (bottom - top) / slices);
+      }
+    } else {
+      ctx.globalAlpha = 0.24;
+      ctx.fillRect(tail, top, reach, bottom - top);
+    }
+    ctx.globalAlpha = 0.55;  // the cut between this band and the next
+    ctx.fillStyle = BAND_COLORS[i];
+    if (i < BANDS.length - 1) ctx.fillRect(tail, bottom - 0.5, reach, 1);
+  });
+  if (horizon < W) {
+    const labelY = BANDS[0].bottom - highAirShown - 6;
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(horizon, labelY + 3);
+    ctx.lineTo(horizon, 250);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = 'bold 10px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeText('½ s ahead', horizon, labelY);
+    ctx.fillText('½ s ahead', horizon, labelY);
+  }
   bands.forEach((boxes, i) => {
     const top = Math.max(BANDS[i].top, -view.extraTop);
     const bottom = Math.min(BANDS[i].bottom, 250);

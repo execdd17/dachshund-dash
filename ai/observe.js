@@ -41,10 +41,21 @@ export const INPUT_LABELS = [
 const hurts = o => ['hazard', 'terrain'].includes(OBSTACLE_TYPES[o.type].contact);
 const clampTime = (px, speed) => Math.max(-1, Math.min(1, px / speed / SOON_FRAMES));
 
+// How fast things come at the dog, in px per 120Hz frame (a boss speeds it up).
+const scrollOf = state => state.speed * bossSpeedMultiplier(state);
+
+// Where the radar looks, in world x: from the dog's tail, past its nose, out to
+// `horizon`, half a second ahead at the current scroll. Anything farther reads
+// the same as nothing (every time clamps to 1).
+export function radarSpan(state) {
+  const tail = state.dog.x + DOG_HITBOX_STAND.dx;
+  const nose = tail + DOG_HITBOX_STAND.w;
+  return { tail, nose, horizon: nose + SOON_FRAMES * scrollOf(state) };
+}
+
 // Per band, the not-yet-passed hitboxes in it, nearest first (each with its `obstacle`).
 export function radar(state) {
-  const { dog } = state;
-  const tail = dog.x + DOG_HITBOX_STAND.dx;
+  const { tail } = radarSpan(state);
   const boxes = state.obstacles.filter(hurts).map(o => ({ ...getObstacleHitbox(o), obstacle: o })).filter(b => b.x + b.w > tail);
   return BANDS.map(band => boxes
     .filter(b => b.y < band.bottom && b.y + b.h > band.top)
@@ -54,9 +65,8 @@ export function radar(state) {
 
 export function observe(state) {
   const { dog } = state;
-  const scroll = state.speed * bossSpeedMultiplier(state);  // how fast things come at the dog (a boss speeds it up)
-  const nose = dog.x + DOG_HITBOX_STAND.dx + DOG_HITBOX_STAND.w;
-  const tail = dog.x + DOG_HITBOX_STAND.dx;
+  const scroll = scrollOf(state);
+  const { tail, nose } = radarSpan(state);
   const inputs = [
     (GROUND_Y - dog.y) / 120,
     dog.vy / 8,
