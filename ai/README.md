@@ -269,6 +269,14 @@ change from ducking; a real jump means giving up the duck and timing a
 take-off, and the halfway versions hit the bird. Fitness is a whole run's
 points, so one jump's +50 is noise beside a death's thousands.
 
+**Drills and the clean jump broke the crutch** (`tier5-mixed`). Hyper now
+pays a clean jump (a jump that never uses its double jump; see CLAUDE.md),
+which the tier-4 champion never made: it double-jumped all 3,715 bars it met
+in 10 runs. Training with `--mix 6` (the drills, where a failed jump costs a
+heart, not the run) went from 9,038 to 15,459 points in 76 generations (10
+minutes on the PC): it single-jumps 78% of bars and still survives every
+run. It still ducks every lone bird, which in hyper breaks the streak.
+
 It also forgot normal mode: on normal tier 4 it averaged 93 points, dying to
 chocolate bars at speed 3.0–3.2, where its parent clears 100 of 100. Hyper
 never goes below speed 4, and 187 generations without slow speeds were

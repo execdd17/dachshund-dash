@@ -79,6 +79,18 @@
     "validation": 11436
   },
   {
+    "name": "tier5-mixed",
+    "tier": 5,
+    "trainedOn": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "generation": 72,
+    "validation": 20343
+  },
+  {
     "name": "rules-naive",
     "rules": 4,
     "summary": "the obvious ones, written once, never tuned"

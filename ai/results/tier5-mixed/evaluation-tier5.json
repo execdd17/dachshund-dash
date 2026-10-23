@@ -1,0 +1,14 @@
+{
+  "model": "ai/models/tier5-mixed.json: tier 5 (trained on 2 → 3 → 4 → 5), generation 72",
+  "tier": 5,
+  "runs": 50,
+  "mean": 15459,
+  "median": 15471,
+  "min": 14661,
+  "max": 16328,
+  "cleared": "50/50 lasted the 10 minutes",
+  "cleanJumps": "14930/19161 chocolate bars cleared with a single jump (78%)",
+  "birdJumps": "0/3951 lone birds jumped (0%)",
+  "killedBy": {},
+  "speedAtDeath": "none"
+}
