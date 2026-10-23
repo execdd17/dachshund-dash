@@ -1,22 +1,25 @@
-// A training environment on the real game logic (js/), cut down to the two
-// basic obstacles: chocolate bars and single birds (at duck height, so a bird
-// is ducked under or jumped over). The game's own spawner, scenes, golden hot
-// dogs, and frenzy are held off; the environment spawns at the game's own
-// gaps. One heart: any hit ends the run. Speed follows the normal ramp.
+// The training environment: the real game logic (js/) with the usual RL
+// contract. What spawns comes from a tier (tiers.js); the game's own spawner,
+// scenes, golden hot dogs, and frenzy are held off, and the environment
+// spawns the tier's kinds at the game's own gaps and pattern odds. One heart:
+// any hit ends the run. Speed follows the normal ramp. A seed replays a run
+// exactly.
 //
-//   const env = createEnv(seed); env.reset(); env.step(action) → { done }
-//   env.state is the live game state (observe.js reads it).
+//   const env = createEnv({ seed, tier }).reset();
+//   const { reward, done } = env.step(action);   // reward: points this step
+//   observe(env.state) (observe.js) is what an agent sees.
 
 import { createState, resetRun } from '../js/core/state.js';
 import { update } from '../js/systems/update.js';
 import { jump, duck } from '../js/systems/control.js';
-import { makeObstacle } from '../js/systems/obstacleTypes.js';
+import { SPAWN_KINDS, SPAWN_PATTERNS, patternChance } from '../js/systems/spawning.js';
+import { paceOf } from '../js/core/speed.js';
 import { createSilentSfx } from '../js/audio/sfx.js';
 import { createSilentMusic } from '../js/audio/music.js';
-import { W, BIRD_LOW_Y, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, SPAWN_MIX, DT_BASELINE } from '../js/config.js';
+import { W, MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP, PATTERN_CLOSE_GAP, SPAWN_MIX, DT_BASELINE } from '../js/config.js';
+import { TIERS } from './tiers.js';
 
 export const ACTIONS = ['none', 'jump', 'duck'];
-export const BIRD_SHARE = 0.4;     // of spawns; the rest are chocolate bars
 export const DECIDE_EVERY = 4;     // frames per decision: 30 a second at 120Hz
 const FRAME_MS = DT_BASELINE;      // the game's own 120Hz step
 
@@ -31,18 +34,52 @@ export function seededRng(seed) {
   };
 }
 
-export function createEnv(seed) {
+export function createEnv({ seed, tier }) {
+  const { solo, patterns } = TIERS[tier];
+  const soloKinds = Object.entries(solo);
+  const soloTotal = soloKinds.reduce((sum, [, w]) => sum + w, 0);
   const services = { sfx: createSilentSfx(), music: createSilentMusic(), recordRun() {} };
   const rng = seededRng(seed);
-  const env = { state: null, now: 0, untilNext: 0, lastType: null };
+  const env = { state: null, now: 0, untilNext: 0, lastKind: null, pattern: null };
 
-  // A chocolate bar or a bird at the right edge, then the game's gap to the next.
+  function pickSolo() {
+    let r = rng() * soloTotal;
+    for (const [kind, w] of soloKinds) if ((r -= w) < 0) return kind;
+    return soloKinds.at(-1)[0];
+  }
+
+  function put(kind) {
+    // Each obstacle is tagged with the kind it came from (a bird of a stack is a 'birdStack').
+    const placed = SPAWN_KINDS[kind](W + 10, undefined, env.state.speed);
+    for (const o of placed) o.kind = kind;
+    env.state.obstacles.push(...placed);
+  }
+
+  // As the game's spawner does: a pattern's next beat, or maybe a new
+  // pattern, or a single obstacle; then the gap to the next spawn.
   function spawn() {
-    const type = rng() < BIRD_SHARE ? 'bird' : 'hotdog';
-    env.state.obstacles.push(makeObstacle(type, W + 10, type === 'bird' ? { y: BIRD_LOW_Y } : {}));
-    const minGap = type === env.lastType ? MIN_OBSTACLE_GAP : MIN_OBSTACLE_GAP * SPAWN_MIX.typeChangeGapMult;
+    const pace = paceOf(env.state);
+    if (!env.pattern && patterns && rng() < patternChance(pace)) {
+      const eligible = SPAWN_PATTERNS.filter(p => pace >= p.minScore);
+      if (eligible.length) env.pattern = { beats: eligible[Math.floor(rng() * eligible.length)].beats, index: 0 };
+    }
+    if (env.pattern) {
+      const beat = env.pattern.beats[env.pattern.index++];
+      put(beat.kind);
+      env.lastKind = beat.kind;
+      if (env.pattern.index < env.pattern.beats.length) {
+        env.untilNext = beat.gapAfter ?? PATTERN_CLOSE_GAP;
+        return;
+      }
+      env.pattern = null;
+      env.untilNext = MIN_OBSTACLE_GAP + rng() * MAX_OBSTACLE_GAP;
+      return;
+    }
+    const kind = pickSolo();
+    put(kind);
+    const minGap = kind === env.lastKind ? MIN_OBSTACLE_GAP : MIN_OBSTACLE_GAP * SPAWN_MIX.typeChangeGapMult;
     env.untilNext = minGap + rng() * MAX_OBSTACLE_GAP;
-    env.lastType = type;
+    env.lastKind = kind;
   }
 
   function frame() {
@@ -62,20 +99,18 @@ export function createEnv(seed) {
     state.startingHearts = 1;
     resetRun(state);
     state.frenzyAt = 1;               // past the frenzy's drop, so it never brings its boss
-    env.state = state;
-    env.now = 0;
-    env.untilNext = 200;
-    env.lastType = null;
+    Object.assign(env, { state, now: 0, untilNext: 200, lastKind: null, pattern: null });
     return env;
   };
 
   // Hold `action` for DECIDE_EVERY frames: 'jump' presses once, 'duck' holds duck.
   env.step = action => {
     const state = env.state;
+    const before = state.score;
     duck(state, action === 'duck', services);
     if (action === 'jump') jump(state, services, env.now);
     for (let i = 0; i < DECIDE_EVERY && state.gameState === 'running'; i++) frame();
-    return { done: state.gameState !== 'running' };
+    return { reward: state.score - before, done: state.gameState !== 'running' };
   };
 
   return env;

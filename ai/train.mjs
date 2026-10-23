@@ -1,20 +1,24 @@
-// Neuroevolution: a population of networks plays the environment; the best
-// carry over, and the rest are bred from the fitter half by crossover and
-// mutation. Runs on every core (worker threads), logs each generation to
-// ai/results/curve.csv, and saves the best network so far — judged on fixed
-// validation seeds — to ai/models/best.json.
+// Neuroevolution: a population of networks plays a tier; the best carry over,
+// and the rest are bred from the fitter half by crossover and mutation. Runs
+// on every core (worker threads), logs each generation to
+// results/tier<N>/curve.csv, and saves the best network so far, judged on
+// fixed validation seeds, to models/tier<N>.json. With --from, the population
+// starts as variations of an earlier model (a curriculum: tier 1's champion
+// continuing on tier 2).
 //
-//   node ai/train.mjs [minutes=30]
+//   node ai/train.mjs --tier 1 [--minutes 30] [--from ai/models/tier0.json]
 
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { parseArgs } from 'node:util';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createNet, mutate, crossover, toJSON, fromJSON } from './net.js';
 import { INPUTS } from './observe.js';
 import { ACTIONS, seededRng } from './env.js';
 import { playRun, SCORE_CAP } from './play.js';
+import { modelFile, saveable, loadNet } from './models.js';
 
-const SIZES = [INPUTS, 16, ACTIONS.length];
+const SIZES = [INPUTS, 24, ACTIONS.length];
 const POPULATION = 150;
 const ELITE = 6;                   // carried over unchanged (and re-tested on new seeds)
 const SEEDS_PER_GENERATION = 3;    // every network plays the same fresh seeds
@@ -25,26 +29,33 @@ const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 // Worker: score a batch of networks on the given seeds.
 if (!isMainThread) {
-  parentPort.on('message', ({ nets, seeds }) => {
-    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed).score))));
+  parentPort.on('message', ({ nets, seeds, tier }) => {
+    parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed, tier).score))));
   });
 } else {
-  const minutes = Number(process.argv[2] ?? 30);
+  const { values } = parseArgs({ options: { tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' } } });
+  const tier = Number(values.tier);
+  const minutes = Number(values.minutes);
   const dir = new URL('.', import.meta.url);
+  const results = new URL(`results/tier${tier}/`, dir);
+  mkdirSync(results, { recursive: true });
   mkdirSync(new URL('models/', dir), { recursive: true });
-  mkdirSync(new URL('results/', dir), { recursive: true });
 
   const workers = Array.from({ length: availableParallelism() }, () => new Worker(new URL(import.meta.url)));
   const score = (nets, seeds) => {
     const chunk = Math.ceil(nets.length / workers.length);
     return Promise.all(workers.map((w, i) => new Promise(resolve => {
       w.once('message', resolve);
-      w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds });
+      w.postMessage({ nets: nets.slice(i * chunk, (i + 1) * chunk).map(toJSON), seeds, tier });
     }))).then(parts => parts.flat());
   };
 
   const rng = seededRng(12345);
-  let population = Array.from({ length: POPULATION }, () => createNet(SIZES, rng));
+  const ancestor = values.from && JSON.parse(readFileSync(values.from, 'utf8'));
+  const trainedOn = [...(ancestor?.trainedOn ?? []), tier];
+  let population = ancestor
+    ? [loadNet(ancestor), ...Array.from({ length: POPULATION - 1 }, () => mutate(loadNet(ancestor), rng, MUTATION))]
+    : Array.from({ length: POPULATION }, () => createNet(SIZES, rng));
   const started = Date.now();
   const curve = ['generation,seconds,best,mean,median,validation'];
   let champion = { validation: -1 };
@@ -58,12 +69,13 @@ if (!isMainThread) {
     const [validation] = await score([ranked[0].net], VALIDATION_SEEDS);
     if (validation > champion.validation) {
       champion = { validation, gen, net: ranked[0].net };
-      writeFileSync(new URL('models/best.json', dir), JSON.stringify({ generation: gen, validation, ...toJSON(champion.net) }));
+      const meta = { tier, trainedOn, generation: gen, validation, from: values.from ?? null };
+      writeFileSync(new URL(modelFile(tier), dir), JSON.stringify(saveable(champion.net, meta)));
     }
     const fits = ranked.map(r => r.fit);
     const seconds = Math.round((Date.now() - started) / 1000);
     curve.push([gen, seconds, fits[0], mean(fits), fits[Math.floor(fits.length / 2)], validation].map(v => Math.round(v)).join(','));
-    writeFileSync(new URL('results/curve.csv', dir), curve.join('\n') + '\n');
+    writeFileSync(new URL('curve.csv', results), curve.join('\n') + '\n');
     console.log(`gen ${gen} (${seconds}s): best ${Math.round(fits[0])}, mean ${Math.round(mean(fits))}, validation ${Math.round(validation)}, champion ${Math.round(champion.validation)} (gen ${champion.gen})`);
     if (champion.validation >= SCORE_CAP) break;  // clears every validation run
 

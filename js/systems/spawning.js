@@ -61,7 +61,7 @@ export const SPAWN_PATTERNS = [
 ];
 
 // Spawn kinds: what one spawn (or pattern beat) puts on the field.
-const SPAWN_KINDS = {
+export const SPAWN_KINDS = {
   hotdog: (x, skin) => [makeObstacle('hotdog', x, { skin })],
   tower: (x, skin, speed) => [makeObstacle('tower', x, { skin, ...towerSizeFor(speed) })],
   // Two frisbees, one above the other.

@@ -1,0 +1,6 @@
+gen 0 (3s): best 3825, mean 53, validation 4399, champion 4399 (gen 0)
+gen 1 (5s): best 3967, mean 61, validation 4399, champion 4399 (gen 0)
+gen 2 (7s): best 4589, mean 127, validation 4266, champion 4399 (gen 0)
+gen 3 (11s): best 5255, mean 343, validation 5129, champion 5129 (gen 3)
+gen 4 (19s): best 8000, mean 654, validation 8000, champion 8000 (gen 4)
+done: champion from generation 4, validation mean 8000

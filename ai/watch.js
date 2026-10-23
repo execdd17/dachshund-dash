@@ -1,21 +1,24 @@
-// Watch the trained network (models/best.json) play the training environment
-// in real time, drawn by the game's own renderer. The two obstacles it looks
-// at are outlined, and its current choice shows above the dog. A run that
-// ends restarts on a new random seed.
+// Watch a trained network play its tier in real time, drawn by the game's own
+// renderer, with its radar shown: in each height band, a strip over each thing
+// it sees there, and its choice above the dog. ?model=ai/models/tier0.json
+// picks the model (tier 1's by default). A run that ends restarts on a new
+// random seed.
 
 import { createEnv, ACTIONS, DECIDE_EVERY } from './env.js';
-import { observe } from './observe.js';
-import { choose, fromJSON } from './net.js';
+import { observe, radar, BANDS } from './observe.js';
+import { choose } from './net.js';
+import { loadNet, modelFile } from './models.js';
+import { TIERS } from './tiers.js';
 import { draw } from '../js/render/draw.js';
 import { createView } from '../js/render/view.js';
 import { createSpriteStore, loadDogSprites, loadSquirrelSprites, loadBirdSprites } from '../js/assets/sprites.js';
 import { createCosmetics } from '../js/cosmetics/cosmetics.js';
 import { createSilentMusic } from '../js/audio/music.js';
-import { DT_BASELINE, DOG_HITBOX_STAND } from '../js/config.js';
+import { DT_BASELINE, W } from '../js/config.js';
 
 const STEP_MS = DECIDE_EVERY * DT_BASELINE;  // game time per decision
 const RESTART_MS = 2500;                     // real time on the game-over screen before the next run
-const LOOK_COLORS = ['#FFD84A', 'rgba(255, 216, 74, 0.45)'];
+const BAND_COLORS = ['#B48CFF', '#6FB6FF', '#FFD84A', '#FF7A59'];  // high air, low air, head, ground
 const ACTION_LOOK = { jump: { text: 'JUMP', color: '#7CFF8A' }, duck: { text: 'DUCK', color: '#7CC8FF' } };
 
 const canvas = document.getElementById('game');
@@ -29,8 +32,10 @@ const cosmetics = createCosmetics(localStorage);  // the dog wears what you equi
 cosmetics.loadImages();
 const music = createSilentMusic();
 
-const model = await (await fetch('ai/models/best.json')).json();
-const net = fromJSON(model);
+const path = new URLSearchParams(location.search).get('model') ?? `ai/${modelFile(1)}`;
+const model = await (await fetch(path)).json();
+const net = loadNet(model);
+const { tier } = model;
 
 let env, action = 'none', speed = 1, budget = 0, endedAt = 0, runs = 0, best = 0;
 const resize = () => {
@@ -40,7 +45,7 @@ const resize = () => {
 new ResizeObserver(resize).observe(canvas);
 
 function newRun() {
-  env = createEnv(Math.floor(Math.random() * 1e9)).reset();
+  env = createEnv({ seed: Math.floor(Math.random() * 1e9), tier }).reset();
   env.state.skyTop = -view.extraTop;
   runs++;
   budget = 0;
@@ -54,28 +59,29 @@ function shown(state) {
   return { ...state, frenzyAt: 0, effects: state.effects.filter(e => e.kind !== 'burst') };
 }
 
-// The network's view: its two obstacles outlined, its choice above the dog.
+// The radar: in each band (clipped to the visible sky), a strip over what it sees there.
 function drawVision(state) {
-  const { dog } = state;
-  const ahead = state.obstacles
-    .filter(o => o.x + o.width > dog.x + DOG_HITBOX_STAND.dx)
-    .sort((a, b) => a.x - b.x)
-    .slice(0, LOOK_COLORS.length);
   ctx.save();
   ctx.scale(view.scale, view.scale);
   ctx.translate(view.offsetX, view.extraTop);
-  ctx.lineWidth = 2;
-  ahead.forEach((o, i) => {
-    ctx.strokeStyle = LOOK_COLORS[i];
-    ctx.setLineDash(i ? [4, 3] : []);
-    ctx.strokeRect(o.x - 3, o.y - 3, o.width + 6, o.height + 6);
+  radar(state).forEach((boxes, i) => {
+    const top = Math.max(BANDS[i].top, -view.extraTop);
+    const bottom = Math.min(BANDS[i].bottom, 250);
+    ctx.fillStyle = BAND_COLORS[i];
+    ctx.globalAlpha = 0.12;
+    ctx.fillRect(0, top, 6, bottom - top);  // the band's legend, at the left edge
+    boxes.forEach((b, k) => {
+      ctx.globalAlpha = k ? 0.12 : 0.28;
+      ctx.fillRect(b.x, top, Math.min(b.w, W - b.x), bottom - top);
+    });
   });
+  ctx.globalAlpha = 1;
   const look = ACTION_LOOK[action];
   if (look && state.gameState === 'running') {
     ctx.font = 'bold 12px Courier New';
     ctx.textAlign = 'center';
     ctx.fillStyle = look.color;
-    ctx.fillText(look.text, dog.x + 48, dog.y - 22);
+    ctx.fillText(look.text, state.dog.x + 48, state.dog.y - 22);
   }
   ctx.restore();
 }
@@ -84,7 +90,7 @@ function showStats(state) {
   best = Math.max(best, state.score);
   document.getElementById('stats').innerHTML =
     `run <b>${runs}</b> · score <b>${Math.floor(state.score)}</b> · speed <b>${state.speed.toFixed(2)}</b>` +
-    ` · best <b>${Math.floor(best)}</b> · model gen ${model.generation}`;
+    ` · best <b>${Math.floor(best)}</b> · tier ${tier} (${TIERS[tier].name}) · gen ${model.generation}`;
 }
 
 let last = performance.now();

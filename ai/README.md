@@ -1,51 +1,74 @@
-# ai/ — teaching a network to play
+# ai/: teaching a network to play
 
-A modest experiment: a small neural network learns, by neuroevolution, to play
-a cut-down Dachshund Dash with only the two basic obstacles, chocolate bars
-and single birds. It runs on the real game logic in `js/` (no browser, no
-drawing), so a run takes milliseconds instead of minutes. Nothing here is
-part of the game, and nothing here touches the leaderboard.
+Networks learn to play Dachshund Dash by neuroevolution, on the real game
+logic in `js/` (no browser, no drawing), so a run takes milliseconds instead
+of minutes. It's built to grow: tiers add what the game throws at the agent,
+the observation doesn't change as they do, and the environment has the usual
+reinforcement-learning contract, so a stronger trainer can be swapped in.
+Nothing here is part of the game or touches the leaderboard.
 
-## The setup
+## The pieces
 
-- **Environment** (`env.js`): the real `update()`, with the game's spawner,
-  scenes, golden hot dogs, and frenzy held off; it spawns chocolate bars and
-  single birds (at duck height) itself, at the game's own gaps. One heart:
-  any hit ends the run. Speed follows the normal ramp, 3.0 up to 6.75.
-- **What the network sees** (`observe.js`, 12 numbers): the dog's height,
-  vertical speed, whether it's jumping, has double-jumped, or is ducking; the
-  speed; and for each of the next two obstacles, the time until it reaches the
-  dog's nose and its type.
-- **What it does**: 30 times a second, one of nothing, jump, or duck (held).
-- **The network** (`net.js`): 12 inputs → 16 hidden (tanh) → 3 actions.
-- **Training** (`train.mjs`): a population of 150 networks plays the same 3
-  fresh random runs each generation; the best 6 carry over, and the rest are
-  bred from the fitter half by crossover and mutation. On every core. Each
-  generation's best is checked on 12 fixed validation runs, and the best of
-  those is saved to `models/best.json`.
-- **Evaluation** (`evaluate.mjs`): the saved network on 50 runs it never saw.
+- **Environment** (`env.js`): `createEnv({ seed, tier }).reset()`, then
+  `step(action)` → `{ reward, done }`. The real `update()`, with the game's
+  spawner, scenes, golden hot dogs, and frenzy held off; it spawns the tier's
+  kinds itself, at the game's own gaps and close-gap pattern odds. One heart.
+  Normal speed ramp (3.0 up to 6.75). A seed replays a run exactly.
+- **Tiers** (`tiers.js`): what spawns, built from the game's own `SPAWN_KINDS`
+  and `SPAWN_PATTERNS`. Tier 0: chocolate bars and lone birds. Tier 1:
+  everything before the tower (+ frisbee pairs, bird stacks, the close-gap
+  pairs), at the game's early odds. A new tier is one entry.
+- **Observation** (`observe.js`, `radar-1`): the dog's own state and the speed,
+  plus a radar of the screen ahead in four height bands, cut where the dog's
+  hitboxes change what an obstacle asks: ground (hits even a ducking dog),
+  head (a standing dog, not a ducking one), low air and high air (a dog in the
+  air). For each band, the next two things in it: when each reaches the dog's
+  nose and when it's past its tail, in time (distance ÷ speed). No obstacle
+  types: a bird stack is three bands at once, and a new obstacle needs no new
+  inputs. 22 numbers.
+- **Actions**: 30 times a second, nothing, jump, or duck (held).
+- **Network** (`net.js`): 22 → 24 (tanh) → 3.
+- **Training** (`train.mjs`): 150 networks play the same 3 fresh runs a
+  generation; the best 6 carry over, the rest are bred from the fitter half
+  by crossover and mutation, on every core. Each generation's best is checked
+  on 12 fixed validation runs; the best of those is saved. `--from` starts from
+  an earlier model (a curriculum).
+- **Models** (`models.js`, `models/tier<N>.json`): weights plus the observation
+  version (a model won't load against other inputs), its tier, and the tiers
+  it trained through.
+- **Evaluation** (`evaluate.mjs`): a model on 50 runs it never saw, in any tier.
+- **Viewer** (`watch.html`): see below.
 
 A run counts as cleared at 8,000 points (`SCORE_CAP`), past top speed (7,500).
 
 ## Running it
 
 ```bash
-node ai/train.mjs [minutes=30]    # → ai/models/best.json, ai/results/curve.csv
-node ai/evaluate.mjs [runs=50]    # → ai/results/evaluation.json
+node ai/train.mjs --tier 1 [--minutes 30] [--from ai/models/tier0.json]
+node ai/evaluate.mjs --model ai/models/tier1.json [--tier 1] [--runs 50]
 ```
+
+Results land in `results/tier<N>/` (`curve.csv`, `train.log`,
+`evaluation.json`). `tests/ai.test.js` checks the environment replays a seed,
+each tier spawns only its kinds, and the radar reads each obstacle into the
+right bands.
 
 ## Watch it
 
-`ai/watch.html` plays the saved network in real time with the game's own
-graphics: the obstacle it's reacting to is outlined (the next one dashed), and
-its choice (JUMP / DUCK) shows above the dog. 1× / 2× / 4× speed; a run that
-ends restarts on a new random seed. Serve the repo root and open
-`/ai/watch.html` (dachshund-dash.home, or `python3 -m http.server` locally).
+`ai/watch.html` plays a model in real time with the game's own graphics and
+its radar shown: a tinted strip in each height band over each thing it sees
+there, and its choice (JUMP / DUCK) above the dog. 1× / 2× / 4×; a run that
+ends restarts on a new seed. `?model=ai/models/tier0.json` picks the model
+(tier 1's by default). Serve the repo root and open `/ai/watch.html`.
 
 ## What mattered
 
-Feeding each obstacle's *distance* (as a share of the screen) left the
-population stuck around 200 points: the right moment to jump is a narrow band
-of distances that also shifts with speed. Feeding the *time until contact*
-(distance ÷ speed) instead made that moment one large, speed-independent
-value, and the first minute of training went from ~200 to ~7,700.
+- **Time, not distance.** The first observation gave each obstacle's distance
+  as a share of the screen; the population stalled near 200 points, since the
+  moment to jump was a narrow band of distances that shifted with speed.
+  Time until contact (distance ÷ speed) made it one large, speed-independent
+  value: about 7,700 within a minute.
+- **The radar over slots.** The first model saw "the next two obstacles" by
+  type (`results/slots-tier0/`): 86 generations to clear the validation runs,
+  then 40 of 50 unseen runs cleared. The radar, on the same tier 0: 4
+  generations (19 seconds), then 50 of 50.
