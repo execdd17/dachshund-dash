@@ -17,8 +17,8 @@ import { MUSIC_FADE_MS, TAPE_STOP_MS, DROP_SILENCE_MS } from '../config.js';
 
 export const TRACKS = {
   main: { src: 'sound/who_let_the_dogs_out_soul_version.mp3', volume: 0.30, main: true },
-  // Hyper mode's in place of main: "Golden Ascent" (or sound/clockwork_run.mp3, "The Clockwork Run")
-  hyper: { src: 'sound/golden_ascent.mp3', volume: 0.25, main: true },
+  // Hyper mode's in place of main: "The World Is A Blur" (tried before it: golden_ascent.mp3, clockwork_run.mp3)
+  hyper: { src: 'sound/world_is_a_blur.mp3', volume: 0.25, main: true },
   // The frenzy, from its drop to the end of the run: "The Clockwork Gauntlet"
   frenzy: { src: 'sound/clockwork_gauntlet.mp3', volume: 0.25, drop: true },
   // Giant mode: 15s, matching GIANT_DURATION
