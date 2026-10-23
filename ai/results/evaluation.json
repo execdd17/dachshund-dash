@@ -1,0 +1,13 @@
+{
+  "model": "generation 86, validation mean 8000",
+  "runs": 50,
+  "mean": 7730,
+  "median": 8000,
+  "min": 5101,
+  "max": 8000,
+  "cleared": "40/50 reached 8000",
+  "killedBy": {
+    "hotdog": 10
+  },
+  "speedAtDeath": "5.55–6.75"
+}
