@@ -1,8 +1,9 @@
 // Hyper's clean jumps (systems/cleanJump.js): a chocolate bar or lone bird
 // cleared with a single jump pays, more at lower speeds, times one shared
-// streak. Only a failed single jump (cleared with the double jump) or a hit
-// breaks it; ducking under a bird, the tunnel, the flight, and a double jump
-// a tower needed leave it be. Normal mode has no clean jumps.
+// streak; a bird counts double. A failed single jump (cleared with the double
+// jump), ducking under a bird, or a hit breaks it; the unavoidable (bird
+// stacks, the chase's acorns, the tunnel, the flight, a double jump a tower
+// needed) leaves it be. Normal mode has no clean jumps.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,6 +12,7 @@ import { createState } from '../js/core/state.js';
 import { update } from '../js/systems/update.js';
 import { jump } from '../js/systems/control.js';
 import { makeObstacle, getObstacleHitbox } from '../js/systems/obstacleTypes.js';
+import { SPAWN_KINDS } from '../js/systems/spawning.js';
 import { cleanJumpPoints, judgeCleanJump } from '../js/systems/cleanJump.js';
 import { EFFECT_DRAWERS } from '../js/render/effects.js';
 import { CLEAN_JUMP_POINTS, CLEAN_STREAK_MAX, MAX_SPEED, SPEED_PROFILES, DOG_HITBOX_STAND, BIRD_LOW_Y, BIRD_JUMP_BONUS } from '../js/config.js';
@@ -58,11 +60,14 @@ test('a clean jump pays 25 at hyper\'s starting speed, tapering to 5 at top spee
   assert.equal(cleanJumpPoints((SPEED_PROFILES.hyper.start + MAX_SPEED) / 2), 15);
 });
 
-test('a single jump over a bar or a lone bird pays and builds the streak', () => {
-  for (const [kind, score, jumpAt, points] of [['hotdog', 0, 50, 25], ['hotdog', HYPER_TOP, 50, 5], ['bird', 0, 35, 25], ['bird', HYPER_TOP, 100, 5]]) {
+test('a single jump over a bar pays and builds the streak; a lone bird counts double', () => {
+  // [kind, score, jumpAt, points, streak]: a bird adds two levels and pays twice a bar at the new level.
+  for (const [kind, score, jumpAt, points, streak] of [
+    ['hotdog', 0, 50, 25, 1], ['hotdog', HYPER_TOP, 50, 5, 1], ['bird', 0, 35, 2 * 25 * 2, 2], ['bird', HYPER_TOP, 100, 2 * 5 * 2, 2],
+  ]) {
     const state = hyperState(score);
     assert.equal(play(state, [obstacle(kind)], { jumpAt }), points, `${kind} at score ${score}`);
-    assert.equal(state.cleanStreak, 1, kind);
+    assert.equal(state.cleanStreak, streak, kind);
     assert.equal(state.hearts, 99, `${kind}: cleared, not hit`);
   }
 });
@@ -71,9 +76,9 @@ test('bars and birds share one streak; a lone bird pays no normal-mode bonus in 
   const state = hyperState(HYPER_TOP);
   state.cleanStreak = 2;
   const before = state.score;
-  assert.equal(play(state, [obstacle('bird')], { jumpAt: 100 }), 15, 'level 3: 5 × 3');
-  assert.equal(state.cleanStreak, 3);
-  assert.ok(state.score - before < BIRD_JUMP_BONUS, 'no NICE +50 on top');
+  assert.equal(play(state, [obstacle('bird')], { jumpAt: 100 }), 2 * 5 * 4, 'level 4: twice 5 × 4');
+  assert.equal(state.cleanStreak, 4);
+  assert.ok(state.score - before - 40 < BIRD_JUMP_BONUS, 'distance on top of the 40, but no NICE +50');
   assert.equal(state.effects.filter(e => e.kind === 'birdJump').length, 0);
 });
 
@@ -95,12 +100,29 @@ test('a hit breaks the streak', () => {
   assert.equal(state.cleanStreak, 0);
 });
 
-test('necessary moves leave the streak be: ducking a bird, the tunnel, the flight, and a double jump for a tower', () => {
-  const ducked = hyperState();
-  ducked.cleanStreak = 3;
-  play(ducked, [obstacle('bird')], { duck: true });
-  assert.equal(ducked.hearts, 99, 'ducked under it');
-  assert.equal(ducked.cleanStreak, 3, 'ducking a bird');
+test('ducking under a lone bird, the safe way out, breaks the streak', () => {
+  const state = hyperState();
+  state.cleanStreak = 3;
+  play(state, [obstacle('bird')], { duck: true });
+  assert.equal(state.hearts, 99, 'ducked under it');
+  assert.equal(state.cleanStreak, 0);
+});
+
+test('the unavoidable leaves the streak be: bird stacks, the chase\'s acorns, the tunnel, the flight, a tower\'s double jump', () => {
+  for (const [what, obstacles] of [
+    ['a bird stack', SPAWN_KINDS.birdStack(400, undefined, 4)],
+    ['a thrown acorn', [makeObstacle('bird', 400, { y: BIRD_LOW_Y, skin: 'chase' })]],
+  ]) {
+    const state = hyperState();
+    state.cleanStreak = 3;
+    play(state, obstacles, { duck: true });
+    assert.equal(state.hearts, 99, `${what}: ducked under it`);
+    assert.equal(state.cleanStreak, 3, what);
+  }
+  const rolled = hyperState();
+  rolled.cleanStreak = 3;
+  assert.equal(play(rolled, [makeObstacle('hotdog', 400, { skin: 'chase' })], { jumpAt: 50 }), 0, 'a rolled acorn pays nothing');
+  assert.equal(rolled.cleanStreak, 3, 'and leaves the streak be');
 
   for (const flag of ['underground', 'flying']) {
     const state = hyperState();

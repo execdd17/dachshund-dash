@@ -97,7 +97,7 @@ export const EFFECT_DRAWERS = {
     const age = (now - e.startTime) / SCORE_POPUP_MS;
     if (age > 1) return;
     const { color, size } = CLEAN_JUMP_LOOK[e.level - 1];
-    const text = e.level > 1 ? `CLEAN x${e.level} +${e.points}` : `CLEAN +${e.points}`;
+    const text = `CLEAN${e.bird ? ' BIRD' : ''}${e.level > 1 ? ` x${e.level}` : ''} +${e.points}`;
     drawPopupText(ctx, text, e.x, e.y - 12 - age * 30, { color, size: size + age * 6, alpha: 1 - age, outline: CLEAN_TEXT_OUTLINE });
   },
   trampBounce: drawScorePopup('BOING! +' + TRAMP_BOUNCE_BONUS, '#7A4FBF'),
