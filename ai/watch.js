@@ -1,7 +1,7 @@
 // Watch a trained network play its tier in real time, drawn by the game's own
 // renderer, with its radar shown: in each height band, a strip over each thing
-// it sees there, and its choice above the dog. ?model=ai/models/tier0.json
-// picks the model (tier 1's by default). A run that ends restarts on a new
+// it sees there, and its choice above the dog. ?model=ai/models/tier1.json
+// picks the model (tier 2's by default). A run that ends restarts on a new
 // random seed.
 
 import { createEnv, ACTIONS, DECIDE_EVERY } from './env.js';
@@ -32,9 +32,18 @@ const cosmetics = createCosmetics(localStorage);  // the dog wears what you equi
 cosmetics.loadImages();
 const music = createSilentMusic();
 
-const path = new URLSearchParams(location.search).get('model') ?? `ai/${modelFile(1)}`;
-const model = await (await fetch(path)).json();
-const net = loadNet(model);
+const path = new URLSearchParams(location.search).get('model') ?? `ai/${modelFile('tier2')}`;
+let model, net;
+try {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`${path}: ${response.status}`);
+  model = await response.json();
+  net = loadNet(model);
+} catch (e) {
+  // Say why, rather than leave a blank page.
+  document.getElementById('stats').textContent = `Couldn't load the model (${e.message}).`;
+  throw e;
+}
 const { tier } = model;
 
 let env, action = 'none', speed = 1, budget = 0, endedAt = 0, runs = 0, best = 0;

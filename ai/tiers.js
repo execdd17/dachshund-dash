@@ -11,4 +11,7 @@ export const TIERS = {
   // (SPAWN_MIX past the bird walls): frisbee pairs and bird stacks, and the
   // close-gap pairs of them with chocolate bars.
   1: { name: 'before the tower', solo: { hotdog: 0.52, bird: 0.27, birdStack: 0.16, frisbeePair: 0.05 }, patterns: true },
+  // + the tower (a double jump; 5 bars, then 6 from TOWER_TALL_FROM_SPEED), at
+  // the game's odds once towers are in (SPAWN_MIX past tower.after).
+  2: { name: 'the tower', solo: { tower: 0.15, hotdog: 0.52, bird: 0.19, birdStack: 0.11, frisbeePair: 0.03 }, patterns: true },
 };

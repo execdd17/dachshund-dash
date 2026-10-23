@@ -5,7 +5,9 @@
 import { OBSERVATION } from './observe.js';
 import { toJSON, fromJSON } from './net.js';
 
-export const modelFile = tier => `models/tier${tier}.json`;
+// A model's file and results folder go by its name (tier<N> unless training says otherwise).
+export const modelFile = name => `models/${name}.json`;
+export const resultsDir = name => `results/${name}/`;
 
 export const saveable = (net, meta) => ({ observation: OBSERVATION, ...meta, ...toJSON(net) });
 

@@ -1,12 +1,12 @@
 // Neuroevolution: a population of networks plays a tier; the best carry over,
 // and the rest are bred from the fitter half by crossover and mutation. Runs
 // on every core (worker threads), logs each generation to
-// results/tier<N>/curve.csv, and saves the best network so far, judged on
-// fixed validation seeds, to models/tier<N>.json. With --from, the population
-// starts as variations of an earlier model (a curriculum: tier 1's champion
-// continuing on tier 2).
+// results/<name>/curve.csv, and saves the best network so far, judged on
+// fixed validation seeds, to models/<name>.json (name: tier<N> by default).
+// With --from, the population starts as variations of an earlier model (a
+// curriculum: tier 1's champion continuing on tier 2).
 //
-//   node ai/train.mjs --tier 1 [--minutes 30] [--from ai/models/tier0.json]
+//   node ai/train.mjs --tier 2 [--minutes 30] [--from ai/models/tier1.json] [--name tier2-from-tier1]
 
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
@@ -16,7 +16,7 @@ import { createNet, mutate, crossover, toJSON, fromJSON } from './net.js';
 import { INPUTS } from './observe.js';
 import { ACTIONS, seededRng } from './env.js';
 import { playRun, SCORE_CAP } from './play.js';
-import { modelFile, saveable, loadNet } from './models.js';
+import { modelFile, resultsDir, saveable, loadNet } from './models.js';
 
 const SIZES = [INPUTS, 24, ACTIONS.length];
 const POPULATION = 150;
@@ -33,11 +33,14 @@ if (!isMainThread) {
     parentPort.postMessage(nets.map(json => mean(seeds.map(seed => playRun(fromJSON(json), seed, tier).score))));
   });
 } else {
-  const { values } = parseArgs({ options: { tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' } } });
+  const { values } = parseArgs({ options: {
+    tier: { type: 'string' }, minutes: { type: 'string', default: '30' }, from: { type: 'string' }, name: { type: 'string' },
+  } });
   const tier = Number(values.tier);
   const minutes = Number(values.minutes);
+  const name = values.name ?? `tier${tier}`;
   const dir = new URL('.', import.meta.url);
-  const results = new URL(`results/tier${tier}/`, dir);
+  const results = new URL(resultsDir(name), dir);
   mkdirSync(results, { recursive: true });
   mkdirSync(new URL('models/', dir), { recursive: true });
 
@@ -70,7 +73,7 @@ if (!isMainThread) {
     if (validation > champion.validation) {
       champion = { validation, gen, net: ranked[0].net };
       const meta = { tier, trainedOn, generation: gen, validation, from: values.from ?? null };
-      writeFileSync(new URL(modelFile(tier), dir), JSON.stringify(saveable(champion.net, meta)));
+      writeFileSync(new URL(modelFile(name), dir), JSON.stringify(saveable(champion.net, meta)));
     }
     const fits = ranked.map(r => r.fit);
     const seconds = Math.round((Date.now() - started) / 1000);

@@ -1,13 +1,14 @@
 // A saved model on seeds it never trained or was chosen on, in its own tier
 // or another: its scores, how many runs it clears (SCORE_CAP), and which kinds
-// of obstacle end the rest. Writes results/tier<N>/evaluation.json.
+// of obstacle end the rest. Writes results/<model name>/evaluation-tier<N>.json.
 //
 //   node ai/evaluate.mjs --model ai/models/tier1.json [--tier 1] [--runs 50]
 
 import { parseArgs } from 'node:util';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { playRun, SCORE_CAP } from './play.js';
-import { loadNet } from './models.js';
+import { basename } from 'node:path';
+import { loadNet, resultsDir } from './models.js';
 
 const { values } = parseArgs({ options: { model: { type: 'string' }, tier: { type: 'string' }, runs: { type: 'string', default: '50' } } });
 const model = JSON.parse(readFileSync(values.model, 'utf8'));
@@ -33,6 +34,6 @@ const report = {
   speedAtDeath: speeds.length ? `${Math.min(...speeds).toFixed(2)}–${Math.max(...speeds).toFixed(2)}` : 'none',
 };
 console.log(JSON.stringify(report, null, 2));
-const out = new URL(`results/tier${tier}/`, import.meta.url);
+const out = new URL(resultsDir(basename(values.model, '.json')), import.meta.url);
 mkdirSync(out, { recursive: true });
-writeFileSync(new URL('evaluation.json', out), JSON.stringify(report, null, 2) + '\n');
+writeFileSync(new URL(`evaluation-tier${tier}.json`, out), JSON.stringify(report, null, 2) + '\n');

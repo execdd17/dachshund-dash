@@ -57,6 +57,7 @@ test('the radar reads each obstacle into the bands where it can hit the dog', ()
   assert.deepEqual(bandsOf('bird'), ['low air', 'head'], 'a lone bird: a standing dog, not a ducking one');
   assert.deepEqual(bandsOf('frisbeePair'), ['low air', 'head']);
   assert.deepEqual(bandsOf('birdStack'), ['high air', 'low air', 'head'], 'a bird stack: too tall to jump');
+  assert.deepEqual(bandsOf('tower'), ['high air', 'low air', 'head', 'ground'], 'a tower: every band, so the ground band tells it from a bird stack');
 });
 
 test('observations have a fixed size; a model only loads with the observation it was trained on', () => {

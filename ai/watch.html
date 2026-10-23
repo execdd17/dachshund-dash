@@ -6,6 +6,7 @@
   <!-- The game loads sprites by paths relative to the page: resolve them from the repo root. -->
   <base href="../" />
   <title>Dachshund Dash AI</title>
+  <link rel="icon" type="image/png" href="icons/icon-192.png" />
   <style>
     :root { color-scheme: light; }
     body { margin: 0; background: #1b1d22; color: #e8e8e8; font-family: 'Courier New', monospace; }
@@ -30,6 +31,12 @@
     <span class="stats" id="stats"></span>
   </header>
   <canvas id="game"></canvas>
+  <script>
+    // A script that fails to load or run says why in the stats bar, rather than leaving the page blank.
+    const showError = text => { document.getElementById('stats').textContent = `Error: ${text}`; };
+    addEventListener('error', e => showError(e.message || `couldn't load ${e.target?.src ?? 'a script'}`), true);
+    addEventListener('unhandledrejection', e => showError(e.reason?.message ?? String(e.reason)));
+  </script>
   <script type="module" src="ai/watch.js"></script>
 </body>
 </html>
