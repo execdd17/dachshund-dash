@@ -64,7 +64,7 @@ Game logic never touches the DOM, canvas, or Web Audio — everything effectful 
 - **`cosmetics/`** — `cosmetics.js` (`COSMETIC_DEFS`, calibrated `HEAD_ANCHORS`, equipped-state persistence) and `menu.js` (DOM overlay).
 - **`leaderboard/`** — `local.js` (localStorage top list), `global.js` (Firestore boards), `recorder.js` (`recordRun`: placement, local list, global submit for a finished run), `checksum.js`, `ui.js` (HTML table).
 - **`input/`** — `input.js` (keyboard/touch/mouse) and `debug.js` (`DEBUG_KEYS`: P slow-mo, C chase, B boss, T trampoline, U tunnel, F flight (sends its cape), G golden hot dog, N next biome, + adds 500 to the score, R rain, H hat). A run that used + is `scoreBoosted` and counts on no leaderboard (`recorder.js`), since debug keys work on the live site.
-- **`ui/`** — `startOverlay.js` (start overlay: difficulty, or the HYPER switch with its fixed hearts, once per page load), `scoreNamePrompt.js` (asks for a name when a score makes the global board), and `howToPlay.js` (the HOW TO PLAY button beside ACCESSORIZE: replays the tutorial).
+- **`ui/`** — `startOverlay.js` (start overlay: difficulty, or the HYPER switch with its fixed hearts, once per page load), `scoreNamePrompt.js` (asks for a name when a score makes the global board), `howToPlay.js` (the HOW TO PLAY button beside ACCESSORIZE: replays the tutorial), and `watchAiLink.js` (the robot button beside it: opens `ai/watch.html`, where a trained network plays, in a new tab).
 - **`main.js`** — composition root: builds services, wires the DOM, runs the rAF loop (`update()` then `draw()`).
 
 ### Invariants and runtime facts

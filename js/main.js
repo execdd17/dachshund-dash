@@ -16,6 +16,7 @@ import { createScoreRecorder } from './leaderboard/recorder.js';
 import { createStartOverlay } from './ui/startOverlay.js';
 import { createScoreNamePrompt } from './ui/scoreNamePrompt.js';
 import { createHowToPlayButton } from './ui/howToPlay.js';
+import { createWatchAiLink } from './ui/watchAiLink.js';
 import { update } from './systems/update.js';
 import { jump } from './systems/control.js';
 import { isTutorialDue, markTutorialSeen } from './systems/tutorial.js';
@@ -91,6 +92,7 @@ const services = {
   tutorialSeen: () => markTutorialSeen(localStorage, Date.now()),
 };
 const howToPlay = createHowToPlayButton(state, { startRun: () => jump(state, services) });
+const watchAi = createWatchAiLink(state);
 
 // --- Wiring ---
 wireInput({ state, canvas, services, startOverlay, cosmetics, cosmeticsMenu, music, touchDevice, view });
@@ -98,6 +100,7 @@ startOverlay.wireControls();
 scoreNamePrompt.wireControls();
 cosmeticsMenu.wireControls();
 howToPlay.wireControls();
+watchAi.wireControls();
 leaderboardUi.wireControls();
 
 // --- Main loop ---
@@ -109,6 +112,7 @@ function gameLoop(now) {
   update(state, dt, services, Math.random, now);
   cosmeticsMenu.updateCustomizeButtonVisibility();
   howToPlay.updateVisibility();
+  watchAi.updateVisibility();
   scoreNamePrompt.update();
   draw({ canvas, ctx, state, sprites, cosmetics, music, view, now });
   requestAnimationFrame(gameLoop);

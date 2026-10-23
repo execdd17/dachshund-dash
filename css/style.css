@@ -324,7 +324,7 @@
     padding: 16px;
   }
 
-  /* --- Idle & game-over buttons: ACCESSORIZE, HOW TO PLAY --- */
+  /* --- Idle & game-over buttons: ACCESSORIZE, HOW TO PLAY, the AI viewer --- */
   /* One row centered just below the start/game-over text. The canvas maps
      800 logical units across the full viewport width with the ground pinned
      to the bottom edge, so logical y=118 is (250-118)/800 of the width up
@@ -340,7 +340,7 @@
     z-index: 5;
     pointer-events: none;  /* the empty row mustn't block canvas taps */
   }
-  #idleActions button { pointer-events: auto; white-space: nowrap; }
+  #idleActions button, #idleActions a { pointer-events: auto; white-space: nowrap; }
   #customizeBtn {
     display: none;
     align-items: center;
@@ -383,22 +383,26 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
   }
-  /* Secondary to ACCESSORIZE: same shape, quieter fill, no pulse. */
-  #howToPlayBtn {
+  /* Secondary to ACCESSORIZE (HOW TO PLAY, the AI viewer's robot): same shape, quieter fill, no pulse. */
+  .idle-secondary {
     display: none;
+    align-items: center;
     font-family: 'Courier New', monospace;
     font-size: 14px;
     font-weight: bold;
     letter-spacing: 2px;
+    line-height: 20px;
     padding: 10px 18px;
     background: rgba(0, 0, 0, 0.35);
     color: #fff;
     border: 3px solid #fff;
     border-radius: 6px;
     cursor: pointer;
+    text-decoration: none;
   }
-  #howToPlayBtn.visible { display: inline-block; }
-  #howToPlayBtn:hover { background: rgba(0, 0, 0, 0.5); }
+  .idle-secondary.visible { display: inline-flex; }
+  .idle-secondary:hover { background: rgba(0, 0, 0, 0.5); }
+  #watchAiBtn { padding: 10px 12px; }
 
   /* --- Cosmetics menu overlay --- */
   #cosmeticsMenu {
